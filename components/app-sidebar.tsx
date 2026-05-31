@@ -1,11 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { NavGeneric } from "@/components/nav-generic";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -14,156 +12,80 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { DashboardSquare01Icon, Menu01Icon, ChartHistogramIcon, Folder01Icon, UserGroupIcon, Camera01Icon, File01Icon, Settings05Icon, HelpCircleIcon, SearchIcon, Database01Icon, Analytics01Icon, CommandIcon } from "@hugeicons/core-free-icons"
+} from "@/components/ui/sidebar";
+import {
+  ChartHistogramIcon,
+  CommandIcon,
+  DashboardSquare01Icon,
+  Folder01Icon,
+  HelpCircleIcon,
+  Menu01Icon,
+  SearchIcon,
+  Settings05Icon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link";
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
-      title: "Dashboard",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />
-      ),
+      name: "Dashboard",
+      url: "/dashboard",
+      icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
     },
     {
-      title: "Lifecycle",
+      name: "Lifecycle",
       url: "#",
-      icon: (
-        <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />
-      ),
+      icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
     },
     {
-      title: "Analytics",
+      name: "Analytics",
       url: "#",
-      icon: (
-        <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />
-      ),
+      icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
     },
     {
-      title: "Projects",
+      name: "Projects",
       url: "#",
-      icon: (
-        <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />
-      ),
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />
-      ),
+      icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
     },
   ],
-  navClouds: [
+  navSuperadmin: [
     {
-      title: "Capture",
-      icon: (
-        <HugeiconsIcon icon={Camera01Icon} strokeWidth={2} />
-      ),
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      name: "Gestión de Usuarios",
+      url: "/dashboard/users",
+      icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
     },
     {
-      title: "Proposal",
-      icon: (
-        <HugeiconsIcon icon={File01Icon} strokeWidth={2} />
-      ),
+      name: "Settings",
       url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
     },
     {
-      title: "Prompts",
-      icon: (
-        <HugeiconsIcon icon={File01Icon} strokeWidth={2} />
-      ),
+      name: "Get Help",
       url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
+      icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
+    },
+    {
+      name: "Search",
+      url: "#",
+      icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
     },
   ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />
-      ),
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />
-      ),
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />
-      ),
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />
-      ),
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />
-      ),
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: (
-        <HugeiconsIcon icon={File01Icon} strokeWidth={2} />
-      ),
-    },
-  ],
+};
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: {
+    name: string;
+    email: string;
+    avatar?: string;
+    role?: string;
+  };
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  console.log("Renderizando AppSidebar con usuario:", user);
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -173,22 +95,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="#">
-                <HugeiconsIcon icon={CommandIcon} strokeWidth={2} className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
+              <Link href="/dashboard">
+                <HugeiconsIcon
+                  icon={CommandIcon}
+                  strokeWidth={2}
+                  className="size-5!"
+                />
+                <span className="text-base font-semibold">Inka Team Admin</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavGeneric items={data.navMain} />
+
+        {user.role === "SUPERADMIN" && (
+          <NavGeneric
+            title="Administración"
+            hideOnCollapse={true}
+            items={data.navSuperadmin}
+          />
+        )}
       </SidebarContent>
+
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

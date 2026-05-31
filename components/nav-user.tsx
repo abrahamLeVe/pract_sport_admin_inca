@@ -1,10 +1,8 @@
-"use client"
+"use client";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { signOut } from "next-auth/react";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,26 +11,42 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreVerticalCircle01Icon, UserCircle02Icon, CreditCardIcon, Notification03Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+} from "@/components/ui/sidebar";
+import {
+  CreditCardIcon,
+  Logout01Icon,
+  MoreVerticalCircle01Icon,
+  Notification03Icon,
+  UserCircle02Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 
-export function NavUser({
-  user,
-}: {
+interface NavUserProps {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
-  const { isMobile } = useSidebar()
+    name: string;
+    email: string;
+    avatar?: string;
+    role?: string;
+  };
+}
+
+export function NavUser({ user }: NavUserProps) {
+  const { isMobile } = useSidebar();
+
+  const iniciales = user.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "US";
 
   return (
     <SidebarMenu>
@@ -43,9 +57,11 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
+              <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
+                  {iniciales}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -53,7 +69,11 @@ export function NavUser({
                   {user.email}
                 </span>
               </div>
-              <HugeiconsIcon icon={MoreVerticalCircle01Icon} strokeWidth={2} className="ml-auto size-4" />
+              <HugeiconsIcon
+                icon={MoreVerticalCircle01Icon}
+                strokeWidth={2}
+                className="ml-auto size-4"
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -66,7 +86,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
+                    {iniciales}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -80,25 +102,29 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
-                Account
+                Mi Cuenta
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
-                Billing
+                Suscripción
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
-                Notifications
+                Notificaciones
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => signOut({ callbackUrl: "/" })} // Redirige automáticamente al Login limpio
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
               <HugeiconsIcon icon={Logout01Icon} strokeWidth={2} />
-              Log out
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

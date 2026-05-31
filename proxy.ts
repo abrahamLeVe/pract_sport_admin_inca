@@ -1,25 +1,21 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
 
-export default auth((req) => {
-  const estaEnDashboard = req.nextUrl.pathname.startsWith("/dashboard");
+export async function proxy(request: NextRequest) {
+  const session = await auth();
+  const { pathname } = request.nextUrl;
 
-  const estaLogueado = !!req.auth;
+  if (pathname.startsWith("/dashboard")) {
+    if (!session) {
+      const urlLogin = request.nextUrl.clone();
+      urlLogin.pathname = "/";
 
-  if (estaEnDashboard && !estaLogueado) {
-    const urlLogin = new URL("/", req.nextUrl.origin);
-    return Response.redirect(urlLogin);
+      urlLogin.searchParams.set("error", "SessionExpired");
+
+      return NextResponse.redirect(urlLogin);
+    }
   }
-});
 
-export const config = {
-  matcher: [
-    /*
-     * Coincide con todas las rutas de solicitud excepto las que empiezan por:
-     * - api (rutas de API externas o endpoints móviles)
-     * - _next/static (archivos estáticos internos)
-     * - _next/image (optimización de imágenes nativa)
-     * - favicon.ico, placeholder.png (imágenes fijas en public)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico|placeholder.png|.*\\.png|.*\\.jpg).*)",
-  ],
-};
+  return NextResponse.next();
+}

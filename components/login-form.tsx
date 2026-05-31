@@ -1,17 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
-import { cn } from "@/lib/utils";
+import { loginAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-
-import { loginAction } from "@/app/actions/auth";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { FormLoginState } from "@/validations/auth";
+import { useSearchParams } from "next/navigation";
+import { useActionState } from "react";
 import { FormError } from "./form-error";
 
-// Definimos el estado inicial exacto para que calce con la acción
 const INITIAL_LOGIN_STATE: FormLoginState = {
   success: false,
   message: "",
@@ -26,11 +25,13 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const searchParams = useSearchParams();
   const [formState, formAction, isPending] = useActionState(
     loginAction,
     INITIAL_LOGIN_STATE,
   );
-
+  const sesionExpirada = searchParams.get("error") === "SessionExpired";
+  console.log("sesionExpirada:", sesionExpirada);
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 w-full max-w-4xl mx-auto">
@@ -39,6 +40,11 @@ export function LoginForm({
             action={formAction}
             className="p-6 md:p-8 flex flex-col justify-center"
           >
+            {sesionExpirada && (
+              <div className="mb-4 p-3 text-sm bg-destructive/10 border border-destructive/20 text-destructive rounded-lg font-medium text-center">
+                ⚠️ Tu sesión ha expirado. Por favor, inicia sesión nuevamente.
+              </div>
+            )}
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Bienvenido</h1>
@@ -47,7 +53,6 @@ export function LoginForm({
                 </p>
               </div>
 
-              {/* CAMPO: IDENTIFICADOR (EMAIL O USERNAME) */}
               <Field>
                 <FieldLabel htmlFor="identifier">Correo o Usuario</FieldLabel>
                 <Input
@@ -62,7 +67,6 @@ export function LoginForm({
                 <FormError error={formState.zodErrors?.identifier} />
               </Field>
 
-              {/* CAMPO: CONTRASEÑA */}
               <Field>
                 <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                 <Input
@@ -77,7 +81,6 @@ export function LoginForm({
                 <FormError error={formState.zodErrors?.password} />
               </Field>
 
-              {/* BOTÓN Y ALERTA GLOBAL */}
               <Field className="pt-2">
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {isPending ? "Iniciando sesión..." : "Iniciar Sesión"}
