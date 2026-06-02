@@ -1,9 +1,13 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-import { SearchUsers } from "./_components/search-users";
-import { PaginationUsers } from "./_components/pagination-users";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -12,8 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { getUsersAction } from "@/lib/data/users";
+import { Edit2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { PaginationUsers } from "./_components/pagination-users";
+import { SearchUsers } from "./_components/search-users";
+import { DeleteUserButton } from "./_components/delete-user-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -57,6 +65,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Fecha Registro</TableHead>
+              <TableHead className="w-12 text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -85,11 +94,46 @@ export default async function UsersPage({ searchParams }: PageProps) {
                   <TableCell className="text-right">
                     {new Date(user.created_at).toLocaleDateString("es-PE")}
                   </TableCell>
+
+                  {/* 2. Menú Desplegable de Acciones por cada Fila */}
+                  <TableCell className="text-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <span className="sr-only">Abrir menú</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-40 rounded-xl"
+                      >
+                        <DropdownMenuLabel>Opciones</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+
+                        {/* Opción Editar: Te redirige a la subruta con el ID del usuario */}
+                        <DropdownMenuItem
+                          asChild
+                          className="cursor-pointer rounded-lg gap-2"
+                        >
+                          <Link href={`/dashboard/users/edit/${user.id}`}>
+                            <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Editar</span>
+                          </Link>
+                        </DropdownMenuItem>
+
+                        {/* Opción Eliminar (Desactivar de forma lógica) */}
+                        <DeleteUserButton
+                          userId={user.id}
+                          userName={user.name || "este usuario"}
+                          currentStatus={user.status} // <- Agregado aquí
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No se encontraron usuarios registrados.
                 </TableCell>
               </TableRow>

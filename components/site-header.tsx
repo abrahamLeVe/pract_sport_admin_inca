@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -12,29 +13,24 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import React from "react";
 
-// 1. Diccionario Global de Traducciones: Aquí centralizas los nombres de tus páginas
 const routeTranslations: Record<string, string> = {
   dashboard: "Panel",
   users: "Usuarios",
-  new: "Nuevo",
+  new: "Nuevo Usuario",
   settings: "Configuración",
   products: "Productos",
-  reports: "Reportes",
-  analytics: "Métricas",
+  edit: "Editar",
 };
 
 export function SiteHeader() {
   const pathname = usePathname();
 
-  // Dividimos la ruta actual: /dashboard/users/new -> ["dashboard", "users", "new"]
   const segments = pathname.split("/").filter(Boolean);
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center border-b bg-background/95 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) sticky top-0 z-50">
       <div className="flex w-full items-center justify-between px-4 lg:px-6">
-        {/* SECCIÓN IZQUIERDA: Navegación Dinámica */}
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1 h-8 w-8" />
           <Separator
@@ -48,8 +44,6 @@ export function SiteHeader() {
                 const href = `/${segments.slice(0, index + 1).join("/")}`;
                 const isLast = index === segments.length - 1;
 
-                // 2. Buscamos en el diccionario. Si no existe, formateamos el texto por defecto.
-                // Reemplaza guiones bajos/altos por espacios y capitaliza (ej: sport_admin -> Sport Admin)
                 const translatedLabel =
                   routeTranslations[segment.toLowerCase()] ||
                   segment.replace(/[-_]/g, " ").charAt(0).toUpperCase() +
@@ -79,7 +73,6 @@ export function SiteHeader() {
           </Breadcrumb>
         </div>
 
-        {/* SECCIÓN DERECHA */}
         <div className="flex items-center gap-2">
           <ModeToggle />
         </div>

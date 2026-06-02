@@ -19,8 +19,24 @@ export const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
+export const EditUserSchema = z.object({
+  id: z.coerce.number(),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.email("Introduce un correo electrónico válido"),
+  password: z
+    .string()
+    .min(6, "La contraseña debe tener al menos 6 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+    .regex(/[a-z]/, "Debe contener al menos una minúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .or(z.literal("")),
+  role: z.enum(["SUPERADMIN", "ADMIN", "CLIENT"]),
+  status: z.enum(["activo", "inactivo"]),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type EditUserInput = z.infer<typeof EditUserSchema>;
 
 export type FormState = {
   success?: boolean;
@@ -55,3 +71,13 @@ export type FormLoginState = {
     password?: string[];
   } | null;
 };
+
+export interface EditUserFormProps extends React.ComponentProps<"div"> {
+  initialData: {
+    id: number;
+    name: string | null;
+    email: string;
+    role: string;
+    status: string;
+  };
+}
