@@ -1,4 +1,3 @@
-// app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import bcrypt from "bcryptjs";
@@ -14,10 +13,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Encriptar la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insertar el nuevo usuario en la base de datos
     const query = `
       INSERT INTO users (name, email, password, role)
       VALUES ($1, $2, $3, $4)
@@ -33,7 +30,6 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (error: any) {
-    // Código 23505 indica violación de restricción única (Unique constraint / Email duplicado)
     if (error.code === "23505") {
       return NextResponse.json(
         { message: "El correo electrónico ya está registrado" },

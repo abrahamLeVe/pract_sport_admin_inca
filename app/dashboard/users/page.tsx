@@ -31,12 +31,10 @@ export default async function UsersPage({ searchParams }: PageProps) {
 
   return (
     <div className="w-full space-y-4 p-6">
-      {/* Cabecera optimizada */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">
           Administración de Usuarios
         </h1>
-        {/* Aquí va el botón apuntando a tu ruta 'new' */}
         <Button asChild>
           <Link href="/dashboard/users/new" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
@@ -45,12 +43,10 @@ export default async function UsersPage({ searchParams }: PageProps) {
         </Button>
       </div>
 
-      {/* Caja de herramientas (Búsqueda) */}
       <div className="flex items-center py-2">
         <SearchUsers />
       </div>
 
-      {/* Contenedor de la Tabla */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
