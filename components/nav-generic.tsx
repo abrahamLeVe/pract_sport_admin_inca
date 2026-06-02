@@ -10,10 +10,9 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 
-// 📝 Definimos las propiedades elásticas que aceptará nuestro componente único
 interface NavGenericProps {
-  title?: string; // Opcional: Si lo mandas, dibuja el título gris arriba
-  hideOnCollapse?: boolean; // Opcional: Si es true, oculta todo el grupo cuando el Sidebar sea solo iconos
+  title?: string;
+  hideOnCollapse?: boolean;
   items: {
     name: string;
     url: string;

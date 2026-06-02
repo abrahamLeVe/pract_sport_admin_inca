@@ -1,7 +1,7 @@
 import pool from "@/lib/db";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import Credentials from "next-auth/providers/credentials";
 import { loginSchema } from "./validations/auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -10,9 +10,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 4 * 60 * 60,
   },
   providers: [
-    CredentialsProvider({
-      name: "Credenciales",
-      credentials: { identifier: {}, password: {} },
+    Credentials({
       async authorize(credentials) {
         const { identifier, password } =
           await loginSchema.parseAsync(credentials);
