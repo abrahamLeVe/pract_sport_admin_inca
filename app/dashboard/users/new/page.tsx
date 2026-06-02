@@ -1,4 +1,4 @@
-import { RegisterUserForm } from "@/components/register-user-form";
+import { RegisterUserForm } from "@/app/dashboard/users/_components/register-user-form";
 
 export default function NewUserPage() {
   return (

@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useActionState } from "react";
 
-import { FormError } from "./form-error";
+import { FormError } from "../../../../components/form-error";
 
 import { actions } from "@/app/actions";
 import { FormState } from "@/validations/auth";
@@ -53,7 +53,6 @@ export function RegisterUserForm({
                 </p>
               </div>
 
-              {/* CAMPO: NOMBRE COMPLETO */}
               <Field>
                 <FieldLabel htmlFor="name">Nombre Completo</FieldLabel>
                 <Input
@@ -69,7 +68,6 @@ export function RegisterUserForm({
                 <FormError error={formState.zodErrors?.name} />
               </Field>
 
-              {/* CAMPO: CORREO ELECTRÓNICO */}
               <Field>
                 <FieldLabel htmlFor="email">Correo electrónico</FieldLabel>
                 <Input
@@ -85,7 +83,6 @@ export function RegisterUserForm({
                 <FormError error={formState.zodErrors?.email} />
               </Field>
 
-              {/* CAMPO: CONTRASEÑA */}
               <Field>
                 <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                 <Input
@@ -100,7 +97,6 @@ export function RegisterUserForm({
                 <FormError error={formState.zodErrors?.password} />
               </Field>
 
-              {/* CAMPO: ROL DE USUARIO */}
               <Field>
                 <FieldLabel htmlFor="role">Rol de Usuario</FieldLabel>
                 <Select
@@ -122,7 +118,6 @@ export function RegisterUserForm({
                 <FormError error={formState.zodErrors?.role} />
               </Field>
 
-              {/* BOTÓN DE SUBMIT Y ERROR GLOBAL */}
               <Field className="pt-2">
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {isPending ? "Creando usuario..." : "Registrar Usuario"}
