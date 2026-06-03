@@ -31,7 +31,6 @@ export function LoginForm({
     INITIAL_LOGIN_STATE,
   );
   const sesionExpirada = searchParams.get("error") === "SessionExpired";
-  console.log("sesionExpirada:", sesionExpirada);
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 w-full max-w-4xl mx-auto">
@@ -60,7 +59,7 @@ export function LoginForm({
                   type="text"
                   name="identifier"
                   placeholder="Ej. juan@inkateam.com o juan12"
-                  defaultValue={formState.data?.identifier ?? ""} // 👈 Compila perfectamente sin errores
+                  defaultValue={formState.data?.identifier ?? ""}
                   disabled={isPending}
                   required
                 />

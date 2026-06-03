@@ -88,7 +88,6 @@ export async function toggleUserStatusAction(
   currentStatus: string,
 ) {
   try {
-    // Calculamos el estado opuesto
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 
     const query = `

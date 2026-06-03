@@ -1,5 +1,6 @@
 "use client";
 
+import { actions } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -12,12 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useActionState } from "react";
-
-import { FormError } from "../../../../components/form-error";
-
-import { actions } from "@/app/actions";
 import { FormState } from "@/validations/auth";
+import Link from "next/link";
+import { useActionState } from "react";
+import { FormError } from "../../../../components/form-error";
 
 const INITIAL_STATE: FormState = {
   success: false,
@@ -42,11 +41,11 @@ export function RegisterUserForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 w-full max-w-4xl mx-auto">
+      <Card className="overflow-hidden p-0 max-w-4xl w-full mx-auto">
         <CardContent>
           <form action={formAction} className="p-6 md:p-8">
             <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center">
+              <div className="flex flex-col items-center gap-2 text-center mb-4">
                 <h1 className="text-2xl font-bold">Registrar Nuevo Usuario</h1>
                 <p className="text-sm text-balance text-muted-foreground">
                   Añade un nuevo administrador o cliente a la plataforma.
@@ -118,13 +117,29 @@ export function RegisterUserForm({
                 <FormError error={formState.zodErrors?.role} />
               </Field>
 
-              <Field className="pt-2">
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Creando usuario..." : "Registrar Usuario"}
-                </Button>
+              <Field className="pt-4">
+                {/* Botones alineados horizontalmente: Cancelar y Guardar */}
+                <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">
+                  <Button
+                    variant="outline"
+                    asChild
+                    disabled={isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    <Link href="/dashboard/users">Cancelar</Link>
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {isPending ? "Creando usuario..." : "Registrar Usuario"}
+                  </Button>
+                </div>
 
                 {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-center mt-2 font-medium">
+                  <p className="text-destructive text-sm text-center mt-3 font-medium">
                     {formState.message}
                   </p>
                 )}

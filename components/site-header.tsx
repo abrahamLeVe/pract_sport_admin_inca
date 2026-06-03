@@ -4,7 +4,6 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ModeToggle } from "./mode-toggle";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ModeToggle } from "./mode-toggle";
 
 const routeTranslations: Record<string, string> = {
   dashboard: "Panel",
@@ -25,7 +25,6 @@ const routeTranslations: Record<string, string> = {
 
 export function SiteHeader() {
   const pathname = usePathname();
-
   const segments = pathname.split("/").filter(Boolean);
 
   return (
@@ -44,6 +43,11 @@ export function SiteHeader() {
                 const href = `/${segments.slice(0, index + 1).join("/")}`;
                 const isLast = index === segments.length - 1;
 
+                const isNumericId = !isNaN(Number(segment));
+                const isEditSegment = segment.toLowerCase() === "edit";
+
+                const shouldNotBeLink = isEditSegment || isNumericId;
+
                 const translatedLabel =
                   routeTranslations[segment.toLowerCase()] ||
                   segment.replace(/[-_]/g, " ").charAt(0).toUpperCase() +
@@ -56,6 +60,10 @@ export function SiteHeader() {
                         <BreadcrumbPage className="font-medium text-foreground">
                           {translatedLabel}
                         </BreadcrumbPage>
+                      ) : shouldNotBeLink ? (
+                        <span className="text-muted-foreground select-none">
+                          {translatedLabel}
+                        </span>
                       ) : (
                         <BreadcrumbLink
                           href={href}

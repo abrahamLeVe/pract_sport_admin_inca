@@ -1,5 +1,6 @@
 "use client";
 
+import { actions } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -12,10 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { EditUserFormProps } from "@/validations/auth";
+import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "../../../../components/form-error";
-import { actions } from "@/app/actions";
-import { EditUserFormProps } from "@/validations/auth";
 
 export function EditUserForm({
   className,
@@ -144,11 +145,24 @@ export function EditUserForm({
                 </Field>
               </div>
 
-              <Field className="pt-2">
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Guardando cambios..." : "Guardar Cambios"}
-                </Button>
-
+              <Field className="pt-4">
+                <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">
+                  <Button
+                    variant="outline"
+                    asChild
+                    disabled={isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    <Link href="/dashboard/users">Cancelar</Link>
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={isPending}
+                  >
+                    {isPending ? "Guardando cambios..." : "Guardar Cambios"}
+                  </Button>
+                </div>
                 {!formState.success && formState.message && (
                   <p className="text-destructive text-sm text-center mt-2 font-medium">
                     {formState.message}
