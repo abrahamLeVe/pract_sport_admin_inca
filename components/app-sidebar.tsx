@@ -19,7 +19,7 @@ import {
   DashboardSquare01Icon,
   Folder01Icon,
   HelpCircleIcon,
-  Menu01Icon,
+  ImageIcon,
   SearchIcon,
   Settings05Icon,
   UserGroupIcon,
@@ -35,9 +35,9 @@ const data = {
       icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
     },
     {
-      name: "Lifecycle",
-      url: "#",
-      icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
+      name: "Banners",
+      url: "/dashboard/banners",
+      icon: <HugeiconsIcon icon={ImageIcon} strokeWidth={2} />,
     },
     {
       name: "Analytics",

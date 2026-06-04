@@ -38,7 +38,7 @@ export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type EditUserInput = z.infer<typeof EditUserSchema>;
 
-export type FormState = {
+export type FormRegisterState = {
   success?: boolean;
   message?: string;
 
@@ -69,6 +69,30 @@ export type FormLoginState = {
   zodErrors?: {
     identifier?: string[];
     password?: string[];
+  } | null;
+};
+
+export type FormUpdateState = {
+  success?: boolean;
+  message?: string;
+
+  data?: {
+    id?: string | number;
+    name?: string;
+    email?: string;
+    password?: string;
+    role?: "SUPERADMIN" | "ADMIN" | "CLIENT";
+    status?: "activo" | "inactivo";
+    [k: string]: any; // Firma indexada flexible para compatibilidad total con useActionState
+  };
+
+  zodErrors?: {
+    id?: string[];
+    name?: string[];
+    email?: string[];
+    password?: string[];
+    role?: string[];
+    status?: string[];
   } | null;
 };
 

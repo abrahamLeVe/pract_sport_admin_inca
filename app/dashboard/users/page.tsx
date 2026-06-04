@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,12 +19,11 @@ import {
 import { getUsersAction } from "@/lib/data/users";
 import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { DeleteUserButton } from "./_components/delete-user-button";
 import { PaginationUsers } from "./_components/pagination-users";
-import UsersLoading from "./_components/table-user-skeleton";
-import { Suspense } from "react";
 import { SearchUsers } from "./_components/search-users";
-import { Button } from "@/components/ui/button";
+import UsersLoading from "./_components/table-user-skeleton";
 
 interface PageProps {
   searchParams: Promise<{

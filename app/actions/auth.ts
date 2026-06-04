@@ -4,7 +4,7 @@ import { signIn } from "@/auth";
 import pool from "@/lib/db";
 import {
   FormLoginState,
-  FormState,
+  FormRegisterState,
   loginSchema,
   signupSchema,
 } from "@/validations/auth";
@@ -15,9 +15,9 @@ import z from "zod";
 import { auth } from "@/auth";
 
 export async function registerUserAction(
-  prevState: FormState,
+  prevState: FormRegisterState,
   formData: FormData,
-): Promise<FormState> {
+): Promise<FormRegisterState> {
   const session = await auth();
 
   if (!session || !session.user?.id) {

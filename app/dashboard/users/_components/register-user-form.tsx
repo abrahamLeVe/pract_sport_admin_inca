@@ -13,12 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { FormState } from "@/validations/auth";
+import { FormRegisterState } from "@/validations/auth";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "../../../../components/form-error";
 
-const INITIAL_STATE: FormState = {
+const INITIAL_STATE: FormRegisterState = {
   success: false,
   message: "",
   zodErrors: null,

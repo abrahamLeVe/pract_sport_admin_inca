@@ -1,4 +1,6 @@
 import { registerUserAction } from "./auth";
+import { createBannerAction } from "./banners";
+import { getPrivateVideoUrlAction, uploadFileToS3Action } from "./storage";
 import { updateUserAction } from "./users";
 
 export const actions = {
@@ -7,5 +9,12 @@ export const actions = {
   },
   users: {
     updateUserAction,
+  },
+  storage: {
+    uploadFileToS3Action,
+    getPrivateVideoUrlAction,
+  },
+  banners: {
+    createBannerAction,
   },
 };
