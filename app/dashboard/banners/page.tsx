@@ -25,6 +25,7 @@ import { DeleteBannerButton } from "./_components/delete-banner-button";
 import { Search } from "../../../components/search";
 import BannersLoading from "./_components/table-banner-skeleton";
 import { ToggleBannerStatusButton } from "./_components/toggle-banner-status-button";
+import { BannerImageModal } from "./_components/banner-image-modal";
 
 interface PageProps {
   searchParams: Promise<{
@@ -64,7 +65,6 @@ export default async function BannersPage({ searchParams }: PageProps) {
         </Button>
       </div>
       <Suspense key={query + page} fallback={<BannersLoading />}>
-        {/* Tabla de Control Administrativo */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -80,27 +80,17 @@ export default async function BannersPage({ searchParams }: PageProps) {
             </TableHeader>
             <TableBody>
               {banners.length > 0 ? (
-                // 🔥 AÑADIMOS 'index' AL MAP
                 banners.map((banner: any, index: number) => (
                   <TableRow key={banner.id}>
-                    {/* 🔥 NUMERACIÓN VISUAL AUTOMÁTICA */}
                     <TableCell className="text-center font-semibold text-muted-foreground">
                       #{(page - 1) * 5 + index + 1}
                     </TableCell>
 
-                    {/* Previsualización de la Imagen alojada en AWS S3 */}
                     <TableCell>
-                      <div className="relative h-10 w-16 overflow-hidden rounded border bg-muted flex items-center justify-center">
-                        {banner.image_url ? (
-                          <img
-                            src={banner.image_url}
-                            alt={banner.title}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+                      <BannerImageModal
+                        imageUrl={banner.image_url}
+                        altText={banner.title}
+                      />
                     </TableCell>
 
                     {/* Título y Subtítulo */}
@@ -113,14 +103,12 @@ export default async function BannersPage({ searchParams }: PageProps) {
                       )}
                     </TableCell>
 
-                    {/* Tipo/Categoría de Banner */}
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {banner.type}
                       </Badge>
                     </TableCell>
 
-                    {/* Estado Operativo */}
                     <TableCell>
                       <Badge
                         variant={
@@ -131,7 +119,6 @@ export default async function BannersPage({ searchParams }: PageProps) {
                       </Badge>
                     </TableCell>
 
-                    {/* Fecha de Expiración Programada */}
                     <TableCell className="text-right text-xs">
                       {banner.end_date ? (
                         <span
@@ -152,7 +139,6 @@ export default async function BannersPage({ searchParams }: PageProps) {
                       )}
                     </TableCell>
 
-                    {/* Menú de Acciones de la Fila */}
                     <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none">
@@ -202,7 +188,6 @@ export default async function BannersPage({ searchParams }: PageProps) {
           </Table>
         </div>
 
-        {/* Paginación */}
         <Pagination totalPages={totalPages} />
       </Suspense>
     </>

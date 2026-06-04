@@ -113,16 +113,19 @@ export function EditBannerForm({
 
               <Field>
                 <FieldLabel htmlFor="image">Nueva Imagen (Opcional)</FieldLabel>
-
+                <p className="text-[13px] text-muted-foreground">
+                  Tamaño recomendado: <b>1920 x 1080 px</b> (formato 16:9). Peso
+                  máximo 5MB.
+                </p>
                 <label
                   htmlFor="image"
-                  className="mt-2 mb-4 relative flex h-56 w-full cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
+                  className="mt-2 mb-4 relative flex aspect-video cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
                 >
                   {imagePreview ? (
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <div className="flex flex-col items-center text-muted-foreground">

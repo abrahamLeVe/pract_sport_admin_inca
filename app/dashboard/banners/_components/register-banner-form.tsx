@@ -93,16 +93,20 @@ export function BannerForm({
                     Imagen del Banner (Obligatorio)
                   </FieldLabel>
 
-                  {/* 🔥 1. Cambiamos el <div> por un <label> y quitamos el onClick */}
+                  <p className="text-[13px] text-muted-foreground">
+                    Tamaño recomendado: <b>1920 x 1080 px</b> (formato 16:9).
+                    Peso máximo 5MB.
+                  </p>
+
                   <label
                     htmlFor="image"
-                    className="mt-2 mb-2 relative flex h-56 w-full cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
+                    className="mt-2 mb-2 relative flex aspect-video cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
                   >
                     {imagePreview ? (
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain" // 🔥 Cambiado a object-cover para evitar deformaciones
                       />
                     ) : (
                       <div className="flex flex-col items-center text-muted-foreground">
