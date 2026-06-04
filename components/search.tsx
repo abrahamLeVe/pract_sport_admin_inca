@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
 
-export function SearchUsers() {
+export function Search({ placeholder }: { placeholder?: string }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -12,7 +12,6 @@ export function SearchUsers() {
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", "1");
-
     if (term) {
       params.set("query", term);
     } else {
@@ -27,7 +26,7 @@ export function SearchUsers() {
         type="search"
         name="query"
         id="query"
-        placeholder="Buscar por nombre o correo..."
+        placeholder={placeholder || "Buscar..."}
         onChange={(e) => handleSearch(e.target.value)}
         defaultValue={searchParams.get("query")?.toString()}
       />

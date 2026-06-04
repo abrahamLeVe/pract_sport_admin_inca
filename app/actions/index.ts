@@ -1,5 +1,10 @@
 import { registerUserAction } from "./auth";
-import { createBannerAction } from "./banners";
+import {
+  createBannerAction,
+  deleteBannerAction,
+  toggleBannerStatusAction,
+  updateBannerAction,
+} from "./banners";
 import { getPrivateVideoUrlAction, uploadFileToS3Action } from "./storage";
 import { updateUserAction } from "./users";
 
@@ -16,5 +21,8 @@ export const actions = {
   },
   banners: {
     createBannerAction,
+    updateBannerAction,
+    deleteBannerAction,
+    toggleBannerStatusAction,
   },
 };

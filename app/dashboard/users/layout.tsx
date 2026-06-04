@@ -12,15 +12,5 @@ export default async function UsersLayout({ children }: UsersLayoutProps) {
     redirect("/dashboard");
   }
 
-  return (
-    <div className="w-full space-y-4 p-6">
-      <div className="flex items-center ">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Administración de Usuarios
-        </h1>
-      </div>
-
-      {children}
-    </div>
-  );
+  return <div className="w-full space-y-4 p-6">{children}</div>;
 }

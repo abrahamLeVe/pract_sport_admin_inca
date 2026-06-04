@@ -29,14 +29,12 @@ export function NavGeneric({
     <SidebarGroup
       className={hideOnCollapse ? "group-data-[collapsible=icon]:hidden" : ""}
     >
-      {/* 🏷️ Solo renderiza el título si pasaste la propiedad 'title' */}
       {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
 
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.name}>
-              {/* 💡 Si no se oculta al colapsar, el tooltip ayuda a saber qué menú es */}
               <SidebarMenuButton
                 tooltip={hideOnCollapse ? undefined : item.name}
                 asChild

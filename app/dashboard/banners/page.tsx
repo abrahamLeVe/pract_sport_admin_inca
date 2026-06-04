@@ -17,12 +17,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getBannersAction } from "@/lib/data/banners";
-import { Edit2, ImageIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Edit2, ImageIcon, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
-import { PaginationUsers } from "../users/_components/pagination-users"; // Reutilizamos tu paginador limpio
-import { SearchBanners } from "./_components/search-banners";
 import { Suspense } from "react";
-import UsersLoading from "../users/_components/table-user-skeleton";
+import { Pagination } from "../../../components/pagination";
+import { DeleteBannerButton } from "./_components/delete-banner-button";
+import { Search } from "../../../components/search";
+import BannersLoading from "./_components/table-banner-skeleton";
+import { ToggleBannerStatusButton } from "./_components/toggle-banner-status-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -44,8 +46,13 @@ export default async function BannersPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <div className="flex items-center ">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Administración del Carrusel de Banners (Web Cliente)
+        </h1>
+      </div>
       <div className="flex items-center justify-between py-2 gap-2">
-        <SearchBanners />
+        <Search placeholder="Buscar banners..." />
         <Button asChild>
           <Link
             href="/dashboard/banners/new"
@@ -56,13 +63,13 @@ export default async function BannersPage({ searchParams }: PageProps) {
           </Link>
         </Button>
       </div>
-      <Suspense key={query + page} fallback={<UsersLoading />}>
+      <Suspense key={query + page} fallback={<BannersLoading />}>
         {/* Tabla de Control Administrativo */}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16 text-center">Orden</TableHead>
+                <TableHead className="w-16 text-center">N°</TableHead>
                 <TableHead className="w-24">Miniatura</TableHead>
                 <TableHead>Título Informativo</TableHead>
                 <TableHead>Categoría</TableHead>
@@ -73,18 +80,18 @@ export default async function BannersPage({ searchParams }: PageProps) {
             </TableHeader>
             <TableBody>
               {banners.length > 0 ? (
-                banners.map((banner: any) => (
+                // 🔥 AÑADIMOS 'index' AL MAP
+                banners.map((banner: any, index: number) => (
                   <TableRow key={banner.id}>
-                    {/* Orden de Clasificación */}
+                    {/* 🔥 NUMERACIÓN VISUAL AUTOMÁTICA */}
                     <TableCell className="text-center font-semibold text-muted-foreground">
-                      #{banner.sort_order}
+                      #{(page - 1) * 5 + index + 1}
                     </TableCell>
 
                     {/* Previsualización de la Imagen alojada en AWS S3 */}
                     <TableCell>
                       <div className="relative h-10 w-16 overflow-hidden rounded border bg-muted flex items-center justify-center">
                         {banner.image_url ? (
-                          // Usamos img nativo para simplificar las firmas de dominios externos en NextConfig
                           <img
                             src={banner.image_url}
                             alt={banner.title}
@@ -168,11 +175,16 @@ export default async function BannersPage({ searchParams }: PageProps) {
                             </Link>
                           </DropdownMenuItem>
 
-                          {/* El botón de borrado definitivo lo engancharemos aquí luego */}
-                          <DropdownMenuItem className="cursor-pointer rounded-lg gap-2 text-destructive focus:text-destructive focus:bg-destructive/10">
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Eliminar</span>
-                          </DropdownMenuItem>
+                          <ToggleBannerStatusButton
+                            bannerId={banner.id}
+                            bannerTitle={banner.title}
+                            currentStatus={banner.status}
+                          />
+
+                          <DeleteBannerButton
+                            bannerId={banner.id}
+                            bannerTitle={banner.title}
+                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -191,7 +203,7 @@ export default async function BannersPage({ searchParams }: PageProps) {
         </div>
 
         {/* Paginación */}
-        <PaginationUsers totalPages={totalPages} />
+        <Pagination totalPages={totalPages} />
       </Suspense>
     </>
   );

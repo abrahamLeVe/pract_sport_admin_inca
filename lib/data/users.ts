@@ -59,7 +59,6 @@ export async function getUsersAction({
   }
 }
 
-// Agrega esta función para obtener un solo usuario por ID
 export async function getUserByIdAction(id: number) {
   try {
     const query = `

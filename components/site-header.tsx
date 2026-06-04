@@ -14,13 +14,21 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "./mode-toggle";
 
+// 1. Quitamos "new" del diccionario estático general
 const routeTranslations: Record<string, string> = {
   dashboard: "Panel",
   users: "Usuarios",
-  new: "Nuevo Usuario",
+  banners: "Banners", // Agregamos la ruta principal de banners
   settings: "Configuración",
   products: "Productos",
   edit: "Editar",
+};
+
+// 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre
+const newTranslations: Record<string, string> = {
+  users: "Nuevo Usuario",
+  banners: "Nuevo Banner",
+  products: "Nuevo Producto",
 };
 
 export function SiteHeader() {
@@ -45,13 +53,25 @@ export function SiteHeader() {
 
                 const isNumericId = !isNaN(Number(segment));
                 const isEditSegment = segment.toLowerCase() === "edit";
+                const isNewSegment = segment.toLowerCase() === "new";
 
                 const shouldNotBeLink = isEditSegment || isNumericId;
 
-                const translatedLabel =
-                  routeTranslations[segment.toLowerCase()] ||
-                  segment.replace(/[-_]/g, " ").charAt(0).toUpperCase() +
-                    segment.slice(1);
+                let translatedLabel = "";
+
+                // 3. Lógica condicional: Si el segmento es "new", miramos el segmento anterior
+                if (isNewSegment && index > 0) {
+                  const parentSegment = segments[index - 1].toLowerCase();
+                  // Si el padre está en nuestro diccionario especial (ej. "banners"), usamos "Nuevo Banner"
+                  // Si no, le ponemos un genérico "Nuevo"
+                  translatedLabel = newTranslations[parentSegment] || "Nuevo";
+                } else {
+                  // Flujo normal para las demás rutas
+                  translatedLabel =
+                    routeTranslations[segment.toLowerCase()] ||
+                    segment.replace(/[-_]/g, " ").charAt(0).toUpperCase() +
+                      segment.slice(1);
+                }
 
                 return (
                   <React.Fragment key={href}>

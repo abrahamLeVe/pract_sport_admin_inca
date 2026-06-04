@@ -1,3 +1,4 @@
+import { Search } from "@/components/search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +21,8 @@ import { getUsersAction } from "@/lib/data/users";
 import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Pagination } from "../../../components/pagination";
 import { DeleteUserButton } from "./_components/delete-user-button";
-import { PaginationUsers } from "./_components/pagination-users";
-import { SearchUsers } from "./_components/search-users";
 import UsersLoading from "./_components/table-user-skeleton";
 
 interface PageProps {
@@ -41,8 +41,13 @@ export default async function UsersPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <div className="flex items-center ">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Administración de Usuarios
+        </h1>
+      </div>
       <div className="flex items-center justify-between py-2 gap-2">
-        <SearchUsers />
+        <Search placeholder="Buscar por nombre o correo..." />
         <Button asChild>
           <Link href="/dashboard/users/new" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
@@ -139,7 +144,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
           </Table>
         </div>
 
-        <PaginationUsers totalPages={totalPages} />
+        <Pagination totalPages={totalPages} />
       </Suspense>
     </>
   );

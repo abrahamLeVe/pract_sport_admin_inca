@@ -3,11 +3,11 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-interface PaginationUsersProps {
+interface PaginationProps {
   totalPages: number;
 }
 
-export function PaginationUsers({ totalPages }: PaginationUsersProps) {
+export function Pagination({ totalPages }: PaginationProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();

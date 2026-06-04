@@ -1,6 +1,10 @@
 "use server";
 
-import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client } from "@/lib/s3";
 
@@ -72,6 +76,24 @@ export async function getPrivateVideoUrlAction(
       success: false,
       message: "No tienes autorización para consumir este recurso multimedia.",
       url: null,
+    };
+  }
+}
+
+export async function deleteFileFromS3Action(fileKey: string) {
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: fileKey,
+    });
+
+    await s3Client.send(command);
+    return { success: true, message: "Archivo eliminado de la nube." };
+  } catch (error: any) {
+    console.error("❌ Error al eliminar archivo de S3:", error.message);
+    return {
+      success: false,
+      message: "No se pudo eliminar el archivo de AWS.",
     };
   }
 }
