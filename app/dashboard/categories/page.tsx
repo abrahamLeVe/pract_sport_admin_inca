@@ -1,4 +1,3 @@
-import { ImageModal } from "@/components/image-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,15 +16,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getBannersAction } from "@/lib/data/banners";
+import { getCategoriesAction } from "@/lib/data/categories";
 import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
-import { DeleteBannerButton } from "./_components/delete-banner-button";
-import BannersLoading from "./_components/table-banner-skeleton";
-import { ToggleBannerStatusButton } from "./_components/toggle-banner-status-button";
+
+import { ImageModal } from "@/components/image-modal";
+import { DeleteCategoryButton } from "./_components/delete-category-button";
+import CategoriesLoading from "./_components/table-category-skeleton";
+import { ToggleCategoryStatusButton } from "./_components/toggle-category-status-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -34,12 +35,12 @@ interface PageProps {
   }>;
 }
 
-export default async function BannersPage({ searchParams }: PageProps) {
+export default async function CategoriesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const query = params.query || "";
   const page = Number(params.page) || 1;
 
-  const { banners, totalPages } = await getBannersAction({
+  const { categories, totalPages } = await getCategoriesAction({
     query,
     page,
     limit: 5,
@@ -49,94 +50,78 @@ export default async function BannersPage({ searchParams }: PageProps) {
     <>
       <div className="flex items-center ">
         <h1 className="text-2xl font-bold tracking-tight">
-          Administración del Carrusel de Banners (Web Cliente)
+          Administración de Categorías
         </h1>
       </div>
       <div className="flex items-center justify-between py-2 gap-2">
-        <Search placeholder="Buscar banners..." />
+        <Search placeholder="Buscar por nombre o slug..." />
         <Button asChild>
           <Link
-            href="/dashboard/banners/new"
+            href="/dashboard/categories/new"
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            Subir Nuevo Banner
+            Crear Categoría
           </Link>
         </Button>
       </div>
-      <Suspense key={query + page} fallback={<BannersLoading />}>
+      <Suspense key={query + page} fallback={<CategoriesLoading />}>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16 text-center">N°</TableHead>
-                <TableHead className="w-24">Miniatura</TableHead>
-                <TableHead>Título Informativo</TableHead>
-                <TableHead>Categoría</TableHead>
+                <TableHead className="w-24">Imagen</TableHead>
+                <TableHead>Nombre y Slug</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Descripción
+                </TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Vencimiento</TableHead>
                 <TableHead className="w-12 text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {banners.length > 0 ? (
-                banners.map((banner: any, index: number) => (
-                  <TableRow key={banner.id}>
+              {categories.length > 0 ? (
+                categories.map((category: any, index: number) => (
+                  <TableRow key={category.id}>
                     <TableCell className="text-center font-semibold text-muted-foreground">
                       #{(page - 1) * 5 + index + 1}
                     </TableCell>
 
                     <TableCell>
                       <ImageModal
-                        imageUrl={banner.image_url}
-                        altText={banner.title}
+                        imageUrl={category.image_url}
+                        altText={category.name}
                       />
                     </TableCell>
 
-                    {/* Título y Subtítulo */}
-                    <TableCell className="max-w-[240px] truncate">
-                      <div className="font-medium truncate">{banner.title}</div>
-                      {banner.subtitle && (
-                        <div className="text-xs text-muted-foreground truncate">
-                          {banner.subtitle}
-                        </div>
-                      )}
+                    {/* Nombre y Slug (URL) */}
+                    <TableCell className="max-w-[200px] truncate">
+                      <div className="font-medium truncate">
+                        {category.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        /{category.slug}
+                      </div>
                     </TableCell>
 
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {banner.type}
-                      </Badge>
+                    {/* Descripción (se oculta en móviles para no romper el diseño) */}
+                    <TableCell className="hidden md:table-cell max-w-[240px] truncate text-sm text-muted-foreground">
+                      {category.description || (
+                        <span className="italic opacity-50">
+                          Sin descripción
+                        </span>
+                      )}
                     </TableCell>
 
                     <TableCell>
                       <Badge
                         variant={
-                          banner.status === "activo" ? "default" : "secondary"
+                          category.status === "activo" ? "default" : "secondary"
                         }
                       >
-                        {banner.status}
+                        {category.status}
                       </Badge>
-                    </TableCell>
-
-                    <TableCell className="text-right text-xs">
-                      {banner.end_date ? (
-                        <span
-                          className={
-                            new Date(banner.end_date) < new Date()
-                              ? "text-destructive font-medium"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {new Date(banner.end_date).toLocaleDateString(
-                            "es-PE",
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground italic">
-                          Permanente
-                        </span>
-                      )}
                     </TableCell>
 
                     <TableCell className="text-center">
@@ -155,21 +140,23 @@ export default async function BannersPage({ searchParams }: PageProps) {
                             asChild
                             className="cursor-pointer rounded-lg gap-2"
                           >
-                            <Link href={`/dashboard/banners/edit/${banner.id}`}>
+                            <Link
+                              href={`/dashboard/categories/edit/${category.id}`}
+                            >
                               <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>Editar Info</span>
                             </Link>
                           </DropdownMenuItem>
 
-                          <ToggleBannerStatusButton
-                            bannerId={banner.id}
-                            bannerTitle={banner.title}
-                            currentStatus={banner.status}
+                          <ToggleCategoryStatusButton
+                            categoryId={category.id}
+                            categoryName={category.name}
+                            currentStatus={category.status}
                           />
 
-                          <DeleteBannerButton
-                            bannerId={banner.id}
-                            bannerTitle={banner.title}
+                          <DeleteCategoryButton
+                            categoryId={category.id}
+                            categoryName={category.name}
                           />
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -178,9 +165,8 @@ export default async function BannersPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No hay banners o eventos registrados para mostrar en el
-                    carrusel.
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No hay categorías registradas en la tienda.
                   </TableCell>
                 </TableRow>
               )}

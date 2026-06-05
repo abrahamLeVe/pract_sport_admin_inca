@@ -40,9 +40,9 @@ const data = {
       icon: <HugeiconsIcon icon={ImageIcon} strokeWidth={2} />,
     },
     {
-      name: "Analytics",
-      url: "#",
-      icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
+      name: "Categorías",
+      url: "/dashboard/categories",
+      icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
     },
     {
       name: "Projects",

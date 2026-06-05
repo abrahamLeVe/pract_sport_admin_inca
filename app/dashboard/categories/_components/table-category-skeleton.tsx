@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default function BannersLoading() {
+export default function CategoriesLoading() {
   const skeletonRows = Array.from({ length: 5 });
 
   return (
@@ -17,12 +17,13 @@ export default function BannersLoading() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-16 text-center">Orden</TableHead>
-              <TableHead className="w-24">Miniatura</TableHead>
-              <TableHead>Título Informativo</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead className="w-16 text-center">N°</TableHead>
+              <TableHead className="w-24">Imagen</TableHead>
+              <TableHead>Nombre y Slug</TableHead>
+              <TableHead className="hidden md:table-cell">
+                Descripción
+              </TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Vencimiento</TableHead>
               <TableHead className="w-12 text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -39,25 +40,19 @@ export default function BannersLoading() {
                   <Skeleton className="h-10 w-10 rounded border" />
                 </TableCell>
 
-                <TableCell className="max-w-[240px]">
+                <TableCell className="max-w-[200px]">
                   <div className="flex flex-col gap-1.5">
                     <Skeleton className="h-4 w-3/4 rounded" />
                     <Skeleton className="h-3 w-1/2 rounded" />
                   </div>
                 </TableCell>
 
-                <TableCell>
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                <TableCell className="hidden md:table-cell max-w-[240px]">
+                  <Skeleton className="h-4 w-full rounded" />
                 </TableCell>
 
                 <TableCell>
                   <Skeleton className="h-5 w-16 rounded-full" />
-                </TableCell>
-
-                <TableCell>
-                  <div className="flex justify-end">
-                    <Skeleton className="h-4 w-20 rounded" />
-                  </div>
                 </TableCell>
 
                 <TableCell>
@@ -71,7 +66,6 @@ export default function BannersLoading() {
         </Table>
       </div>
 
-      {/* Esqueleto del Paginador en la parte inferior */}
       <div className="flex items-center justify-end space-x-2 py-4">
         <Skeleton className="h-8 w-64 rounded-md" />
       </div>

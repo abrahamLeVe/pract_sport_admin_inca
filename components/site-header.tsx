@@ -22,6 +22,7 @@ const routeTranslations: Record<string, string> = {
   settings: "Configuración",
   products: "Productos",
   edit: "Editar",
+  categories: "Categorías",
 };
 
 // 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre
@@ -29,6 +30,7 @@ const newTranslations: Record<string, string> = {
   users: "Nuevo Usuario",
   banners: "Nuevo Banner",
   products: "Nuevo Producto",
+  categories: "Nueva Categoría",
 };
 
 export function SiteHeader() {
