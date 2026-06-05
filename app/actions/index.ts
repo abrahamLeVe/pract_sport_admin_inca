@@ -6,6 +6,12 @@ import {
   updateBannerAction,
 } from "./banners";
 import {
+  createBrandAction,
+  deleteBrandAction,
+  toggleBrandStatusAction,
+  updateBrandAction,
+} from "./brands";
+import {
   createCategoryAction,
   deleteCategoryAction,
   toggleCategoryStatusAction,
@@ -36,5 +42,11 @@ export const actions = {
     updateCategoryAction,
     deleteCategoryAction,
     toggleCategoryStatusAction,
+  },
+  brands: {
+    createBrandAction,
+    updateBrandAction,
+    deleteBrandAction,
+    toggleBrandStatusAction,
   },
 };

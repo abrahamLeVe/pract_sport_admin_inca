@@ -103,6 +103,19 @@ CREATE TABLE categories (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- (Futuro) 3.2. Tabla de Marcas
+-- ------------------------------------------------------------------------------
+-- 3.2. Tabla de Marcas (Fabricantes/Brands)
+-- ------------------------------------------------------------------------------
+CREATE TABLE brands (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,                -- Nombre de la marca (Ej. Nike, Adidas)
+    slug VARCHAR(100) UNIQUE NOT NULL,         -- URL amigable (Ej. nike, under-armour)
+    description TEXT,                          -- (Opcional) Historia o descripción de la marca
+    image_url TEXT,                            -- Logo de la marca (URL de S3)
+    image_key TEXT,                            -- Llave del logo en S3 para eliminarlo
+    status VARCHAR(20) DEFAULT 'activo',       -- Visibilidad
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 -- (Futuro) 3.3. Tabla de Productos
 -- (Futuro) 3.4. Tabla de Variantes (Tallas/Colores)

@@ -1,9 +1,5 @@
 "use client";
 
-import React from "react";
-import { usePathname } from "next/navigation";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,17 +8,22 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { usePathname } from "next/navigation";
+import React from "react";
 import { ModeToggle } from "./mode-toggle";
 
 // 1. Quitamos "new" del diccionario estático general
 const routeTranslations: Record<string, string> = {
   dashboard: "Panel",
   users: "Usuarios",
-  banners: "Banners", // Agregamos la ruta principal de banners
+  banners: "Banners",
   settings: "Configuración",
   products: "Productos",
   edit: "Editar",
   categories: "Categorías",
+  brands: "Marcas",
 };
 
 // 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre
@@ -31,6 +32,7 @@ const newTranslations: Record<string, string> = {
   banners: "Nuevo Banner",
   products: "Nuevo Producto",
   categories: "Nueva Categoría",
+  brands: "Nueva Marca",
 };
 
 export function SiteHeader() {

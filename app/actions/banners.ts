@@ -27,7 +27,7 @@ export async function createBannerAction(
       status: formData.get("status")?.toString() || "activo",
       start_date: formData.get("start_date")?.toString() || undefined,
       end_date: formData.get("end_date")?.toString() || undefined,
-      sort_order: 0, // 🔥 Enviamos 0 siempre para simplificar
+      sort_order: 0,
     };
 
     const imageFile = formData.get("image") as File;
@@ -225,7 +225,6 @@ export async function updateBannerAction(
         id,
       ]);
     } else {
-      // Solo se actualizaron textos, la imagen se mantiene intacta
       const query = `
         UPDATE banners SET 
           title = $1, subtitle = $2, link_url = $3, type = $4, sort_order = $5, 

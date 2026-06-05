@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  ChartHistogramIcon,
+  BrandfetchIcon,
   CommandIcon,
   DashboardSquare01Icon,
   Folder01Icon,
@@ -45,9 +45,9 @@ const data = {
       icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
     },
     {
-      name: "Projects",
-      url: "#",
-      icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
+      name: "Marcas",
+      url: "/dashboard/brands",
+      icon: <HugeiconsIcon icon={BrandfetchIcon} strokeWidth={2} />,
     },
   ],
   navSuperadmin: [
