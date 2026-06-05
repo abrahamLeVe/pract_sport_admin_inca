@@ -17,6 +17,12 @@ import {
   toggleCategoryStatusAction,
   updateCategoryAction,
 } from "./categories";
+import {
+  createProductAction,
+  deleteProductAction,
+  toggleProductStatusAction,
+  updateProductAction,
+} from "./products";
 import { getPrivateVideoUrlAction, uploadFileToS3Action } from "./storage";
 import { updateUserAction } from "./users";
 
@@ -48,5 +54,11 @@ export const actions = {
     updateBrandAction,
     deleteBrandAction,
     toggleBrandStatusAction,
+  },
+  products: {
+    createProductAction,
+    updateProductAction,
+    deleteProductAction,
+    toggleProductStatusAction,
   },
 };

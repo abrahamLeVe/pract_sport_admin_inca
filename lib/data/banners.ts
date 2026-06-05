@@ -14,7 +14,6 @@ export async function getBannersAction({
   try {
     const offset = (page - 1) * limit;
 
-    // 1. Obtener los banners con filtros y paginación
     const bannersQuery = `
       SELECT id, title, subtitle, image_url, type, sort_order, status, start_date, end_date, created_at
       FROM banners
@@ -28,7 +27,6 @@ export async function getBannersAction({
       offset,
     ]);
 
-    // 2. Contar el total de registros para calcular las páginas totales
     const countQuery = `
       SELECT COUNT(*) FROM banners
       WHERE title ILIKE $1 OR subtitle ILIKE $1

@@ -123,19 +123,17 @@ export default async function BrandsPage({ searchParams }: PageProps) {
 
                     <TableCell className="text-center">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none">
+                        <DropdownMenuTrigger className="p-2 hover:bg-accent rounded-md">
+                          <span className="sr-only">Abrir menú</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-40 rounded-xl"
-                        >
+                        <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Opciones</DropdownMenuLabel>
                           <DropdownMenuSeparator />
 
                           <DropdownMenuItem
                             asChild
-                            className="cursor-pointer rounded-lg gap-2"
+                            className="cursor-pointer rounded-lg"
                           >
                             <Link href={`/dashboard/brands/edit/${brand.id}`}>
                               <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />

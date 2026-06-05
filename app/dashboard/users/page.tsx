@@ -102,7 +102,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
 
                     <TableCell className="text-center">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <DropdownMenuTrigger className="p-2 hover:bg-accent rounded-md">
                           <span className="sr-only">Abrir menú</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
@@ -115,11 +115,11 @@ export default async function UsersPage({ searchParams }: PageProps) {
 
                           <DropdownMenuItem
                             asChild
-                            className="cursor-pointer rounded-lg gap-2"
+                            className="cursor-pointer rounded-lg"
                           >
                             <Link href={`/dashboard/users/edit/${user.id}`}>
                               <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>Editar</span>
+                              <span>Editar Info</span>
                             </Link>
                           </DropdownMenuItem>
 

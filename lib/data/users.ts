@@ -24,7 +24,6 @@ export async function getUsersAction({
   const searchVal = `%${query}%`;
 
   try {
-    // 1. Obtener los usuarios paginados y filtrados
     const usersQuery = `
       SELECT id, name, email, role, status, created_at 
       FROM users
@@ -38,7 +37,6 @@ export async function getUsersAction({
       offset,
     ]);
 
-    // 2. Obtener el conteo total para calcular la paginación exacta
     const countQuery = `
       SELECT COUNT(*) FROM users
       WHERE name ILIKE $1 OR email ILIKE $1

@@ -70,11 +70,11 @@ export default async function BannersPage({ searchParams }: PageProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16 text-center">N°</TableHead>
-                <TableHead className="w-24">Miniatura</TableHead>
+                <TableHead className="w-24">Imagen</TableHead>
                 <TableHead>Título Informativo</TableHead>
                 <TableHead>Categoría</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Vencimiento</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead className="w-12 text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -118,7 +118,7 @@ export default async function BannersPage({ searchParams }: PageProps) {
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="text-right text-xs">
+                    <TableCell>
                       {banner.end_date ? (
                         <span
                           className={
@@ -140,19 +140,17 @@ export default async function BannersPage({ searchParams }: PageProps) {
 
                     <TableCell className="text-center">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none">
+                        <DropdownMenuTrigger className="p-2 hover:bg-accent rounded-md">
+                          <span className="sr-only">Abrir menú</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-40 rounded-xl"
-                        >
+                        <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Opciones</DropdownMenuLabel>
                           <DropdownMenuSeparator />
 
                           <DropdownMenuItem
                             asChild
-                            className="cursor-pointer rounded-lg gap-2"
+                            className="cursor-pointer rounded-lg"
                           >
                             <Link href={`/dashboard/banners/edit/${banner.id}`}>
                               <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />

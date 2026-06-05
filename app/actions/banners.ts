@@ -184,10 +184,11 @@ export async function updateBannerAction(
     const validatedFields = editBannerSchema.safeParse(rawFormData);
 
     if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
       return {
         success: false,
         message: "Por favor, corrige los errores del formulario.",
-        zodErrors: validatedFields.error.flatten().fieldErrors as any,
+        zodErrors: flattenedErrors.fieldErrors,
         data: rawFormData,
       };
     }

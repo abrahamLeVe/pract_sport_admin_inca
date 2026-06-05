@@ -117,5 +117,31 @@ CREATE TABLE brands (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
--- (Futuro) 3.3. Tabla de Productos
+
+-- ------------------------------------------------------------------------------
+-- 3.3. Tabla de Productos
+-- ------------------------------------------------------------------------------
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    slug VARCHAR(200) UNIQUE NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    discount_price DECIMAL(10, 2),
+    stock INTEGER DEFAULT 0,
+    
+    -- Relaciones (Integridad referencial: ON DELETE RESTRICT evita borrar categorías/marcas con productos)
+    category_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT,
+    brand_id INTEGER REFERENCES brands(id) ON DELETE RESTRICT,
+    
+    images JSONB DEFAULT '[]', -- Array de objetos: [{url, key}, {url, key}]
+    status VARCHAR(20) DEFAULT 'activo',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índice para búsquedas rápidas por categoría o marca
+CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_products_brand ON products(brand_id);
+
 -- (Futuro) 3.4. Tabla de Variantes (Tallas/Colores)

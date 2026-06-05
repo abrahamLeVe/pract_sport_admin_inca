@@ -260,7 +260,6 @@ export async function toggleCategoryStatusAction(
   currentStatus: string,
 ) {
   try {
-    await requireAdminSession();
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 
     const query = `UPDATE categories SET status = $1, updated_at = NOW() WHERE id = $2`;

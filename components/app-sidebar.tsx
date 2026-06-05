@@ -20,6 +20,7 @@ import {
   Folder01Icon,
   HelpCircleIcon,
   ImageIcon,
+  ProductLoadingIcon,
   SearchIcon,
   Settings05Icon,
   UserGroupIcon,
@@ -48,6 +49,11 @@ const data = {
       name: "Marcas",
       url: "/dashboard/brands",
       icon: <HugeiconsIcon icon={BrandfetchIcon} strokeWidth={2} />,
+    },
+    {
+      name: "Productos",
+      url: "/dashboard/products",
+      icon: <HugeiconsIcon icon={ProductLoadingIcon} strokeWidth={2} />,
     },
   ],
   navSuperadmin: [
