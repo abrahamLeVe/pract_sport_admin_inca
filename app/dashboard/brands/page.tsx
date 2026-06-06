@@ -22,11 +22,15 @@ import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
 
+import {
+  deleteBrandAction,
+  toggleBrandStatusAction,
+} from "@/app/actions/brands";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { getBrandsAction } from "@/lib/data/brands";
-import { DeleteBrandButton } from "./_components/delete-brand-button";
 import BrandsLoading from "./_components/table-brand-skeleton";
-import { ToggleBrandStatusButton } from "./_components/toggle-brand-status-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -141,15 +145,19 @@ export default async function BrandsPage({ searchParams }: PageProps) {
                             </Link>
                           </DropdownMenuItem>
 
-                          <ToggleBrandStatusButton
-                            brandId={brand.id}
-                            brandName={brand.name}
+                          <ToggleStatusActionItem
+                            id={brand.id}
+                            itemName={brand.name}
+                            itemType="marca"
                             currentStatus={brand.status}
+                            action={toggleBrandStatusAction}
                           />
 
-                          <DeleteBrandButton
-                            brandId={brand.id}
-                            brandName={brand.name}
+                          <DeleteActionItem
+                            id={brand.id}
+                            itemName={brand.name}
+                            itemType="marca"
+                            action={deleteBrandAction}
                           />
                         </DropdownMenuContent>
                       </DropdownMenu>

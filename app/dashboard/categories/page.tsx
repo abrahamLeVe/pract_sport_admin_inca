@@ -23,10 +23,14 @@ import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
 
+import {
+  deleteCategoryAction,
+  toggleCategoryStatusAction,
+} from "@/app/actions/categories";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
-import { DeleteCategoryButton } from "./_components/delete-category-button";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import CategoriesLoading from "./_components/table-category-skeleton";
-import { ToggleCategoryStatusButton } from "./_components/toggle-category-status-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -145,15 +149,19 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
                             </Link>
                           </DropdownMenuItem>
 
-                          <ToggleCategoryStatusButton
-                            categoryId={category.id}
-                            categoryName={category.name}
+                          <ToggleStatusActionItem
+                            id={category.id}
+                            itemName={category.name}
+                            itemType="categoría"
                             currentStatus={category.status}
+                            action={toggleCategoryStatusAction}
                           />
 
-                          <DeleteCategoryButton
-                            categoryId={category.id}
-                            categoryName={category.name}
+                          <DeleteActionItem
+                            id={category.id}
+                            itemName={category.name}
+                            itemType="categoría"
+                            action={deleteCategoryAction}
                           />
                         </DropdownMenuContent>
                       </DropdownMenu>

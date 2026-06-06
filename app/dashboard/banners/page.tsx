@@ -1,4 +1,10 @@
+import {
+  deleteBannerAction,
+  toggleBannerStatusAction,
+} from "@/app/actions/banners";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +29,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
-import { DeleteBannerButton } from "./_components/delete-banner-button";
 import BannersLoading from "./_components/table-banner-skeleton";
-import { ToggleBannerStatusButton } from "./_components/toggle-banner-status-button";
 
 interface PageProps {
   searchParams: Promise<{
@@ -158,15 +162,19 @@ export default async function BannersPage({ searchParams }: PageProps) {
                             </Link>
                           </DropdownMenuItem>
 
-                          <ToggleBannerStatusButton
-                            bannerId={banner.id}
-                            bannerTitle={banner.title}
+                          <ToggleStatusActionItem
+                            id={banner.id}
+                            itemName={banner.name}
+                            itemType="banner"
                             currentStatus={banner.status}
+                            action={toggleBannerStatusAction}
                           />
 
-                          <DeleteBannerButton
-                            bannerId={banner.id}
-                            bannerTitle={banner.title}
+                          <DeleteActionItem
+                            id={banner.id}
+                            itemName={banner.name}
+                            itemType="banner"
+                            action={deleteBannerAction}
                           />
                         </DropdownMenuContent>
                       </DropdownMenu>

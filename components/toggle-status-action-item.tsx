@@ -1,6 +1,5 @@
 "use client";
 
-import { toggleBrandStatusAction } from "@/app/actions/brands";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,24 +17,31 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-interface ToggleBrandStatusButtonProps {
-  brandId: number;
-  brandName: string;
+interface ToggleStatusActionItemProps {
+  id: number;
+  itemName: string;
+  itemType: string;
   currentStatus: string;
+  action: (
+    id: number,
+    status: string,
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
-export function ToggleBrandStatusButton({
-  brandId,
-  brandName,
+export function ToggleStatusActionItem({
+  id,
+  itemName,
+  itemType,
   currentStatus,
-}: ToggleBrandStatusButtonProps) {
+  action,
+}: ToggleStatusActionItemProps) {
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
   const isActivating = currentStatus === "inactivo";
 
   const handleToggle = () => {
     startTransition(async () => {
-      const response = await toggleBrandStatusAction(brandId, currentStatus);
+      const response = await action(id, currentStatus);
       if (response.success) {
         toast.success(response.message);
         setIsOpen(false);
@@ -45,8 +51,6 @@ export function ToggleBrandStatusButton({
     });
   };
 
-  const accionTexto = isActivating ? "activar" : "desactivar";
-
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
@@ -54,10 +58,10 @@ export function ToggleBrandStatusButton({
           onSelect={(e) => e.preventDefault()}
           disabled={isPending}
           className={cn(
-            "cursor-pointer rounded-lg gap-2 transition-colors w-full",
+            "cursor-pointer rounded-lg gap-2 transition-colors w-full mt-1",
             isActivating
-              ? "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:focus:bg-emerald-950/30"
-              : "text-amber-600 focus:text-amber-600 focus:bg-amber-50 dark:focus:bg-amber-950/30",
+              ? "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
+              : "text-amber-600 focus:text-amber-600 focus:bg-amber-50",
           )}
         >
           {isActivating ? (
@@ -65,15 +69,14 @@ export function ToggleBrandStatusButton({
           ) : (
             <EyeOff className="h-3.5 w-3.5" />
           )}
-
           <span>
             {isPending
               ? isActivating
                 ? "Activando..."
                 : "Desactivando..."
               : isActivating
-                ? "Activar Marca"
-                : "Desactivar Marca"}
+                ? `Activar ${itemType}`
+                : `Desactivar ${itemType}`}
           </span>
         </DropdownMenuItem>
       </AlertDialogTrigger>
@@ -84,16 +87,14 @@ export function ToggleBrandStatusButton({
           <AlertDialogDescription>
             Estás a punto de{" "}
             <strong className="text-foreground font-medium">
-              {accionTexto}
+              {isActivating ? "activar" : "desactivar"}
             </strong>{" "}
-            la visibilidad de la marca{" "}
-            <span className="font-semibold text-foreground">"{brandName}"</span>
-            .
+            la visibilidad de la {itemType}{" "}
+            <span className="font-semibold text-foreground">"{itemName}"</span>.
           </AlertDialogDescription>
         </AlertDialogHeader>
-
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();

@@ -1,4 +1,10 @@
+import {
+  deleteProductAction,
+  toggleProductStatusAction,
+} from "@/app/actions/products";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +29,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
-import { DeleteProductButton } from "./_components/delete-product-button";
 import ProductsLoading from "./_components/table-product-skeleton";
-import { ToggleProductStatusButton } from "./_components/toggle-product-status-button";
 
 interface PageProps {
   searchParams: Promise<{ query?: string; page?: string }>;
@@ -138,15 +142,19 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                               </Link>
                             </DropdownMenuItem>
 
-                            <ToggleProductStatusButton
-                              productId={product.id}
-                              productName={product.name}
+                            <ToggleStatusActionItem
+                              id={product.id}
+                              itemName={product.name}
+                              itemType="producto"
                               currentStatus={product.status}
+                              action={toggleProductStatusAction}
                             />
 
-                            <DeleteProductButton
-                              productId={product.id}
-                              productName={product.name}
+                            <DeleteActionItem
+                              id={product.id}
+                              itemName={product.name}
+                              itemType="producto"
+                              action={deleteProductAction}
                             />
                           </DropdownMenuContent>
                         </DropdownMenu>

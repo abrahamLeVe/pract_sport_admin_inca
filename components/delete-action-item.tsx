@@ -1,6 +1,5 @@
 "use client";
 
-import { actions } from "@/app/actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,25 +16,32 @@ import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-export function DeleteProductButton({
-  productId,
-  productName,
-}: {
-  productId: number;
-  productName: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
+interface DeleteActionItemProps {
+  id: number;
+  itemName: string;
+  itemType: string;
+  action: (id: number) => Promise<{ success: boolean; message: string }>;
+  warningText?: string;
+}
+
+export function DeleteActionItem({
+  id,
+  itemName,
+  itemType,
+  action,
+  warningText = "Esta acción no se puede deshacer.",
+}: DeleteActionItemProps) {
   const [isPending, startTransition] = useTransition();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleDelete = () => {
     startTransition(async () => {
-      const result = await actions.products.deleteProductAction(productId);
-
-      if (result.success) {
-        toast.success(result.message);
+      const response = await action(id);
+      if (response.success) {
+        toast.success(response.message);
         setIsOpen(false);
       } else {
-        toast.error(result.message);
+        toast.error(response.message);
       }
     });
   };
@@ -45,20 +51,20 @@ export function DeleteProductButton({
       <AlertDialogTrigger asChild>
         <DropdownMenuItem
           onSelect={(e) => e.preventDefault()}
-          className="cursor-pointer rounded-lg gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+          disabled={isPending}
+          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg gap-2 mt-1"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          <span>Eliminar</span>
+          <span>{isPending ? "Eliminando..." : `Eliminar ${itemType}`}</span>
         </DropdownMenuItem>
       </AlertDialogTrigger>
-
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Eliminar este producto?</AlertDialogTitle>
+          <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
           <AlertDialogDescription>
-            Estás a punto de eliminar el producto <b>"{productName}"</b>. Esta
-            acción borrará el registro de la base de datos y destruirá la imagen
-            de forma permanente.
+            Estás a punto de eliminar la {itemType}{" "}
+            <strong className="text-foreground font-medium">{itemName}</strong>.{" "}
+            {warningText}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -71,7 +77,7 @@ export function DeleteProductButton({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? "Eliminando..." : "Sí, eliminar"}
+            {isPending ? "Procesando..." : `Sí, eliminar ${itemType}`}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

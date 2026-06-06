@@ -144,4 +144,18 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category_id);
 CREATE INDEX idx_products_brand ON products(brand_id);
 
--- (Futuro) 3.4. Tabla de Variantes (Tallas/Colores)
+-- 1. Tabla de Variantes de Producto
+CREATE TABLE product_variants (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    size VARCHAR(50),      -- Ej. '40', '42', 'M', 'L', 'Única'
+    color VARCHAR(50),     -- Ej. 'Rojo', 'Negro', 'Azul Marino'
+    sku VARCHAR(100),      -- Código único de barra/inventario (Opcional)
+    stock INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'activo',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Índice para acelerar las búsquedas en la tienda
+CREATE INDEX idx_variants_product ON product_variants(product_id);

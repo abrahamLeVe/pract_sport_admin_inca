@@ -1,4 +1,6 @@
+import { toggleUserStatusAction } from "@/app/actions/users";
 import { Search } from "@/components/search";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +24,6 @@ import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
-import { DeleteUserButton } from "./_components/delete-user-button";
 import UsersLoading from "./_components/table-user-skeleton";
 
 interface PageProps {
@@ -123,10 +124,12 @@ export default async function UsersPage({ searchParams }: PageProps) {
                             </Link>
                           </DropdownMenuItem>
 
-                          <DeleteUserButton
-                            userId={user.id}
-                            userName={user.name || "este usuario"}
+                          <ToggleStatusActionItem
+                            id={user.id}
+                            itemName={user.name || "este usuario"}
+                            itemType="usuario"
                             currentStatus={user.status}
+                            action={toggleUserStatusAction}
                           />
                         </DropdownMenuContent>
                       </DropdownMenu>
