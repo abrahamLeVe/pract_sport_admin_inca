@@ -167,94 +167,115 @@ CREATE TABLE club_settings (
     primary_color VARCHAR(7) DEFAULT '#000000', -- Para guardar colores tipo #FFFFFF
     secondary_color VARCHAR(7) DEFAULT '#000000',
     description TEXT,
-    social_links JSONB DEFAULT '[]', -- Para redes sociales
+    social_links JSONB DEFAULT '{}', -- Para redes sociales
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- ------------------------------------------------------------------------------
--- MÓDULO 4: GESTIÓN DE EVENTOS Y COMPETICIONES
--- ------------------------------------------------------------------------------
+-- ==============================================================================
+-- SISTEMA PROFESIONAL DE GESTIÓN DE EVENTOS DEPORTIVOS
+-- ==============================================================================
 
--- 4.1. Tabla principal de Eventos
+-- ------------------------------------------------------------------------------
+-- 1. TABLAS MAESTRAS (Plantillas globales. Se llenan una sola vez)
+-- ------------------------------------------------------------------------------
+CREATE TABLE master_distances (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE -- Ej: "5K", "12K", "21K"
+);
+
+CREATE TABLE master_genders (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) NOT NULL UNIQUE -- Ej: "Varones", "Mujeres", "Mixto"
+);
+
+CREATE TABLE master_age_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE, -- Ej: "Niños", "Libre", "Master A"
+    default_min_age INTEGER NOT NULL,
+    default_max_age INTEGER NOT NULL
+);
+
+-- ------------------------------------------------------------------------------
+-- 2. EVENTOS (El contenedor principal)
+-- ------------------------------------------------------------------------------
 CREATE TABLE events (
     id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL, -- Ej: "Desafío Arwaturo 10K"
+    title VARCHAR(255) NOT NULL, -- Ej: "Desafío Arwaturo 2026"
     description TEXT,
     event_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    location VARCHAR(255) NOT NULL, -- Ej: "Mirador de Arwaturo" o "Laguna Ñawinpuquio"
-    event_type VARCHAR(50) NOT NULL, -- 'running', 'triatlon', 'duatlon', 'trail'
-    distances VARCHAR(100), -- Ej: "Sprint (750m natación / 20km bici / 5km trote)"
-    max_participants INTEGER,
-    
-    -- IMAGEN DEL EVENTO (AFICHE/FLYER)
-    image_url TEXT, -- URL pública de Amazon S3
-    image_key TEXT, -- Llave para poder eliminar la imagen de S3 si se borra el evento
-    
-    status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'published', 'completed', 'cancelled'
+    location_name VARCHAR(255) NOT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    event_type VARCHAR(50) NOT NULL, -- 'running', 'trail', 'ciclismo'
+    image_url TEXT,
+    status VARCHAR(50) DEFAULT 'draft',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4.2. Tabla de Inscripciones 
+-- ------------------------------------------------------------------------------
+-- 3. CATEGORÍAS DEL EVENTO (Las reglas congeladas para ESTE evento)
+-- ------------------------------------------------------------------------------
+CREATE TABLE event_categories (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    distance_id INTEGER REFERENCES master_distances(id) ON DELETE RESTRICT,
+    gender_id INTEGER REFERENCES master_genders(id) ON DELETE RESTRICT,
+    age_category_id INTEGER REFERENCES master_age_categories(id) ON DELETE RESTRICT,
+    
+    -- SNAPSHOT HISTÓRICO: Edades exactas que rigieron en ESTA carrera.
+    -- Si la tabla maestra cambia el próximo año, este evento NO se afecta.
+    applied_min_age INTEGER NOT NULL, 
+    applied_max_age INTEGER NOT NULL,
+    
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    cupos INTEGER NOT NULL DEFAULT 0,
+    
+    -- Evita que el admin duplique la misma categoría en el mismo evento
+    UNIQUE(event_id, distance_id, gender_id, age_category_id)
+);
+
+-- ------------------------------------------------------------------------------
+-- 4. INSCRIPCIONES (Datos del atleta congelados el día de la compra)
+-- ------------------------------------------------------------------------------
 CREATE TABLE event_registrations (
     id SERIAL PRIMARY KEY,
     event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,    
+    category_id INTEGER REFERENCES event_categories(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     
-    -- Dorsal asignado al competidor
-    bib_number INTEGER,     
+    -- SNAPSHOT DEL ATLETA: Si el usuario cambia su nombre o celular de emergencia 
+    -- en su perfil 2 años después, los datos de esta carrera pasada NO se alteran.
+    participant_details JSONB NOT NULL, -- Guarda: Nombre, DNI, Contacto de Emergencia, Tipo de Sangre, Talla.
     
-    registration_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'confirmed', 'cancelled'    
+    bib_number INTEGER, -- Número de dorsal asignado
     
-    -- DATOS DE PAGO Y VOUCHER (Yape/Plin/Transferencias)
-    payment_status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'pending_verification', 'paid', 'rejected'
-    payment_method VARCHAR(50), -- Ej: 'yape', 'plin', 'transfer'
-    payment_receipt_url TEXT, -- URL de la captura del voucher en S3
-    
-    -- CONTROL ANTIFRAUDE (Extraído del comprobante)
-    operation_number VARCHAR(100), -- N° de Operación para evitar vouchers duplicados
-    payment_amount DECIMAL(10, 2), -- Monto exacto transferido
-    voucher_date TIMESTAMP, -- Fecha que figura en el voucher
-    
-    payment_verified_at TIMESTAMP WITH TIME ZONE, -- Cuándo el admin aprobó el pago    
-    
-    -- LOGÍSTICA DEL ATLETA Y SEGURIDAD MÉDICA
-    tshirt_size VARCHAR(10), -- Ej: 'S', 'M', 'L'
-    emergency_contact_name VARCHAR(150),
-    emergency_contact_phone VARCHAR(50),
-    blood_type VARCHAR(10), -- Ej: 'O+', 'A-'
+    -- Control de Pagos y Estado
+    registration_status VARCHAR(50) DEFAULT 'pending',
+    payment_status VARCHAR(50) DEFAULT 'unpaid',
+    payment_method VARCHAR(50),
+    payment_receipt_url TEXT,
+    operation_number VARCHAR(100),
+    payment_amount DECIMAL(10, 2),
+    voucher_date TIMESTAMP,
+    payment_verified_at TIMESTAMP WITH TIME ZONE,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- Restricciones para evitar dobles registros y fraudes
-    UNIQUE(event_id, user_id), -- Un usuario solo se inscribe una vez por evento
-    UNIQUE(event_id, operation_number) -- Un N° de operación no se puede usar para 2 inscritos distintos
+    -- Restricciones de seguridad
+    UNIQUE(event_id, user_id),             -- Un usuario no puede inscribirse 2 veces al mismo evento
+    UNIQUE(event_id, operation_number)     -- Un voucher no se puede usar 2 veces
 );
 
--- 4.3. Tabla de Resultados (Preparada para multideporte)
+-- ------------------------------------------------------------------------------
+-- 5. RESULTADOS (Para mostrar en la web)
+-- ------------------------------------------------------------------------------
 CREATE TABLE event_results (
     id SERIAL PRIMARY KEY,
     registration_id INTEGER REFERENCES event_registrations(id) ON DELETE CASCADE,
     event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
-    swim_time INTERVAL, -- Tiempo de natación
-    t1_time INTERVAL,   -- Transición 1
-    bike_time INTERVAL, -- Tiempo de ciclismo
-    t2_time INTERVAL,   -- Transición 2
-    run_time INTERVAL,  -- Tiempo de carrera
     total_time INTERVAL NOT NULL,
     overall_position INTEGER,
     category_position INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 4.4. Tabla de Categorías de Competencia (Ej: "21K Varones", "5K Infantil")
-CREATE TABLE event_categories (
-    id SERIAL PRIMARY KEY,
-    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL, -- Nombre visible (ej: "21K Varones - Master")
-    min_age INTEGER,           -- Edad mínima (para validar inscripciones)
-    max_age INTEGER,           -- Edad máxima
-    price DECIMAL(10, 2) NOT NULL DEFAULT 0, -- Precio por esta categoría específica
-    cupos INTEGER,             -- Cupos máximos para esta categoría
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
