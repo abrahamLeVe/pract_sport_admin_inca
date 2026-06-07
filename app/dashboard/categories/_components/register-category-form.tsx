@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, generateSlug } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import { FormCategoryState } from "@/validations/categories";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
@@ -27,10 +27,7 @@ const INITIAL_STATE: FormCategoryState = {
   data: {},
 };
 
-export function RegisterCategoryForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function RegisterCategoryForm() {
   const [formState, formAction, isPending] = useActionState(
     actions.categories.createCategoryAction,
     INITIAL_STATE,
@@ -81,8 +78,8 @@ export function RegisterCategoryForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             <FieldGroup>

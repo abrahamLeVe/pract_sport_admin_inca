@@ -63,8 +63,8 @@ const data = {
       icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
     },
     {
-      name: "Settings",
-      url: "#",
+      name: "Configuración del Club",
+      url: "/dashboard/settings",
       icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
     },
     {

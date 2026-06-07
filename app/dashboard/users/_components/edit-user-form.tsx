@@ -12,17 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { EditUserFormProps } from "@/validations/auth";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "../../../../components/form-error";
 
-export function EditUserForm({
-  className,
-  initialData,
-  ...props
-}: EditUserFormProps) {
+export function EditUserForm({ initialData }: EditUserFormProps) {
   const initialState = {
     success: false,
     message: "",
@@ -42,8 +37,8 @@ export function EditUserForm({
   );
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 w-full max-w-4xl mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={formAction} className="p-6 md:p-8">
             <input type="hidden" name="id" value={initialData.id} />

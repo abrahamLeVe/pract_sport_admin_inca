@@ -22,9 +22,5 @@ export default async function EditBrandPage({ params }: PageProps) {
     notFound();
   }
 
-  return (
-    <div className="p-4 lg:p-8">
-      <EditBrandForm initialData={brand} />
-    </div>
-  );
+  return <EditBrandForm initialData={brand} />;
 }

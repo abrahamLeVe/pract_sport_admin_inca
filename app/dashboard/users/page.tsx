@@ -41,7 +41,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
   const { users, totalPages } = await getUsersAction({ query, page, limit: 5 });
 
   return (
-    <>
+    <div className="space-y-4 p-2 md:p-4">
       <div className="flex items-center ">
         <h1 className="text-2xl font-bold tracking-tight">
           Administración de Usuarios
@@ -149,6 +149,6 @@ export default async function UsersPage({ searchParams }: PageProps) {
 
         <Pagination totalPages={totalPages} />
       </Suspense>
-    </>
+    </div>
   );
 }

@@ -50,7 +50,7 @@ export default async function BannersPage({ searchParams }: PageProps) {
   });
 
   return (
-    <>
+    <div className="space-y-4 p-2 md:p-4">
       <div className="flex items-center ">
         <h1 className="text-2xl font-bold tracking-tight">
           Administración del Carrusel de Banners (Web Cliente)
@@ -195,6 +195,6 @@ export default async function BannersPage({ searchParams }: PageProps) {
 
         <Pagination totalPages={totalPages} />
       </Suspense>
-    </>
+    </div>
   );
 }

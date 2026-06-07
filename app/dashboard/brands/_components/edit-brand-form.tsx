@@ -13,18 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, generateSlug } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import { EditBrandFormProps } from "@/validations/brands";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-export function EditBrandForm({
-  className,
-  initialData,
-  ...props
-}: EditBrandFormProps & React.ComponentProps<"div">) {
+export function EditBrandForm({ initialData }: EditBrandFormProps) {
   const initialState = {
     success: false,
     message: "",
@@ -90,8 +86,8 @@ export function EditBrandForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             {/* 🔥 Input oculto para que el Server Action sepa qué ID actualizar */}

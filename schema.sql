@@ -159,3 +159,14 @@ CREATE TABLE product_variants (
 
 -- 2. Índice para acelerar las búsquedas en la tienda
 CREATE INDEX idx_variants_product ON product_variants(product_id);
+
+CREATE TABLE club_settings (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    logo_url TEXT,
+    primary_color VARCHAR(7) DEFAULT '#000000', -- Para guardar colores tipo #FFFFFF
+    secondary_color VARCHAR(7) DEFAULT '#000000',
+    description TEXT,
+    social_links JSONB DEFAULT '[]', -- Para redes sociales
+    updated_at TIMESTAMP DEFAULT NOW()
+);

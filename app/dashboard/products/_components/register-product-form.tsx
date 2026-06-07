@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, generateSlug } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import {
   FormProductState,
   RegisterProductFormProps,
@@ -33,9 +33,7 @@ const INITIAL_STATE: FormProductState = {
 export function RegisterProductForm({
   categories,
   brands,
-  className,
-  ...props
-}: RegisterProductFormProps & React.ComponentProps<"div">) {
+}: RegisterProductFormProps) {
   const [formState, formAction, isPending] = useActionState(
     actions.products.createProductAction,
     INITIAL_STATE,
@@ -59,8 +57,8 @@ export function RegisterProductForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-3xl w-full mx-auto">
+    <div className="max-w-3xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             <FieldGroup>

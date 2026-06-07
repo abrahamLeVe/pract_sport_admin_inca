@@ -47,7 +47,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
   });
 
   return (
-    <>
+    <div className="space-y-4 p-2 md:p-4">
       <div className="flex items-center">
         <h1 className="text-2xl font-bold tracking-tight">
           Administración de Productos
@@ -174,6 +174,6 @@ export default async function ProductsPage({ searchParams }: PageProps) {
         </div>
         <Pagination totalPages={totalPages} />
       </Suspense>
-    </>
+    </div>
   );
 }

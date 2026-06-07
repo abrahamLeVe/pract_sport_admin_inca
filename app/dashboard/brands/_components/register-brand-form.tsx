@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, generateSlug } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import { FormBrandState } from "@/validations/brands";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
@@ -27,10 +27,7 @@ const INITIAL_STATE: FormBrandState = {
   data: {},
 };
 
-export function RegisterBrandForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function RegisterBrandForm() {
   const [formState, formAction, isPending] = useActionState(
     actions.brands.createBrandAction,
     INITIAL_STATE,
@@ -81,8 +78,8 @@ export function RegisterBrandForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             <FieldGroup>

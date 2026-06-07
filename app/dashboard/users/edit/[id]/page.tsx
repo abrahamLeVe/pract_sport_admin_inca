@@ -22,9 +22,5 @@ export default async function EditUserPage({ params }: PageProps) {
     notFound();
   }
 
-  return (
-    <div className="p-4 lg:p-8">
-      <EditUserForm initialData={user} />
-    </div>
-  );
+  return <EditUserForm initialData={user} />;
 }

@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { FormBannerState } from "@/validations/banners";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
@@ -27,10 +26,7 @@ const INITIAL_STATE: FormBannerState = {
   data: {},
 };
 
-export function BannerForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function BannerForm() {
   const [formState, formAction, isPending] = useActionState(
     actions.banners.createBannerAction,
     INITIAL_STATE,
@@ -72,8 +68,8 @@ export function BannerForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-4xl w-full mx-auto">
+    <div className="max-w-4xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             <FieldGroup>

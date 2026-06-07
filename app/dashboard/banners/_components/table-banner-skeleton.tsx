@@ -71,7 +71,6 @@ export default function BannersLoading() {
         </Table>
       </div>
 
-      {/* Esqueleto del Paginador en la parte inferior */}
       <div className="flex items-center justify-end space-x-2 py-4">
         <Skeleton className="h-8 w-64 rounded-md" />
       </div>

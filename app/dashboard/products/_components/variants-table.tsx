@@ -1,5 +1,3 @@
-"use client";
-
 import {
   deleteVariantAction,
   toggleVariantStatusAction,
@@ -26,13 +24,16 @@ import { ProductVariant } from "@/validations/variants";
 import { MoreHorizontal } from "lucide-react";
 import { EditVariantDialog } from "./edit-variant-dialog";
 import { RegisterVariantDialog } from "./register-variant-dialog";
+import { getVariantsByProductIdAction } from "@/lib/data/variant";
 
 interface VariantsTableProps {
   productId: number;
-  variants: ProductVariant[];
 }
 
-export function VariantsTable({ productId, variants }: VariantsTableProps) {
+export async function VariantsTable({ productId }: VariantsTableProps) {
+  const variants: ProductVariant[] =
+    await getVariantsByProductIdAction(productId);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">

@@ -1,8 +1,8 @@
 import { getBrandsAction } from "@/lib/data/brands";
 import { getCategoriesAction } from "@/lib/data/categories";
 import { getProductByIdAction } from "@/lib/data/products";
-import { getVariantsByProductIdAction } from "@/lib/data/variant";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { EditProductForm } from "../../_components/edit-product-form";
 import { VariantsTable } from "../../_components/variants-table";
 
@@ -20,29 +20,33 @@ export default async function EditProductPage({ params }: PageProps) {
     redirect("/dashboard/products");
   }
 
-  const [product, categoriesResponse, brandsResponse, variants] =
-    await Promise.all([
-      getProductByIdAction(productId),
-      getCategoriesAction({ query: "", page: 1, limit: 100 }),
-      getBrandsAction({ query: "", page: 1, limit: 100 }),
-      getVariantsByProductIdAction(productId),
-    ]);
+  const [product, categoriesResponse, brandsResponse] = await Promise.all([
+    getProductByIdAction(productId),
+    getCategoriesAction({ query: "", page: 1, limit: 100 }),
+    getBrandsAction({ query: "", page: 1, limit: 100 }),
+  ]);
 
   if (!product) {
     redirect("/dashboard/products");
   }
 
   return (
-    <div className="flex flex-col gap-8 p-4 lg:p-8 max-w-5xl mx-auto w-full">
-      {/* Tu formulario principal intacto */}
+    <div className="flex flex-col gap-6 max-w-3xl mx-auto">
       <EditProductForm
         initialData={product}
         categories={categoriesResponse.categories}
         brands={brandsResponse.brands}
       />
 
-      {/* 🔥 3. Inyectamos la tabla de variantes justo debajo */}
-      <VariantsTable productId={productId} variants={variants} />
+      <Suspense
+        fallback={
+          <div className="p-8 text-center border rounded animate-pulse bg-gray-50 text-gray-500">
+            Cargando tabla de variantes...
+          </div>
+        }
+      >
+        <VariantsTable productId={productId} />
+      </Suspense>
     </div>
   );
 }

@@ -22,9 +22,5 @@ export default async function EditCategoryPage({ params }: PageProps) {
     notFound();
   }
 
-  return (
-    <div className="p-4 lg:p-8">
-      <EditCategoryForm initialData={category} />
-    </div>
-  );
+  return <EditCategoryForm initialData={category} />;
 }

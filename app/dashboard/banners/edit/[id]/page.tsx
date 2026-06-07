@@ -16,16 +16,11 @@ export default async function EditBannerPage({ params }: PageProps) {
     notFound();
   }
 
-  // 🔥 Consumimos la función desde nuestra capa de datos (data layer)
   const banner = await getBannerByIdAction(bannerId);
 
   if (!banner) {
     notFound();
   }
 
-  return (
-    <div className="w-full space-y-4 p-6">
-      <EditBannerForm initialData={banner} />
-    </div>
-  );
+  return <EditBannerForm initialData={banner} />;
 }

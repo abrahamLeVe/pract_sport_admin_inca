@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { EditBannerFormProps } from "@/validations/banners";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
@@ -27,11 +26,7 @@ const formatDateForInput = (dateString: string | null) => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
 
-export function EditBannerForm({
-  className,
-  initialData,
-  ...props
-}: EditBannerFormProps) {
+export function EditBannerForm({ initialData }: EditBannerFormProps) {
   const initialState = {
     success: false,
     message: "",
@@ -92,8 +87,8 @@ export function EditBannerForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 w-full max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
             <input type="hidden" name="id" value={initialData.id} />

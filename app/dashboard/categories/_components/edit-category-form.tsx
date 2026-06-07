@@ -13,18 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, generateSlug } from "@/lib/utils";
+import { generateSlug } from "@/lib/utils";
 import { EditCategoryFormProps } from "@/validations/categories";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-export function EditCategoryForm({
-  className,
-  initialData,
-  ...props
-}: EditCategoryFormProps & React.ComponentProps<"div">) {
+export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
   const initialState = {
     success: false,
     message: "",
@@ -77,7 +73,7 @@ export function EditCategoryForm({
       setImagePreview(URL.createObjectURL(file));
     } else {
       setSavedFile(null);
-      setImagePreview(initialData.image_url); // Si cancela, vuelve a la imagen original
+      setImagePreview(initialData.image_url);
     }
   };
 
@@ -90,11 +86,10 @@ export function EditCategoryForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-2xl w-full mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
-            {/* 🔥 Input oculto para que el Server Action sepa qué ID actualizar */}
             <input type="hidden" name="id" value={initialData.id} />
 
             <FieldGroup>

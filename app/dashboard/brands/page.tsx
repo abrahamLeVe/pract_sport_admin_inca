@@ -51,7 +51,7 @@ export default async function BrandsPage({ searchParams }: PageProps) {
   });
 
   return (
-    <>
+    <div className="space-y-4 p-2 md:p-4">
       <div className="flex items-center ">
         <h1 className="text-2xl font-bold tracking-tight">
           Administración de Marcas
@@ -177,6 +177,6 @@ export default async function BrandsPage({ searchParams }: PageProps) {
 
         <Pagination totalPages={totalPages} />
       </Suspense>
-    </>
+    </div>
   );
 }

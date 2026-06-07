@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { FormRegisterState } from "@/validations/auth";
 import Link from "next/link";
 import { useActionState } from "react";
@@ -30,18 +29,15 @@ const INITIAL_STATE: FormRegisterState = {
   },
 };
 
-export function RegisterUserForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function RegisterUserForm() {
   const [formState, formAction, isPending] = useActionState(
     actions.auth.registerUserAction,
     INITIAL_STATE,
   );
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 max-w-4xl w-full mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card>
         <CardContent>
           <form action={formAction} className="p-6 md:p-8">
             <FieldGroup>

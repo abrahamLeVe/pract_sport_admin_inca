@@ -35,8 +35,6 @@ export const editBannerSchema = z.object({
   end_date: z.string().optional().or(z.literal("")),
 });
 
-export type BannerInput = z.infer<typeof bannerSchema>;
-
 export type FormBannerState = {
   success?: boolean;
   message?: string;
