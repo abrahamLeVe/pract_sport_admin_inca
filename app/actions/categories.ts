@@ -138,7 +138,6 @@ export async function updateCategoryAction(
 
     const { id, name, slug, description, status } = validatedFields.data;
 
-    // Verificar que el nuevo SLUG no pertenezca a OTRA categoría
     const slugCheck = await pool.query(
       "SELECT id FROM categories WHERE slug = $1 AND id != $2",
       [slug, id],
@@ -173,7 +172,6 @@ export async function updateCategoryAction(
         };
       }
 
-      // 🔥 LIMPIEZA S3: Buscar imagen vieja
       const oldCategoryResult = await pool.query(
         "SELECT image_key FROM categories WHERE id = $1",
         [id],
@@ -185,7 +183,6 @@ export async function updateCategoryAction(
         newImageUrl = s3Result.url;
         newImageKey = s3Result.key;
 
-        // 🔥 Destruir la vieja
         if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
       } else {
         throw new Error(s3Result.message || "Error al subir la nueva imagen.");

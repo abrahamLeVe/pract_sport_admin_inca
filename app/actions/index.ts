@@ -18,6 +18,12 @@ import {
   updateCategoryAction,
 } from "./categories";
 import {
+  createEventAction,
+  deleteEventAction,
+  toggleEventStatusAction,
+  updateEventAction,
+} from "./events";
+import {
   createProductAction,
   deleteProductAction,
   toggleProductStatusAction,
@@ -64,5 +70,11 @@ export const actions = {
   },
   settings: {
     updateClubSettingsAction,
+  },
+  events: {
+    createEventAction,
+    updateEventAction,
+    deleteEventAction,
+    toggleEventStatusAction,
   },
 };

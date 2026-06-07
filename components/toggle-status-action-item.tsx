@@ -60,8 +60,8 @@ export function ToggleStatusActionItem({
           className={cn(
             "cursor-pointer rounded-lg gap-2 transition-colors w-full mt-1",
             isActivating
-              ? "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
-              : "text-amber-600 focus:text-amber-600 focus:bg-amber-50",
+              ? "text-emerald-600 focus:text-emerald-600 "
+              : "text-amber-600 focus:text-amber-600 ",
           )}
         >
           {isActivating ? (

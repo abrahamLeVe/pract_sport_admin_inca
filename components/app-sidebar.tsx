@@ -23,6 +23,7 @@ import {
   ProductLoadingIcon,
   SearchIcon,
   Settings05Icon,
+  TimelineEventIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -68,9 +69,9 @@ const data = {
       icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
     },
     {
-      name: "Get Help",
-      url: "#",
-      icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
+      name: "Eventos",
+      url: "/dashboard/events",
+      icon: <HugeiconsIcon icon={TimelineEventIcon} strokeWidth={2} />,
     },
     {
       name: "Search",

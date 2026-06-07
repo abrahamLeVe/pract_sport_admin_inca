@@ -170,3 +170,91 @@ CREATE TABLE club_settings (
     social_links JSONB DEFAULT '[]', -- Para redes sociales
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- ------------------------------------------------------------------------------
+-- MÓDULO 4: GESTIÓN DE EVENTOS Y COMPETICIONES
+-- ------------------------------------------------------------------------------
+
+-- 4.1. Tabla principal de Eventos
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL, -- Ej: "Desafío Arwaturo 10K"
+    description TEXT,
+    event_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    location VARCHAR(255) NOT NULL, -- Ej: "Mirador de Arwaturo" o "Laguna Ñawinpuquio"
+    event_type VARCHAR(50) NOT NULL, -- 'running', 'triatlon', 'duatlon', 'trail'
+    distances VARCHAR(100), -- Ej: "Sprint (750m natación / 20km bici / 5km trote)"
+    max_participants INTEGER,
+    
+    -- IMAGEN DEL EVENTO (AFICHE/FLYER)
+    image_url TEXT, -- URL pública de Amazon S3
+    image_key TEXT, -- Llave para poder eliminar la imagen de S3 si se borra el evento
+    
+    status VARCHAR(50) DEFAULT 'draft', -- 'draft', 'published', 'completed', 'cancelled'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4.2. Tabla de Inscripciones 
+CREATE TABLE event_registrations (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,    
+    
+    -- Dorsal asignado al competidor
+    bib_number INTEGER,     
+    
+    registration_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'confirmed', 'cancelled'    
+    
+    -- DATOS DE PAGO Y VOUCHER (Yape/Plin/Transferencias)
+    payment_status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'pending_verification', 'paid', 'rejected'
+    payment_method VARCHAR(50), -- Ej: 'yape', 'plin', 'transfer'
+    payment_receipt_url TEXT, -- URL de la captura del voucher en S3
+    
+    -- CONTROL ANTIFRAUDE (Extraído del comprobante)
+    operation_number VARCHAR(100), -- N° de Operación para evitar vouchers duplicados
+    payment_amount DECIMAL(10, 2), -- Monto exacto transferido
+    voucher_date TIMESTAMP, -- Fecha que figura en el voucher
+    
+    payment_verified_at TIMESTAMP WITH TIME ZONE, -- Cuándo el admin aprobó el pago    
+    
+    -- LOGÍSTICA DEL ATLETA Y SEGURIDAD MÉDICA
+    tshirt_size VARCHAR(10), -- Ej: 'S', 'M', 'L'
+    emergency_contact_name VARCHAR(150),
+    emergency_contact_phone VARCHAR(50),
+    blood_type VARCHAR(10), -- Ej: 'O+', 'A-'
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Restricciones para evitar dobles registros y fraudes
+    UNIQUE(event_id, user_id), -- Un usuario solo se inscribe una vez por evento
+    UNIQUE(event_id, operation_number) -- Un N° de operación no se puede usar para 2 inscritos distintos
+);
+
+-- 4.3. Tabla de Resultados (Preparada para multideporte)
+CREATE TABLE event_results (
+    id SERIAL PRIMARY KEY,
+    registration_id INTEGER REFERENCES event_registrations(id) ON DELETE CASCADE,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    swim_time INTERVAL, -- Tiempo de natación
+    t1_time INTERVAL,   -- Transición 1
+    bike_time INTERVAL, -- Tiempo de ciclismo
+    t2_time INTERVAL,   -- Transición 2
+    run_time INTERVAL,  -- Tiempo de carrera
+    total_time INTERVAL NOT NULL,
+    overall_position INTEGER,
+    category_position INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4.4. Tabla de Categorías de Competencia (Ej: "21K Varones", "5K Infantil")
+CREATE TABLE event_categories (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL, -- Nombre visible (ej: "21K Varones - Master")
+    min_age INTEGER,           -- Edad mínima (para validar inscripciones)
+    max_age INTEGER,           -- Edad máxima
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0, -- Precio por esta categoría específica
+    cupos INTEGER,             -- Cupos máximos para esta categoría
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
