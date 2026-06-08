@@ -22,6 +22,7 @@ import {
   ImageIcon,
   ProductLoadingIcon,
   SearchIcon,
+  Settings01Icon,
   Settings05Icon,
   TimelineEventIcon,
   UserGroupIcon,
@@ -74,9 +75,9 @@ const data = {
       icon: <HugeiconsIcon icon={TimelineEventIcon} strokeWidth={2} />,
     },
     {
-      name: "Search",
-      url: "#",
-      icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
+      name: "configuración de Competencias",
+      url: "/dashboard/race-settings",
+      icon: <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />,
     },
   ],
 };
