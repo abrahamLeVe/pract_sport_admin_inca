@@ -57,7 +57,6 @@ export async function getMasterDistanceByIdAction(id: number) {
   }
 }
 
-// Para usar en los "Select" desplegables al crear un evento
 export async function getAllMasterDistancesAction() {
   try {
     const query = `SELECT id, name FROM master_distances ORDER BY id ASC`;
@@ -126,7 +125,6 @@ export async function getMasterGenderByIdAction(id: number) {
   }
 }
 
-// Para usar en los "Select" desplegables al crear un evento
 export async function getAllMasterGendersAction() {
   try {
     const query = `SELECT id, name FROM master_genders ORDER BY id ASC`;
@@ -199,7 +197,6 @@ export async function getMasterAgeCategoryByIdAction(id: number) {
   }
 }
 
-// Para usar en los "Select" desplegables al crear un evento
 export async function getAllMasterAgeCategoriesAction() {
   try {
     const query = `
@@ -211,6 +208,74 @@ export async function getAllMasterAgeCategoriesAction() {
     return result.rows;
   } catch (error) {
     console.error("❌ Error al obtener todas las categorías de edad:", error);
+    return [];
+  }
+}
+
+// ============================================================================
+// 4. TIPOS DE EVENTO (Master Event Types)
+// ============================================================================
+
+export async function getMasterEventTypesAction({
+  query,
+  page = 1,
+  limit = 5,
+}: {
+  query: string;
+  page: number;
+  limit: number;
+}) {
+  const offset = (page - 1) * limit;
+
+  try {
+    const dataQuery = `
+      SELECT * FROM master_event_types
+      WHERE name ILIKE $1
+      ORDER BY id DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const dataValues = [`%${query}%`, limit, offset];
+    const result = await pool.query(dataQuery, dataValues);
+
+    const countQuery = `
+      SELECT COUNT(*) 
+      FROM master_event_types
+      WHERE name ILIKE $1
+    `;
+    const countValues = [`%${query}%`];
+    const countResult = await pool.query(countQuery, countValues);
+
+    const totalEventTypes = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalEventTypes / limit);
+
+    return {
+      eventTypes: result.rows,
+      totalPages,
+    };
+  } catch (error) {
+    console.error("❌ Error al obtener tipos de evento:", error);
+    throw new Error("No se pudieron cargar los tipos de evento.");
+  }
+}
+
+export async function getMasterEventTypeByIdAction(id: number) {
+  try {
+    const query = `SELECT id, name FROM master_event_types WHERE id = $1`;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error("❌ Error al obtener tipo de evento por ID:", error);
+    return null;
+  }
+}
+
+export async function getAllMasterEventTypesAction() {
+  try {
+    const query = `SELECT id, name FROM master_event_types ORDER BY id ASC`;
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error("❌ Error al obtener todos los tipos de evento:", error);
     return [];
   }
 }

@@ -3,6 +3,7 @@
 import {
   createMasterAgeCategoryAction,
   deleteMasterAgeCategoryAction,
+  updateMasterAgeCategoryAction,
 } from "@/app/actions/master-data";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
@@ -25,21 +26,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AgeCategory } from "@/validations/master-data";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DeleteConfirmButton } from "./delete-confirm-button";
 
 export default function AgesTab({ data }: { data: AgeCategory[] }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<AgeCategory | null>(null);
 
-  const [state, formAction, isPending] = useActionState(
-    createMasterAgeCategoryAction,
-    {
-      success: false,
-      message: "",
-      data: {},
-    },
-  );
+  const handleAction = async (prevState: any, formData: FormData) => {
+    if (formData.get("id")) {
+      return updateMasterAgeCategoryAction(prevState, formData);
+    } else {
+      return createMasterAgeCategoryAction(prevState, formData);
+    }
+  };
+
+  const [state, formAction, isPending] = useActionState(handleAction, {
+    success: false,
+    message: "",
+    data: {},
+  });
 
   useEffect(() => {
     if (!state.message) return;
@@ -52,11 +60,9 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
     }
   }, [state]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar esta categoría?")) return;
-    const res = await deleteMasterAgeCategoryAction(id);
-    if (res.success) toast.success(res.message);
-    else toast.error(res.message);
+  const openDialog = (item?: AgeCategory) => {
+    setEditingItem(item || null);
+    setIsOpen(true);
   };
 
   return (
@@ -66,20 +72,37 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
           Categorías por Edad (Plantillas)
         </h2>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) setEditingItem(null);
+          }}
+        >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => openDialog()}>
               <Plus className="w-4 h-4 mr-2" /> Nueva Categoría
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Agregar Categoría de Edad</DialogTitle>
+              <DialogTitle>
+                {editingItem
+                  ? "Editar Categoría de Edad"
+                  : "Agregar Categoría de Edad"}
+              </DialogTitle>
               <DialogDescription className="sr-only">
                 Define los rangos de edad para la nueva categoría.
               </DialogDescription>
             </DialogHeader>
-            <form action={formAction} className="space-y-4 mt-4">
+            <form
+              key={editingItem ? `edit-${editingItem.id}` : "create"}
+              action={formAction}
+              className="space-y-4 mt-4"
+            >
+              {editingItem && (
+                <input type="hidden" name="id" value={editingItem.id} />
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre</Label>
                 <Input
@@ -88,7 +111,7 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
                   placeholder="Ej: Master A"
                   required
                   autoComplete="off"
-                  defaultValue={state.data?.name || ""}
+                  defaultValue={editingItem?.name || state.data?.name || ""}
                 />
                 {state.zodErrors?.name && (
                   <FormError error={state.zodErrors.name} />
@@ -106,7 +129,11 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
                     placeholder="Ej: 40"
                     required
                     autoComplete="off"
-                    defaultValue={state.data?.default_min_age || ""}
+                    defaultValue={
+                      editingItem?.default_min_age ||
+                      state.data?.default_min_age ||
+                      ""
+                    }
                   />
                   {state.zodErrors?.default_min_age && (
                     <FormError error={state.zodErrors.default_min_age} />
@@ -122,7 +149,11 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
                     placeholder="Ej: 49"
                     required
                     autoComplete="off"
-                    defaultValue={state.data?.default_max_age || ""}
+                    defaultValue={
+                      editingItem?.default_max_age ||
+                      state.data?.default_max_age ||
+                      ""
+                    }
                   />
                   {state.zodErrors?.default_max_age && (
                     <FormError error={state.zodErrors.default_max_age} />
@@ -132,7 +163,11 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
 
               <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? "Guardando..." : "Guardar Categoría"}
+                  {isPending
+                    ? "Guardando..."
+                    : editingItem
+                      ? "Actualizar"
+                      : "Guardar"}
                 </Button>
               </div>
             </form>
@@ -166,10 +201,16 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => openDialog(item)}
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Pencil className="w-4 h-4" />
                   </Button>
+                  <DeleteConfirmButton
+                    id={item.id}
+                    action={deleteMasterAgeCategoryAction}
+                    title="¿Eliminar Categoría de Edad?"
+                    description={`¿Seguro que deseas eliminar "${item.name}"?`}
+                  />
                 </TableCell>
               </TableRow>
             ))

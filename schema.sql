@@ -195,6 +195,11 @@ CREATE TABLE master_age_categories (
     default_max_age INTEGER NOT NULL
 );
 
+CREATE TABLE master_event_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE -- Ej: "Running", "Trail", "Ciclismo", "Triatlón"
+);
+
 -- ------------------------------------------------------------------------------
 -- 2. EVENTOS (El contenedor principal)
 -- ------------------------------------------------------------------------------
@@ -206,7 +211,8 @@ CREATE TABLE events (
     location_name VARCHAR(255) NOT NULL,
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
-    event_type VARCHAR(50) NOT NULL, -- 'running', 'trail', 'ciclismo'
+    -- 🔥 TU MEJORA APLICADA: Ahora es una llave foránea
+    event_type_id INTEGER REFERENCES master_event_types(id) ON DELETE RESTRICT,
     image_url TEXT,
     status VARCHAR(50) DEFAULT 'draft',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

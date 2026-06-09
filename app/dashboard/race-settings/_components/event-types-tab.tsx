@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  createMasterDistanceAction,
-  deleteMasterDistanceAction,
-  updateMasterDistanceAction,
+  createMasterEventTypeAction,
+  deleteMasterEventTypeAction,
+  updateMasterEventTypeAction,
 } from "@/app/actions/master-data";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
@@ -25,21 +25,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Distance } from "@/validations/master-data";
+import { EventType } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 
-export default function DistancesTab({ data }: { data: Distance[] }) {
+export default function EventTypesTab({ data }: { data: EventType[] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Distance | null>(null);
+  const [editingItem, setEditingItem] = useState<EventType | null>(null);
 
   const handleAction = async (prevState: any, formData: FormData) => {
     if (formData.get("id")) {
-      return updateMasterDistanceAction(prevState, formData);
+      return updateMasterEventTypeAction(prevState, formData);
     } else {
-      return createMasterDistanceAction(prevState, formData);
+      return createMasterEventTypeAction(prevState, formData);
     }
   };
 
@@ -55,12 +55,13 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
     if (state.success) {
       toast.success(state.message);
       setIsOpen(false);
+      setEditingItem(null);
     } else {
       toast.error(state.message);
     }
   }, [state]);
 
-  const openDialog = (item?: Distance) => {
+  const openDialog = (item?: EventType) => {
     setEditingItem(item || null);
     setIsOpen(true);
   };
@@ -68,7 +69,7 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Distancias de Competencia</h2>
+        <h2 className="text-xl font-semibold">Tipo de Evento</h2>
 
         <Dialog
           open={isOpen}
@@ -79,16 +80,18 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
         >
           <DialogTrigger asChild>
             <Button onClick={() => openDialog()}>
-              <Plus className="w-4 h-4 mr-2" /> Nueva Distancia
+              <Plus className="w-4 h-4 mr-2" /> Nuevo Tipo de Evento
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingItem ? "Editar Distancia" : "Agregar Nueva Distancia"}
+                {editingItem
+                  ? "Editar Tipo de Evento"
+                  : "Agregar Nuevo Tipo de Evento"}
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Ingresa el nombre de la nueva distancia para los eventos.
+                Ingresa el nombre del tipo de evento.
               </DialogDescription>
             </DialogHeader>
             <form
@@ -99,12 +102,13 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
               {editingItem && (
                 <input type="hidden" name="id" value={editingItem.id} />
               )}
+
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre de la Distancia</Label>
+                <Label htmlFor="name">Nombre del Tipo de Evento</Label>
                 <Input
                   id="name"
                   name="name"
-                  placeholder="Ej: 21K"
+                  placeholder="Ej: Maratón"
                   required
                   autoComplete="off"
                   defaultValue={editingItem?.name || state.data?.name || ""}
@@ -113,7 +117,6 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
                   <FormError error={state.zodErrors.name} />
                 )}
               </div>
-
               <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isPending}>
                   {isPending
@@ -131,7 +134,6 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
             <TableHead>Nombre</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
@@ -139,14 +141,13 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center">
-                No hay distancias registradas.
+              <TableCell colSpan={2} className="text-center">
+                No hay tipos de evento registrados.
               </TableCell>
             </TableRow>
           ) : (
             data.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -158,8 +159,8 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
                   </Button>
                   <DeleteConfirmButton
                     id={item.id}
-                    action={deleteMasterDistanceAction}
-                    title="¿Eliminar Distancia?"
+                    action={deleteMasterEventTypeAction}
+                    title="¿Eliminar Tipo de Evento?"
                     description={`¿Seguro que deseas eliminar "${item.name}"?`}
                   />
                 </TableCell>

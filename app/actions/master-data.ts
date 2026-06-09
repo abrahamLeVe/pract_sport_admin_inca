@@ -7,9 +7,12 @@ import {
   distanceSchema,
   editAgeCategorySchema,
   editDistanceSchema,
+  editEventTypeSchema,
   editGenderSchema,
+  eventTypeSchema,
   FormAgeCategoryState,
   FormDistanceState,
+  FormEventTypeState,
   FormGenderState,
   genderSchema,
 } from "@/validations/master-data";
@@ -283,9 +286,6 @@ export async function createMasterAgeCategoryAction(
       };
     }
 
-    // ... (después del nameCheck, antes del INSERT)
-
-    // Verificar solapamiento de rangos
     const overlapCheck = await pool.query(
       `SELECT id FROM master_age_categories 
        WHERE ($1::integer <= default_max_age) AND ($2::integer >= default_min_age)`,
@@ -397,6 +397,121 @@ export async function deleteMasterAgeCategoryAction(id: number) {
     return { success: true, message: "Categoría eliminada." };
   } catch (error: any) {
     console.error("❌ Error en deleteMasterAgeCategoryAction:", error.message);
+    return {
+      success: false,
+      message: "No se pudo eliminar (probablemente esté en uso).",
+    };
+  }
+}
+
+// ============================================================================
+// 4. TIPOS DE EVENTO (Master Event Types)
+// ============================================================================
+
+export async function createMasterEventTypeAction(
+  prevState: FormEventTypeState,
+  formData: FormData,
+): Promise<FormEventTypeState> {
+  try {
+    await requireAdminSession();
+
+    const fields = { name: formData.get("name")?.toString() || "" };
+    const validatedFields = eventTypeSchema.safeParse(fields);
+
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: fields,
+      };
+    }
+
+    const { name } = validatedFields.data;
+    const nameCheck = await pool.query(
+      "SELECT id FROM master_event_types WHERE name ILIKE $1",
+      [name],
+    );
+    if ((nameCheck.rowCount ?? 0) > 0) {
+      return {
+        success: false,
+        message: "Este tipo de evento ya existe.",
+        zodErrors: { name: ["El nombre ya está registrado."] },
+        data: fields,
+      };
+    }
+
+    await pool.query("INSERT INTO master_event_types (name) VALUES ($1)", [
+      name,
+    ]);
+    revalidatePath(REVALIDATE_ROUTE);
+
+    return { success: true, message: "Tipo de evento creado correctamente." };
+  } catch (error: any) {
+    console.error("❌ Error en createMasterEventTypeAction:", error.message);
+    return { success: false, message: "Ocurrió un error inesperado." };
+  }
+}
+
+export async function updateMasterEventTypeAction(
+  prevState: FormEventTypeState,
+  formData: FormData,
+): Promise<FormEventTypeState> {
+  try {
+    await requireAdminSession();
+
+    const rawFormData = {
+      id: formData.get("id")?.toString() || "",
+      name: formData.get("name")?.toString() || "",
+    };
+    const validatedFields = editEventTypeSchema.safeParse(rawFormData);
+
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: rawFormData,
+      };
+    }
+
+    const { id, name } = validatedFields.data;
+    const nameCheck = await pool.query(
+      "SELECT id FROM master_event_types WHERE name ILIKE $1 AND id != $2",
+      [name, id],
+    );
+    if ((nameCheck.rowCount ?? 0) > 0) {
+      return {
+        success: false,
+        message: "El nombre ya está siendo usado.",
+        zodErrors: { name: ["El nombre ya existe."] },
+        data: rawFormData,
+      };
+    }
+
+    await pool.query("UPDATE master_event_types SET name = $1 WHERE id = $2", [
+      name,
+      id,
+    ]);
+    revalidatePath(REVALIDATE_ROUTE);
+
+    return { success: true, message: "Tipo de evento actualizado." };
+  } catch (error: any) {
+    console.error("❌ Error en updateMasterEventTypeAction:", error.message);
+    return { success: false, message: "Error al actualizar." };
+  }
+}
+
+export async function deleteMasterEventTypeAction(id: number) {
+  try {
+    await requireAdminSession();
+    await pool.query("DELETE FROM master_event_types WHERE id = $1", [id]);
+    revalidatePath(REVALIDATE_ROUTE);
+    return { success: true, message: "Tipo de evento eliminado." };
+  } catch (error: any) {
+    console.error("❌ Error en deleteMasterEventTypeAction:", error.message);
     return {
       success: false,
       message: "No se pudo eliminar (probablemente esté en uso).",

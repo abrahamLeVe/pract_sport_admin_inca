@@ -3,6 +3,7 @@
 import {
   createMasterGenderAction,
   deleteMasterGenderAction,
+  updateMasterGenderAction,
 } from "@/app/actions/master-data";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
@@ -25,21 +26,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Gender } from "@/validations/master-data";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DeleteConfirmButton } from "./delete-confirm-button";
 
 export default function GendersTab({ data }: { data: Gender[] }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Gender | null>(null);
 
-  const [state, formAction, isPending] = useActionState(
-    createMasterGenderAction,
-    {
-      success: false,
-      message: "",
-      data: {}, // 🔥 Añadido
-    },
-  );
+  const handleAction = async (prevState: any, formData: FormData) => {
+    if (formData.get("id")) {
+      return updateMasterGenderAction(prevState, formData);
+    } else {
+      return createMasterGenderAction(prevState, formData);
+    }
+  };
+
+  const [state, formAction, isPending] = useActionState(handleAction, {
+    success: false,
+    message: "",
+    data: {},
+  });
 
   useEffect(() => {
     if (!state.message) return;
@@ -52,11 +60,9 @@ export default function GendersTab({ data }: { data: Gender[] }) {
     }
   }, [state]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Seguro que deseas eliminar este género?")) return;
-    const res = await deleteMasterGenderAction(id);
-    if (res.success) toast.success(res.message);
-    else toast.error(res.message);
+  const openDialog = (item?: Gender) => {
+    setEditingItem(item || null);
+    setIsOpen(true);
   };
 
   return (
@@ -64,20 +70,35 @@ export default function GendersTab({ data }: { data: Gender[] }) {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Géneros de Competencia</h2>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) setEditingItem(null);
+          }}
+        >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => openDialog()}>
               <Plus className="w-4 h-4 mr-2" /> Nuevo Género
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Agregar Nuevo Género</DialogTitle>
+              <DialogTitle>
+                {editingItem ? "Editar Género" : "Agregar Nuevo Género"}
+              </DialogTitle>
               <DialogDescription className="sr-only">
                 Ingresa el nombre del género de competencia.
               </DialogDescription>
             </DialogHeader>
-            <form action={formAction} className="space-y-4 mt-4">
+            <form
+              key={editingItem ? `edit-${editingItem.id}` : "create"}
+              action={formAction}
+              className="space-y-4 mt-4"
+            >
+              {editingItem && (
+                <input type="hidden" name="id" value={editingItem.id} />
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Género</Label>
                 <Input
@@ -86,7 +107,7 @@ export default function GendersTab({ data }: { data: Gender[] }) {
                   placeholder="Ej: Femenino"
                   required
                   autoComplete="off"
-                  defaultValue={state.data?.name || ""} // 🔥 Persistencia
+                  defaultValue={editingItem?.name || state.data?.name || ""}
                 />
                 {state.zodErrors?.name && (
                   <FormError error={state.zodErrors.name} />
@@ -94,7 +115,11 @@ export default function GendersTab({ data }: { data: Gender[] }) {
               </div>
               <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? "Guardando..." : "Guardar Género"}
+                  {isPending
+                    ? "Guardando..."
+                    : editingItem
+                      ? "Actualizar"
+                      : "Guardar"}
                 </Button>
               </div>
             </form>
@@ -124,10 +149,16 @@ export default function GendersTab({ data }: { data: Gender[] }) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => openDialog(item)}
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Pencil className="w-4 h-4" />
                   </Button>
+                  <DeleteConfirmButton
+                    id={item.id}
+                    action={deleteMasterGenderAction}
+                    title="¿Eliminar Género?"
+                    description={`¿Seguro que deseas eliminar "${item.name}"?`}
+                  />
                 </TableCell>
               </TableRow>
             ))

@@ -92,6 +92,32 @@ export interface EditAgeCategoryFormProps {
   };
 }
 
+// ============================================================================
+// 2. TIPOS DE EVENTO (Master Event Types)
+// ============================================================================
+export const eventTypeSchema = z.object({
+  name: z.string().min(2, "El nombre del tipo de evento es obligatorio."),
+});
+
+export const editEventTypeSchema = eventTypeSchema.extend({
+  id: z.coerce.number(),
+});
+
+export interface FormEventTypeState {
+  success: boolean;
+  message: string;
+  zodErrors?: Record<string, string[]> | null;
+  data?: Record<string, any>;
+}
+
+export interface EditEventTypeFormProps {
+  initialData: {
+    id: number;
+    name: string;
+  };
+}
+
 export type Gender = z.infer<typeof editGenderSchema>;
 export type AgeCategory = z.infer<typeof editAgeCategorySchema>;
 export type Distance = z.infer<typeof editDistanceSchema>;
+export type EventType = z.infer<typeof editEventTypeSchema>;
