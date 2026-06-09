@@ -17,7 +17,7 @@ export async function updateClubSettingsAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       name: formData.get("name")?.toString() || "",
       primary_color: formData.get("primary_color")?.toString() || "",
       secondary_color: formData.get("secondary_color")?.toString() || "",
@@ -25,7 +25,7 @@ export async function updateClubSettingsAction(
       social_links: formData.get("social_links")?.toString() || "[]",
     };
 
-    const validatedFields = clubSettingsSchema.safeParse(rawFormData);
+    const validatedFields = clubSettingsSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -33,7 +33,7 @@ export async function updateClubSettingsAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -61,14 +61,14 @@ export async function updateClubSettingsAction(
         return {
           success: false,
           message: "Formato no permitido.",
-          data: rawFormData,
+          data: fields,
         };
       }
       if (logoFile.size > 5 * 1024 * 1024) {
         return {
           success: false,
           message: "La imagen supera 5MB.",
-          data: rawFormData,
+          data: fields,
         };
       }
 

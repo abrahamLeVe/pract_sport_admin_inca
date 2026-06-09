@@ -126,7 +126,7 @@ export async function updateBannerAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       title: formData.get("title")?.toString() || "",
       subtitle: formData.get("subtitle")?.toString() || "",
@@ -149,7 +149,7 @@ export async function updateBannerAction(
           success: false,
           message: "Formato no permitido. Solo JPG, PNG o WEBP.",
           zodErrors: { image: ["El archivo debe ser una imagen."] } as any,
-          data: rawFormData,
+          data: fields,
         };
       }
       if (imageFile.size > 5 * 1024 * 1024) {
@@ -157,14 +157,12 @@ export async function updateBannerAction(
           success: false,
           message: "La imagen supera el límite de 5MB.",
           zodErrors: { image: ["El archivo es demasiado pesado."] } as any,
-          data: rawFormData,
+          data: fields,
         };
       }
 
       const oldBannerQuery = "SELECT image_key FROM banners WHERE id = $1";
-      const oldBannerResult = await pool.query(oldBannerQuery, [
-        rawFormData.id,
-      ]);
+      const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
       const oldImageKey = oldBannerResult.rows[0]?.image_key;
 
       const s3Result = await uploadFileToS3Action(imageFile, "banners");
@@ -181,7 +179,7 @@ export async function updateBannerAction(
       }
     }
 
-    const validatedFields = editBannerSchema.safeParse(rawFormData);
+    const validatedFields = editBannerSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -189,7 +187,7 @@ export async function updateBannerAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 

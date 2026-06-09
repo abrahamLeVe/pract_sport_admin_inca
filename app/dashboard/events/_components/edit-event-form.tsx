@@ -13,13 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EditEventFormProps } from "@/validations/events";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-export function EditEventForm({ initialData }: EditEventFormProps) {
+interface EditEventFormProps {
+  initialData: any; // Usamos any para flexibilidad con la DB
+  eventTypes: any[]; // Recibimos los tipos de evento de la base de datos
+}
+
+export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
   const formatDateTimeLocal = (dateInput?: Date | string) => {
     if (!dateInput) return "";
     const date = new Date(dateInput);
@@ -27,6 +31,7 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
 
+  // 🔥 Adaptado a los nuevos nombres de columnas de la BD
   const initialState = {
     success: false,
     message: "",
@@ -36,10 +41,10 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
       title: initialData.title || "",
       description: initialData.description || "",
       event_date: formatDateTimeLocal(initialData.event_date),
-      location: initialData.location || "",
-      event_type: initialData.event_type || "",
-      distances: initialData.distances || "",
-      max_participants: initialData.max_participants || "",
+      location_name: initialData.location_name || "",
+      latitude: initialData.latitude || "",
+      longitude: initialData.longitude || "",
+      event_type_id: initialData.event_type_id || "",
       status: initialData.status,
     } as Record<string, any>,
   };
@@ -87,7 +92,7 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
@@ -97,7 +102,8 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
               <div className="flex flex-col items-center gap-2 text-center mb-4">
                 <h1 className="text-2xl font-bold">Editar Evento</h1>
                 <p className="text-sm text-balance text-muted-foreground">
-                  Actualiza la información o el afiche del evento deportivo.
+                  Actualiza la información básica o el afiche del evento
+                  deportivo.
                 </p>
               </div>
 
@@ -174,72 +180,75 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
-                    <FieldLabel htmlFor="location">Ubicación</FieldLabel>
-                    <Input
-                      id="location"
-                      name="location"
-                      placeholder="Ej. Laguna Ñawinpuquio"
-                      defaultValue={formState.data?.location ?? ""}
-                      disabled={isPending}
-                      required
-                    />
-                    <FormError error={formState.zodErrors?.location} />
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="event_type">Disciplina</FieldLabel>
+                    <FieldLabel htmlFor="event_type_id">
+                      Disciplina (Tipo de Evento)
+                    </FieldLabel>
                     <Select
-                      name="event_type"
-                      defaultValue={formState.data?.event_type ?? ""}
+                      name="event_type_id"
+                      defaultValue={
+                        formState.data?.event_type_id?.toString() ?? ""
+                      }
                       disabled={isPending}
                       required
                     >
-                      <SelectTrigger id="event_type">
+                      <SelectTrigger id="event_type_id">
                         <SelectValue placeholder="Selecciona disciplina" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="running">
-                          Running / Atletismo
-                        </SelectItem>
-                        <SelectItem value="triatlon">Triatlón</SelectItem>
-                        <SelectItem value="duatlon">Duatlón</SelectItem>
-                        <SelectItem value="trail">Trail Running</SelectItem>
-                        <SelectItem value="marathon">Maratón</SelectItem>
+                        {eventTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id.toString()}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <FormError error={formState.zodErrors?.event_type} />
+                    <FormError error={formState.zodErrors?.event_type_id} />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="location_name">Ubicación</FieldLabel>
+                    <Input
+                      id="location_name"
+                      name="location_name"
+                      placeholder="Ej. Laguna Ñawinpuquio"
+                      defaultValue={formState.data?.location_name ?? ""}
+                      disabled={isPending}
+                      required
+                    />
+                    <FormError error={formState.zodErrors?.location_name} />
                   </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
-                    <FieldLabel htmlFor="distances">
-                      Distancias (Opcional)
+                    <FieldLabel htmlFor="latitude">
+                      Latitud (Opcional - Maps)
                     </FieldLabel>
                     <Input
-                      id="distances"
-                      name="distances"
-                      placeholder="Ej. 750m natación / 20km bici / 5km trote"
-                      defaultValue={formState.data?.distances ?? ""}
-                      disabled={isPending}
-                    />
-                    <FormError error={formState.zodErrors?.distances} />
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="max_participants">
-                      Cupos Máximos (Opcional)
-                    </FieldLabel>
-                    <Input
-                      id="max_participants"
-                      name="max_participants"
+                      id="latitude"
+                      name="latitude"
                       type="number"
-                      min="1"
-                      placeholder="Ej. 150"
-                      defaultValue={formState.data?.max_participants ?? ""}
+                      step="any"
+                      placeholder="Ej. -12.0651"
+                      defaultValue={formState.data?.latitude ?? ""}
                       disabled={isPending}
                     />
-                    <FormError error={formState.zodErrors?.max_participants} />
+                    <FormError error={formState.zodErrors?.latitude} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="longitude">
+                      Longitud (Opcional - Maps)
+                    </FieldLabel>
+                    <Input
+                      id="longitude"
+                      name="longitude"
+                      type="number"
+                      step="any"
+                      placeholder="Ej. -75.2048"
+                      defaultValue={formState.data?.longitude ?? ""}
+                      disabled={isPending}
+                    />
+                    <FormError error={formState.zodErrors?.longitude} />
                   </Field>
                 </div>
 
@@ -257,14 +266,14 @@ export function EditEventForm({ initialData }: EditEventFormProps) {
                   <FormError error={formState.zodErrors?.description} />
                 </Field>
 
-                <Field>
-                  <FieldLabel htmlFor="status">Estado Inicial</FieldLabel>
+                <Field className="border-t pt-6">
+                  <FieldLabel htmlFor="status">Estado del Evento</FieldLabel>
                   <Select
                     name="status"
                     defaultValue={formState.data?.status ?? "draft"}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="status">
+                    <SelectTrigger id="status" className="w-full sm:w-64">
                       <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>

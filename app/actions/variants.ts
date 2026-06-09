@@ -17,7 +17,7 @@ export async function createVariantAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       product_id: formData.get("product_id")?.toString() || "",
       size: formData.get("size")?.toString() || "",
       color: formData.get("color")?.toString() || "",
@@ -26,7 +26,7 @@ export async function createVariantAction(
       status: formData.get("status")?.toString() || "activo",
     };
 
-    const validatedFields = variantSchema.safeParse(rawFormData);
+    const validatedFields = variantSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -34,14 +34,13 @@ export async function createVariantAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
     const { product_id, size, color, sku, stock, status } =
       validatedFields.data;
 
-    // 🔥 FIX: Validar que no exista la misma combinación Talla/Color para este producto
     const duplicateCheck = await pool.query(
       `SELECT id FROM product_variants 
        WHERE product_id = $1 
@@ -54,16 +53,15 @@ export async function createVariantAction(
       return {
         success: false,
         message: "Ya existe una variante con esta misma Talla y Color.",
-        // Marcamos los campos en rojo
+
         zodErrors: {
           size: ["Combinación duplicada"],
           color: ["Combinación duplicada"],
         },
-        data: rawFormData,
+        data: fields,
       };
     }
 
-    // Si también quieres asegurar que no repitan el SKU (si no está vacío)
     if (sku) {
       const skuCheck = await pool.query(
         "SELECT id FROM product_variants WHERE sku = $1",
@@ -74,7 +72,7 @@ export async function createVariantAction(
           success: false,
           message: "Este código SKU ya está registrado en otra variante.",
           zodErrors: { sku: ["SKU duplicado"] },
-          data: rawFormData,
+          data: fields,
         };
       }
     }
@@ -117,7 +115,7 @@ export async function updateVariantAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       product_id: formData.get("product_id")?.toString() || "",
       size: formData.get("size")?.toString() || "",
@@ -127,7 +125,7 @@ export async function updateVariantAction(
       status: formData.get("status")?.toString() || "activo",
     };
 
-    const validatedFields = editVariantSchema.safeParse(rawFormData);
+    const validatedFields = editVariantSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -135,14 +133,13 @@ export async function updateVariantAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
     const { id, product_id, size, color, sku, stock, status } =
       validatedFields.data;
 
-    // 🔥 FIX: Validar duplicados pero excluyendo la variante que estamos editando
     const duplicateCheck = await pool.query(
       `SELECT id FROM product_variants 
        WHERE product_id = $1 
@@ -160,7 +157,7 @@ export async function updateVariantAction(
           size: ["Combinación duplicada"],
           color: ["Combinación duplicada"],
         },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -174,7 +171,7 @@ export async function updateVariantAction(
           success: false,
           message: "Este código SKU ya lo usa otra variante.",
           zodErrors: { sku: ["SKU duplicado"] },
-          data: rawFormData,
+          data: fields,
         };
       }
     }
@@ -211,7 +208,6 @@ export async function updateVariantAction(
   }
 }
 
-// ... mantén deleteVariantAction y toggleVariantStatusAction exactamente igual como los tenías abajo
 export async function deleteVariantAction(id: number) {
   try {
     await requireAdminSession();

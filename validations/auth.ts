@@ -83,7 +83,7 @@ export type FormUpdateState = {
     password?: string;
     role?: "SUPERADMIN" | "ADMIN" | "CLIENT";
     status?: "activo" | "inactivo";
-    [k: string]: any; // Firma indexada flexible para compatibilidad total con useActionState
+    [k: string]: any;
   };
 
   zodErrors?: {

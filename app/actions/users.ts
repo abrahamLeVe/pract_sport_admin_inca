@@ -8,9 +8,9 @@ import { redirect } from "next/navigation";
 import z from "zod";
 
 export async function updateUserAction(prevState: any, formData: FormData) {
-  const rawFormData = Object.fromEntries(formData.entries());
+  const fields = Object.fromEntries(formData.entries());
 
-  const validatedFields = EditUserSchema.safeParse(rawFormData);
+  const validatedFields = EditUserSchema.safeParse(fields);
 
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
@@ -18,7 +18,7 @@ export async function updateUserAction(prevState: any, formData: FormData) {
       success: false,
       message: "Por favor, corrige los errores del formulario.",
       zodErrors: flattenedErrors.fieldErrors,
-      data: rawFormData,
+      data: fields,
     };
   }
 
@@ -34,7 +34,7 @@ export async function updateUserAction(prevState: any, formData: FormData) {
         success: false,
         message: "El correo electrónico ya está registrado por otro usuario.",
         zodErrors: null,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -76,7 +76,7 @@ export async function updateUserAction(prevState: any, formData: FormData) {
       message:
         "Ocurrió un error inesperado en el servidor al guardar los cambios.",
       zodErrors: null,
-      data: rawFormData,
+      data: fields,
     };
   }
 

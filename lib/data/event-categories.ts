@@ -3,10 +3,24 @@ import pool from "../db";
 export async function getEventCategoriesAction(event_id: number) {
   try {
     const query = `
-      SELECT id, event_id, name, min_age, max_age, price, cupos
-      FROM event_categories
-      WHERE event_id = $1
-      ORDER BY name ASC
+      SELECT 
+        ec.id, 
+        ec.event_id, 
+        ec.distance_id, md.name AS distance_name,
+        ec.gender_id, mg.name AS gender_name,
+        ec.age_category_id, mac.name AS age_category_name,
+        ec.applied_min_age, 
+        ec.applied_max_age, 
+        ec.price, 
+        ec.cupos,
+        -- 🔥 FIX: Ponemos un 0 temporal hasta que construyas tu módulo y tabla de inscripciones.
+        0 AS registered_count
+      FROM event_categories ec
+      LEFT JOIN master_distances md ON ec.distance_id = md.id
+      LEFT JOIN master_genders mg ON ec.gender_id = mg.id
+      LEFT JOIN master_age_categories mac ON ec.age_category_id = mac.id
+      WHERE ec.event_id = $1
+      ORDER BY md.name ASC, mg.name ASC, ec.applied_min_age ASC
     `;
     const result = await pool.query(query, [event_id]);
     return result.rows;
@@ -19,7 +33,16 @@ export async function getEventCategoriesAction(event_id: number) {
 export async function getEventCategoryByIdAction(id: number) {
   try {
     const query = `
-      SELECT id, event_id, name, min_age, max_age, price, cupos
+      SELECT 
+        id, 
+        event_id, 
+        distance_id, 
+        gender_id, 
+        age_category_id, 
+        applied_min_age, 
+        applied_max_age, 
+        price, 
+        cupos
       FROM event_categories
       WHERE id = $1
     `;

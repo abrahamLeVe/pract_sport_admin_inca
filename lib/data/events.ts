@@ -12,18 +12,30 @@ export async function getEventsAction({
   try {
     const offset = (page - 1) * limit;
 
+    // 🔥 USAMOS JOINS Y SUM PARA OBTENER LOS DATOS RELACIONALES
     const eventsQuery = `
-      SELECT id, title, event_date, location, event_type, status, max_participants, image_url
-      FROM events
-      WHERE title ILIKE $1 OR location ILIKE $1
-      ORDER BY event_date DESC
+      SELECT 
+        e.id, 
+        e.title, 
+        e.event_date, 
+        e.location_name AS location, 
+        met.name AS event_type, 
+        e.status, 
+        e.image_url,
+        COALESCE(SUM(ec.cupos), 0) AS max_participants
+      FROM events e
+      LEFT JOIN master_event_types met ON e.event_type_id = met.id
+      LEFT JOIN event_categories ec ON e.id = ec.event_id
+      WHERE e.title ILIKE $1 OR e.location_name ILIKE $1
+      GROUP BY e.id, met.name
+      ORDER BY e.event_date DESC
       LIMIT $2 OFFSET $3
     `;
 
     const countQuery = `
       SELECT COUNT(*)
       FROM events
-      WHERE title ILIKE $1 OR location ILIKE $1
+      WHERE title ILIKE $1 OR location_name ILIKE $1
     `;
 
     const searchQuery = `%${query}%`;
@@ -47,8 +59,19 @@ export async function getEventsAction({
 
 export async function getEventByIdAction(id: number) {
   try {
+    // Solo traemos los datos de la tabla events, las categorías irán aparte o cruzadas en la acción de edición
     const query = `
-      SELECT id, title, description, event_date, location, event_type, distances, max_participants, status, image_url, image_key
+      SELECT 
+        id, 
+        title, 
+        description, 
+        event_date, 
+        location_name, 
+        latitude, 
+        longitude, 
+        event_type_id, 
+        status, 
+        image_url
       FROM events 
       WHERE id = $1
     `;

@@ -3,14 +3,14 @@
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import {
-  productSchema,
   editProductSchema,
   FormProductState,
+  productSchema,
 } from "@/validations/products";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
 import z from "zod";
+import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
 
 export async function createProductAction(
   prevState: FormProductState,
@@ -144,7 +144,7 @@ export async function updateProductAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
       slug: formData.get("slug")?.toString() || "",
@@ -157,7 +157,7 @@ export async function updateProductAction(
       status: formData.get("status")?.toString() || "activo",
     };
 
-    const validatedFields = editProductSchema.safeParse(rawFormData);
+    const validatedFields = editProductSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -165,7 +165,7 @@ export async function updateProductAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -182,7 +182,6 @@ export async function updateProductAction(
       status,
     } = validatedFields.data;
 
-    // Validar unicidad del Slug (que no lo use OTRO producto)
     const slugCheck = await pool.query(
       "SELECT id FROM products WHERE slug = $1 AND id != $2",
       [slug, id],
@@ -192,16 +191,14 @@ export async function updateProductAction(
         success: false,
         message: "Este Slug ya está siendo usado por otro producto.",
         zodErrors: { slug: ["El slug ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 
-    // Procesar imágenes que se deciden mantener
     const existingImagesStr =
       formData.get("existing_images")?.toString() || "[]";
     const existingImages = JSON.parse(existingImagesStr);
 
-    // Procesar nuevas imágenes
     const files = formData.getAll("images") as File[];
     const validFiles = files.filter((f) => f.size > 0);
 
@@ -213,7 +210,7 @@ export async function updateProductAction(
             success: false,
             message: "Formato no permitido en las imágenes nuevas.",
             zodErrors: { images: ["El archivo debe ser una imagen."] },
-            data: rawFormData,
+            data: fields,
           };
         }
         if (file.size > 5 * 1024 * 1024) {
@@ -221,7 +218,7 @@ export async function updateProductAction(
             success: false,
             message: "Una de las imágenes nuevas supera los 5MB.",
             zodErrors: { images: ["El archivo es demasiado pesado."] },
-            data: rawFormData,
+            data: fields,
           };
         }
       }

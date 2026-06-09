@@ -1,4 +1,10 @@
+import {
+  deleteEventAction,
+  toggleEventStatusAction,
+} from "@/app/actions/events";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,12 +30,6 @@ import { Suspense } from "react";
 import { Pagination } from "../../../components/pagination";
 import { Search } from "../../../components/search";
 import EventsLoading from "./_components/table-event-skeleton";
-import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
-import { DeleteActionItem } from "@/components/delete-action-item";
-import {
-  deleteEventAction,
-  toggleEventStatusAction,
-} from "@/app/actions/events";
 
 interface PageProps {
   searchParams: Promise<{
@@ -133,7 +133,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                       </TableCell>
 
                       <TableCell className="text-center">
-                        {event.max_participants ? (
+                        {Number(event.max_participants) > 0 ? (
                           <div className="flex items-center justify-center gap-1 text-sm">
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>{event.max_participants}</span>

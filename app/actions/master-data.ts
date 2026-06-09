@@ -73,12 +73,12 @@ export async function updateMasterDistanceAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
     };
 
-    const validatedFields = editDistanceSchema.safeParse(rawFormData);
+    const validatedFields = editDistanceSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -86,7 +86,7 @@ export async function updateMasterDistanceAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData, // o rawFormData, para que no se borren los inputs
+        data: fields, // o fields, para que no se borren los inputs
       };
     }
 
@@ -101,7 +101,7 @@ export async function updateMasterDistanceAction(
         success: false,
         message: "El nombre ya está siendo usado.",
         zodErrors: { name: ["El nombre ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -184,11 +184,11 @@ export async function updateMasterGenderAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
     };
-    const validatedFields = editGenderSchema.safeParse(rawFormData);
+    const validatedFields = editGenderSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -196,7 +196,7 @@ export async function updateMasterGenderAction(
         success: false,
         message: "Por favor, corrige los errores.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -210,7 +210,7 @@ export async function updateMasterGenderAction(
         success: false,
         message: "El nombre ya está siendo usado.",
         zodErrors: { name: ["El nombre ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -324,14 +324,14 @@ export async function updateMasterAgeCategoryAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
       default_min_age: formData.get("default_min_age"),
       default_max_age: formData.get("default_max_age"),
     };
 
-    const validatedFields = editAgeCategorySchema.safeParse(rawFormData);
+    const validatedFields = editAgeCategorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -339,7 +339,7 @@ export async function updateMasterAgeCategoryAction(
         success: false,
         message: "Por favor, corrige los errores.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -354,7 +354,7 @@ export async function updateMasterAgeCategoryAction(
         success: false,
         message: "El nombre ya está siendo usado.",
         zodErrors: { name: ["El nombre ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -372,7 +372,7 @@ export async function updateMasterAgeCategoryAction(
           default_min_age: ["Conflicto de rango."],
           default_max_age: ["Conflicto de rango."],
         },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -461,11 +461,11 @@ export async function updateMasterEventTypeAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
     };
-    const validatedFields = editEventTypeSchema.safeParse(rawFormData);
+    const validatedFields = editEventTypeSchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -473,7 +473,7 @@ export async function updateMasterEventTypeAction(
         success: false,
         message: "Por favor, corrige los errores.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -487,7 +487,7 @@ export async function updateMasterEventTypeAction(
         success: false,
         message: "El nombre ya está siendo usado.",
         zodErrors: { name: ["El nombre ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 

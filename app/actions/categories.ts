@@ -116,7 +116,7 @@ export async function updateCategoryAction(
   try {
     await requireAdminSession();
 
-    const rawFormData = {
+    const fields = {
       id: formData.get("id")?.toString() || "",
       name: formData.get("name")?.toString() || "",
       slug: formData.get("slug")?.toString() || "",
@@ -124,7 +124,7 @@ export async function updateCategoryAction(
       status: formData.get("status")?.toString() || "activo",
     };
 
-    const validatedFields = editCategorySchema.safeParse(rawFormData);
+    const validatedFields = editCategorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
@@ -132,7 +132,7 @@ export async function updateCategoryAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -147,7 +147,7 @@ export async function updateCategoryAction(
         success: false,
         message: "Este Slug ya está siendo usado por otra categoría.",
         zodErrors: { slug: ["El slug ya existe."] },
-        data: rawFormData,
+        data: fields,
       };
     }
 
@@ -161,14 +161,14 @@ export async function updateCategoryAction(
         return {
           success: false,
           message: "Formato no permitido.",
-          data: rawFormData,
+          data: fields,
         };
       }
       if (imageFile.size > 5 * 1024 * 1024) {
         return {
           success: false,
           message: "La imagen supera 5MB.",
-          data: rawFormData,
+          data: fields,
         };
       }
 

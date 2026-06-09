@@ -214,6 +214,7 @@ CREATE TABLE events (
     -- 🔥 TU MEJORA APLICADA: Ahora es una llave foránea
     event_type_id INTEGER REFERENCES master_event_types(id) ON DELETE RESTRICT,
     image_url TEXT,
+    image_key TEXT,
     status VARCHAR(50) DEFAULT 'draft',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

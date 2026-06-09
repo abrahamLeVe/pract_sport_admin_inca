@@ -20,6 +20,7 @@ interface DeleteConfirmButtonProps {
   action: (id: number) => Promise<{ success: boolean; message: string }>;
   title?: string;
   description?: string;
+  disabled?: boolean;
 }
 
 export function DeleteConfirmButton({
@@ -27,6 +28,7 @@ export function DeleteConfirmButton({
   action,
   title = "¿Estás seguro?",
   description = "Esta acción no se puede deshacer. Se eliminará permanentemente.",
+  disabled = false,
 }: DeleteConfirmButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -62,7 +64,7 @@ export function DeleteConfirmButton({
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={isPending}
+            disabled={isPending || disabled}
           >
             {isPending ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
