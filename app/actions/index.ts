@@ -1,4 +1,4 @@
-import { registerUserAction } from "./auth";
+import { loginAction, registerUserAction } from "./auth";
 import {
   createBannerAction,
   deleteBannerAction,
@@ -36,6 +36,7 @@ import { updateUserAction } from "./users";
 export const actions = {
   auth: {
     registerUserAction,
+    loginAction,
   },
   users: {
     updateUserAction,

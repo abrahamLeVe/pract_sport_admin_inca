@@ -12,12 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormRegisterState } from "@/validations/auth";
+import { SignupInput } from "@/validations/auth";
 import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "../../../../components/form-error";
+import { ActionState } from "@/validations/core";
 
-const INITIAL_STATE: FormRegisterState = {
+const INITIAL_STATE: ActionState<SignupInput> = {
   success: false,
   message: "",
   zodErrors: null,
@@ -114,7 +115,6 @@ export function RegisterUserForm() {
               </Field>
 
               <Field className="pt-4">
-                {/* Botones alineados horizontalmente: Cancelar y Guardar */}
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">
                   <Button
                     variant="outline"

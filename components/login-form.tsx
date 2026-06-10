@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { FormLoginState } from "@/validations/auth";
+import { LoginInput } from "@/validations/auth";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { FormError } from "./form-error";
+import { ActionState } from "@/validations/core";
 
-const INITIAL_LOGIN_STATE: FormLoginState = {
+const INITIAL_LOGIN_STATE: ActionState<LoginInput> = {
   success: false,
   message: "",
   zodErrors: null,

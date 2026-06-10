@@ -1,14 +1,30 @@
 "use server";
 
+import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
-import { EditUserSchema } from "@/validations/auth";
+import { EditUserInput, EditUserSchema } from "@/validations/auth";
+import { ActionState } from "@/validations/core";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import z from "zod";
+import { z } from "zod";
 
-export async function updateUserAction(prevState: any, formData: FormData) {
-  const fields = Object.fromEntries(formData.entries());
+export async function updateUserAction(
+  prevState: ActionState<EditUserInput>,
+  formData: FormData,
+): Promise<ActionState<EditUserInput>> {
+  await requireAdminSession();
+
+  const rawId = formData.get("id")?.toString();
+  const numericId = rawId ? parseInt(rawId, 10) : 0;
+
+  const fields: EditUserInput = {
+    id: numericId,
+    name: formData.get("name")?.toString() || "",
+    email: formData.get("email")?.toString() || "",
+    role: formData.get("role") as "SUPERADMIN" | "ADMIN" | "CLIENT",
+    status: (formData.get("status") as "activo" | "inactivo") || "activo",
+    password: formData.get("password")?.toString() || "",
+  };
 
   const validatedFields = EditUserSchema.safeParse(fields);
 
@@ -23,88 +39,68 @@ export async function updateUserAction(prevState: any, formData: FormData) {
   }
 
   const { id, name, email, role, status, password } = validatedFields.data;
-
   try {
     const emailCheck = await pool.query(
       "SELECT id FROM users WHERE email = $1 AND id != $2",
       [email, id],
     );
-    if (emailCheck.rows.length > 0) {
+
+    if ((emailCheck.rowCount ?? 0) > 0) {
       return {
         success: false,
         message: "El correo electrónico ya está registrado por otro usuario.",
-        zodErrors: null,
+        zodErrors: { email: ["El correo ya existe."] },
         data: fields,
       };
     }
 
-    if (password) {
+    if (password && password.length > 0) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      const updateWithPasswordQuery = `
+      const query = `
         UPDATE users 
         SET name = $1, email = $2, role = $3, status = $4, password = $5, updated_at = NOW()
         WHERE id = $6
       `;
-      await pool.query(updateWithPasswordQuery, [
-        name,
-        email,
-        role,
-        status,
-        hashedPassword,
-        id,
-      ]);
+      await pool.query(query, [name, email, role, status, hashedPassword, id]);
     } else {
-      const updateWithoutPasswordQuery = `
+      const query = `
         UPDATE users 
         SET name = $1, email = $2, role = $3, status = $4, updated_at = NOW()
         WHERE id = $5
       `;
-      await pool.query(updateWithoutPasswordQuery, [
-        name,
-        email,
-        role,
-        status,
-        id,
-      ]);
+      await pool.query(query, [name, email, role, status, id]);
     }
 
     revalidatePath("/dashboard/users");
-  } catch (error) {
-    console.error("❌ Error al actualizar el usuario:", error);
+    return { success: true, message: "Usuario actualizado correctamente." };
+  } catch (error: any) {
+    console.error("❌ Error en updateUserAction:", error.message);
     return {
       success: false,
-      message:
-        "Ocurrió un error inesperado en el servidor al guardar los cambios.",
-      zodErrors: null,
+      message: "Ocurrió un error inesperado al guardar los cambios.",
       data: fields,
     };
   }
-
-  redirect("/dashboard/users");
 }
 
 export async function toggleUserStatusAction(
   id: number,
   currentStatus: string,
-) {
-  try {
-    const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
+): Promise<ActionState> {
+  await requireAdminSession();
+  const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 
-    const query = `
-      UPDATE users 
-      SET status = $1, updated_at = NOW() 
-      WHERE id = $2
-    `;
+  try {
+    const query = `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`;
     await pool.query(query, [nextStatus, id]);
 
     revalidatePath("/dashboard/users");
-
     return {
       success: true,
-      message: `Usuario ${nextStatus === "activo" ? "activado" : "desactivado"} correctamente.`,
+      message: `Usuario ${nextStatus === "activo" ? "activado" : "desactivado"}.`,
     };
-  } catch (error) {
-    console.error("❌ Error en toggleUserStatusAction:", error);
+  } catch (error: any) {
+    console.error("❌ Error en toggleUserStatusAction:", error.message);
     return {
       success: false,
       message: "No se pudo cambiar el estado del usuario.",

@@ -1,6 +1,7 @@
 "use client";
 
 import { actions } from "@/app/actions";
+import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -15,7 +16,6 @@ import {
 import { EditUserFormProps } from "@/validations/auth";
 import Link from "next/link";
 import { useActionState } from "react";
-import { FormError } from "../../../../components/form-error";
 
 export function EditUserForm({ initialData }: EditUserFormProps) {
   const initialState = {
@@ -23,12 +23,12 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
     message: "",
     zodErrors: null,
     data: {
-      id: String(initialData.id),
+      id: initialData.id,
       name: initialData.name || "",
       email: initialData.email,
       role: initialData.role,
       status: initialData.status,
-    } as Record<string, any>,
+    },
   };
 
   const [formState, formAction, isPending] = useActionState(
@@ -60,7 +60,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   name="name"
                   autoComplete="name"
                   placeholder="Ej. Juan Pérez"
-                  defaultValue={String(formState.data?.name ?? "")}
+                  defaultValue={formState.data?.name ?? ""}
                   disabled={isPending}
                   required
                 />
@@ -75,7 +75,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   name="email"
                   autoComplete="email"
                   placeholder="juan@ejemplo.com"
-                  defaultValue={String(formState.data?.email ?? "")}
+                  defaultValue={formState.data?.email ?? ""}
                   disabled={isPending}
                   required
                 />
@@ -104,7 +104,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   <FieldLabel htmlFor="role">Rol de Usuario</FieldLabel>
                   <Select
                     name="role"
-                    defaultValue={String(formState.data?.role ?? "CLIENT")}
+                    defaultValue={formState.data?.role ?? "CLIENT"}
                     disabled={isPending}
                   >
                     <SelectTrigger id="role">
@@ -125,7 +125,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   <FieldLabel htmlFor="status">Estado de Cuenta</FieldLabel>
                   <Select
                     name="status"
-                    defaultValue={String(formState.data?.status ?? "activo")}
+                    defaultValue={formState.data?.status ?? "activo"}
                     disabled={isPending}
                   >
                     <SelectTrigger id="status">

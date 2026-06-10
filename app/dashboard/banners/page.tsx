@@ -4,6 +4,8 @@ import {
 } from "@/app/actions/banners";
 import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { Pagination } from "@/components/pagination";
+import { Search } from "@/components/search";
 import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,19 +26,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getBannersAction } from "@/lib/data/banners";
+import { PageProps } from "@/validations/core";
 import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Pagination } from "../../../components/pagination";
-import { Search } from "../../../components/search";
 import BannersLoading from "./_components/table-banner-skeleton";
-
-interface PageProps {
-  searchParams: Promise<{
-    query?: string;
-    page?: string;
-  }>;
-}
 
 export default async function BannersPage({ searchParams }: PageProps) {
   const params = await searchParams;

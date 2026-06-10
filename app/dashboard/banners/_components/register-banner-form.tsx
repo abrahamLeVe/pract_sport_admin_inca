@@ -13,13 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormBannerState } from "@/validations/banners";
+import { BannerInput } from "@/validations/banners";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-const INITIAL_STATE: FormBannerState = {
+const INITIAL_STATE: ActionState<BannerInput> = {
   success: false,
   message: "",
   zodErrors: null,
@@ -123,7 +124,7 @@ export function BannerForm() {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
+                  {/* <FormError error={formState.zodErrors?.image} /> */}
                 </Field>
 
                 <Field>

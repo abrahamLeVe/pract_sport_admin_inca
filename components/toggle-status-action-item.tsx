@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ToggleAction } from "@/validations/core";
 import { Eye, EyeOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -22,10 +23,7 @@ interface ToggleStatusActionItemProps {
   itemName: string;
   itemType: string;
   currentStatus: string;
-  action: (
-    id: number,
-    status: string,
-  ) => Promise<{ success: boolean; message: string }>;
+  action: ToggleAction;
 }
 
 export function ToggleStatusActionItem({

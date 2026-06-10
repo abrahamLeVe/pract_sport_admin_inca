@@ -113,31 +113,30 @@ export async function updateBrandAction(
   prevState: FormBrandState,
   formData: FormData,
 ): Promise<FormBrandState> {
-  try {
-    await requireAdminSession();
+  await requireAdminSession();
 
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-      slug: formData.get("slug")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      status: formData.get("status")?.toString() || "activo",
+  const fields = {
+    id: formData.get("id")?.toString() || "",
+    name: formData.get("name")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    status: formData.get("status")?.toString() || "activo",
+  };
+
+  const validatedFields = editBrandSchema.safeParse(fields);
+
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
     };
+  }
 
-    const validatedFields = editBrandSchema.safeParse(fields);
-
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
-
-    const { id, name, slug, description, status } = validatedFields.data;
-
+  const { id, name, slug, description, status } = validatedFields.data;
+  try {
     const slugCheck = await pool.query(
       "SELECT id FROM brands WHERE slug = $1 AND id != $2",
       [slug, id],
@@ -216,7 +215,11 @@ export async function updateBrandAction(
     revalidatePath("/dashboard/brands");
   } catch (error: any) {
     console.error("❌ Error en updateBrandAction:", error.message);
-    return { success: false, message: error.message || "Error al actualizar." };
+    return {
+      success: false,
+      message: error.message || "Error al actualizar.",
+      data: fields,
+    };
   }
 
   redirect("/dashboard/brands");

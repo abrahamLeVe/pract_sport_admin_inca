@@ -75,6 +75,7 @@ CREATE TABLE banners (
     link_url TEXT,                             -- Ruta de redirección (ej: /eventos/maraton)
     type VARCHAR(50) DEFAULT 'general',        -- Categoría: 'oferta', 'evento', 'novedad', 'general'
     sort_order INT DEFAULT 0,                  -- Orden visual del carrusel
+    ADD COLUMN event_id INT NULL REFERENCES events(id) ON DELETE SET NULL;
     status VARCHAR(20) DEFAULT 'activo',       -- Estados: 'activo', 'inactivo'
     start_date TIMESTAMP,                      -- (Opcional) Inicio de vigencia
     end_date TIMESTAMP,                        -- (Opcional) Fin de vigencia automático

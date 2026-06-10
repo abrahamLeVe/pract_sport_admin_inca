@@ -3,80 +3,82 @@
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import {
+  BannerInput,
   bannerSchema,
+  EditBannerInput,
   editBannerSchema,
-  FormBannerState,
 } from "@/validations/banners";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
+import { ActionState } from "@/validations/core";
 
 export async function createBannerAction(
-  prevState: FormBannerState,
+  prevState: ActionState<BannerInput>,
   formData: FormData,
-): Promise<FormBannerState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<BannerInput>> {
+  await requireAdminSession();
 
-    const fields = {
-      title: formData.get("title")?.toString() || "",
-      subtitle: formData.get("subtitle")?.toString() || "",
-      link_url: formData.get("link_url")?.toString() || "",
-      type: formData.get("type")?.toString() || "general",
-      status: formData.get("status")?.toString() || "activo",
-      start_date: formData.get("start_date")?.toString() || undefined,
-      end_date: formData.get("end_date")?.toString() || undefined,
-      sort_order: 0,
+  const fields: BannerInput = {
+    title: formData.get("title")?.toString() || "",
+    subtitle: formData.get("subtitle")?.toString() || "",
+    link_url: formData.get("link_url")?.toString() || "",
+    type:
+      (formData.get("type") as "general" | "oferta" | "evento" | "novedad") ||
+      "general",
+    status: formData.get("status") as "activo" | "inactivo",
+    start_date: formData.get("start_date")?.toString() || undefined,
+    end_date: formData.get("end_date")?.toString() || undefined,
+    sort_order: 0,
+  };
+
+  const imageFile = formData.get("image") as File;
+
+  if (!imageFile || imageFile.size === 0) {
+    return {
+      success: false,
+      message: "La imagen del banner es obligatoria.",
+      zodErrors: {
+        image: ["Debes seleccionar un archivo de imagen válido."],
+      } as any,
+      data: fields,
     };
+  }
+  const validTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!validTypes.includes(imageFile.type)) {
+    return {
+      success: false,
+      message: "Formato no permitido. Solo JPG, PNG o WEBP.",
+      zodErrors: { image: ["El archivo debe ser una imagen."] } as any,
+      data: fields,
+    };
+  }
+  if (imageFile.size > 5 * 1024 * 1024) {
+    return {
+      success: false,
+      message: "La imagen supera el límite de 5MB.",
+      zodErrors: { image: ["El archivo es demasiado pesado."] } as any,
+      data: fields,
+    };
+  }
 
-    const imageFile = formData.get("image") as File;
+  const validatedFields = bannerSchema.safeParse(fields);
 
-    if (!imageFile || imageFile.size === 0) {
-      return {
-        success: false,
-        message: "La imagen del banner es obligatoria.",
-        zodErrors: {
-          image: ["Debes seleccionar un archivo de imagen válido."],
-        } as any,
-        data: fields,
-      };
-    }
-    const validTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!validTypes.includes(imageFile.type)) {
-      return {
-        success: false,
-        message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-        zodErrors: { image: ["El archivo debe ser una imagen."] } as any,
-        data: fields,
-      };
-    }
-    if (imageFile.size > 5 * 1024 * 1024) {
-      return {
-        success: false,
-        message: "La imagen supera el límite de 5MB.",
-        zodErrors: { image: ["El archivo es demasiado pesado."] } as any,
-        data: fields,
-      };
-    }
-
-    const validatedFields = bannerSchema.safeParse(fields);
-
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
-
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
+    };
+  }
+  try {
     const s3Result = await uploadFileToS3Action(imageFile, "banners");
     if (!s3Result.success || !s3Result.key || !s3Result.url) {
       throw new Error(s3Result.message || "Error al subir la imagen a S3.");
     }
-
     const {
       title,
       subtitle,
@@ -120,28 +122,35 @@ export async function createBannerAction(
 }
 
 export async function updateBannerAction(
-  prevState: FormBannerState,
+  prevState: ActionState<EditBannerInput>,
   formData: FormData,
-): Promise<FormBannerState> {
+): Promise<ActionState<EditBannerInput>> {
+  await requireAdminSession();
+
+  const rawId = formData.get("id")?.toString();
+  const numericId = rawId ? parseInt(rawId, 10) : 0;
+
+  const rawSortOrder = formData.get("sort_order")?.toString();
+  const sortOrderNum = rawSortOrder ? parseInt(rawSortOrder, 10) : 0;
+
+  const fields: EditBannerInput = {
+    id: numericId,
+    title: formData.get("title")?.toString() || "",
+    subtitle: formData.get("subtitle")?.toString() || "",
+    link_url: formData.get("link_url")?.toString() || "",
+    type:
+      (formData.get("type") as "general" | "oferta" | "evento" | "novedad") ||
+      "general",
+    sort_order: sortOrderNum,
+    status: formData.get("status") as "activo" | "inactivo",
+    start_date: formData.get("start_date")?.toString() || "",
+    end_date: formData.get("end_date")?.toString() || "",
+  };
+
+  const imageFile = formData.get("image") as File;
+  let newImageUrl = null;
+  let newImageKey = null;
   try {
-    await requireAdminSession();
-
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      title: formData.get("title")?.toString() || "",
-      subtitle: formData.get("subtitle")?.toString() || "",
-      link_url: formData.get("link_url")?.toString() || "",
-      type: formData.get("type")?.toString() || "general",
-      sort_order: formData.get("sort_order")?.toString() || "0",
-      status: formData.get("status")?.toString() || "activo",
-      start_date: formData.get("start_date")?.toString() || undefined,
-      end_date: formData.get("end_date")?.toString() || undefined,
-    };
-
-    const imageFile = formData.get("image") as File;
-    let newImageUrl = null;
-    let newImageKey = null;
-
     if (imageFile && imageFile.size > 0) {
       const validTypes = ["image/jpeg", "image/png", "image/webp"];
       if (!validTypes.includes(imageFile.type)) {
@@ -253,17 +262,16 @@ export async function updateBannerAction(
 }
 
 export async function deleteBannerAction(id: number) {
+  await requireAdminSession();
+
+  const getQuery = "SELECT image_key FROM banners WHERE id = $1";
+  const result = await pool.query(getQuery, [id]);
+  const banner = result.rows[0];
+
+  if (!banner) {
+    return { success: false, message: "El banner no existe." };
+  }
   try {
-    await requireAdminSession();
-
-    const getQuery = "SELECT image_key FROM banners WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const banner = result.rows[0];
-
-    if (!banner) {
-      return { success: false, message: "El banner no existe." };
-    }
-
     if (banner.image_key) {
       await deleteFileFromS3Action(banner.image_key);
     }
@@ -286,12 +294,12 @@ export async function deleteBannerAction(id: number) {
 export async function toggleBannerStatusAction(
   id: number,
   currentStatus: string,
-) {
+): Promise<ActionState> {
+  await requireAdminSession();
+
+  const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
+
   try {
-    await requireAdminSession();
-
-    const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
-
     const query = `
       UPDATE banners 
       SET status = $1, updated_at = NOW() 

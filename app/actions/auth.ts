@@ -1,23 +1,23 @@
 "use server";
 
-import { signIn } from "@/auth";
+import { auth, signIn } from "@/auth";
 import pool from "@/lib/db";
 import {
-  FormLoginState,
-  FormRegisterState,
+  LoginInput,
   loginSchema,
+  SignupInput,
   signupSchema,
 } from "@/validations/auth";
+import { ActionState } from "@/validations/core";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { auth } from "@/auth";
 
 export async function registerUserAction(
-  prevState: FormRegisterState,
+  prevState: ActionState<SignupInput>,
   formData: FormData,
-): Promise<FormRegisterState> {
+): Promise<ActionState<SignupInput>> {
   const session = await auth();
 
   if (!session || !session.user?.id) {
@@ -34,11 +34,12 @@ export async function registerUserAction(
     };
   }
 
-  const fields = {
-    name: formData.get("name") as string,
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    role: formData.get("role") as "SUPERADMIN" | "ADMIN" | "CLIENT" | undefined,
+  const fields: SignupInput = {
+    name: formData.get("name")?.toString() || "",
+    email: formData.get("email")?.toString() || "",
+    password: formData.get("password")?.toString() || "",
+    role:
+      (formData.get("role") as "SUPERADMIN" | "ADMIN" | "CLIENT") || "CLIENT",
   };
 
   const validateFields = signupSchema.safeParse(fields);
@@ -80,7 +81,7 @@ export async function registerUserAction(
     return {
       success: false,
       message: errorMessage,
-      zodErrors: null,
+      zodErrors: { email: ["El correo ya existe."] },
       data: fields,
     };
   }
@@ -89,9 +90,9 @@ export async function registerUserAction(
 }
 
 export async function loginAction(
-  prevState: FormLoginState,
+  prevState: ActionState<LoginInput>,
   formData: FormData,
-): Promise<FormLoginState> {
+): Promise<ActionState<LoginInput>> {
   const fields = {
     identifier: formData.get("identifier") as string,
     password: formData.get("password") as string,

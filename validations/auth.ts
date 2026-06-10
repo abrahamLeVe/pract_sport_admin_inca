@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+// 1. ESQUEMAS
 export const signupSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   email: z.email("Introduce un correo electrónico válido"),
@@ -34,74 +35,12 @@ export const EditUserSchema = z.object({
   status: z.enum(["activo", "inactivo"]),
 });
 
+// 2. TIPOS INFERIDOS
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type EditUserInput = z.infer<typeof EditUserSchema>;
 
-export type FormRegisterState = {
-  success?: boolean;
-  message?: string;
-
-  data?: {
-    name?: string;
-    email?: string;
-    password?: string;
-    role?: "SUPERADMIN" | "ADMIN" | "CLIENT";
-  };
-
-  zodErrors?: {
-    name?: string[];
-    email?: string[];
-    password?: string[];
-    role?: string[];
-  } | null;
-};
-
-export type FormLoginState = {
-  success?: boolean;
-  message?: string;
-
-  data?: {
-    identifier?: string;
-    password?: string;
-  };
-
-  zodErrors?: {
-    identifier?: string[];
-    password?: string[];
-  } | null;
-};
-
-export type FormUpdateState = {
-  success?: boolean;
-  message?: string;
-
-  data?: {
-    id?: string | number;
-    name?: string;
-    email?: string;
-    password?: string;
-    role?: "SUPERADMIN" | "ADMIN" | "CLIENT";
-    status?: "activo" | "inactivo";
-    [k: string]: any;
-  };
-
-  zodErrors?: {
-    id?: string[];
-    name?: string[];
-    email?: string[];
-    password?: string[];
-    role?: string[];
-    status?: string[];
-  } | null;
-};
-
-export interface EditUserFormProps extends React.ComponentProps<"div"> {
-  initialData: {
-    id: number;
-    name: string | null;
-    email: string;
-    role: string;
-    status: string;
-  };
+// 3. PROPS DE COMPONENTES
+export interface EditUserFormProps {
+  initialData: EditUserInput;
 }

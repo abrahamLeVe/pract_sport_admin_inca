@@ -13,13 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EditBannerFormProps } from "@/validations/banners";
+import { EditBannerFormProps, EditBannerInput } from "@/validations/banners";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-const formatDateForInput = (dateString: string | null) => {
+const formatDateForInput = (dateString: string | null | undefined) => {
   if (!dateString) return "";
   const date = new Date(dateString);
   const offset = date.getTimezoneOffset() * 60000;
@@ -27,12 +28,12 @@ const formatDateForInput = (dateString: string | null) => {
 };
 
 export function EditBannerForm({ initialData }: EditBannerFormProps) {
-  const initialState = {
+  const initialState: ActionState<EditBannerInput> = {
     success: false,
     message: "",
     zodErrors: null,
     data: {
-      id: String(initialData.id),
+      id: initialData.id, // ✅ Quitamos el String(), ahora es number
       title: initialData.title || "",
       subtitle: initialData.subtitle || "",
       link_url: initialData.link_url || "",
@@ -41,7 +42,7 @@ export function EditBannerForm({ initialData }: EditBannerFormProps) {
       sort_order: initialData.sort_order,
       start_date: formatDateForInput(initialData.start_date),
       end_date: formatDateForInput(initialData.end_date),
-    } as Record<string, any>,
+    },
   };
 
   const [formState, formAction, isPending] = useActionState(
@@ -141,7 +142,7 @@ export function EditBannerForm({ initialData }: EditBannerFormProps) {
                   onChange={handleImageChange}
                   disabled={isPending}
                 />
-                <FormError error={formState.zodErrors?.image as any} />
+                {/* <FormError error={formState.zodErrors?.image as any} /> */}
               </Field>
 
               <Field>
