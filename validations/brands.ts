@@ -20,7 +20,7 @@ export const editBrandSchema = brandSchema.extend({
 
 export interface FormBrandState {
   success: boolean;
-  message: string;
+  message?: string;
   zodErrors?: Record<string, string[]> | null;
   data?: Record<string, any>;
 }

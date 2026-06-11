@@ -42,4 +42,5 @@ export interface EditBannerFormProps extends React.ComponentProps<"div"> {
   initialData: EditBannerInput & {
     image_url: string;
   };
+  events: { id: number; title: string }[];
 }

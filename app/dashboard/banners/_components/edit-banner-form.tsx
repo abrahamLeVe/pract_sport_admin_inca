@@ -27,7 +27,7 @@ const formatDateForInput = (dateString: string | null | undefined) => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
 
-export function EditBannerForm({ initialData }: EditBannerFormProps) {
+export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
   const initialState: ActionState<EditBannerInput> = {
     success: false,
     message: "",
@@ -42,6 +42,7 @@ export function EditBannerForm({ initialData }: EditBannerFormProps) {
       sort_order: initialData.sort_order,
       start_date: formatDateForInput(initialData.start_date),
       end_date: formatDateForInput(initialData.end_date),
+      event_id: initialData.event_id,
     },
   };
 
@@ -256,8 +257,36 @@ export function EditBannerForm({ initialData }: EditBannerFormProps) {
                   <FormError error={formState.zodErrors?.end_date} />
                 </Field>
               </div>
+              <Field>
+                <FieldLabel htmlFor="event_id">
+                  Vincular a un Evento (Opcional)
+                </FieldLabel>
+                <Select
+                  name="event_id"
+                  defaultValue={
+                    formState.data?.event_id != null
+                      ? String(formState.data.event_id)
+                      : "none"
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="event_id">
+                    <SelectValue placeholder="Selecciona un evento si deseas vincularlo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ninguno (No vincular)</SelectItem>
 
-              <Field className="pt-4">
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={String(event.id)}>
+                        {event.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormError error={formState.zodErrors?.event_id} />
+              </Field>
+
+              <Field className="md:col-span-2 pt-4 border-t mt-2">
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">
                   <Button
                     variant="outline"

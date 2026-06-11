@@ -13,12 +13,17 @@ import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
 import { ActionState } from "@/validations/core";
+import { handleImageUpload } from "@/lib/upload";
 
 export async function createBannerAction(
   prevState: ActionState<BannerInput>,
   formData: FormData,
 ): Promise<ActionState<BannerInput>> {
   await requireAdminSession();
+
+  const rawEventId = formData.get("event_id")?.toString();
+  const eventIdNum =
+    rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
 
   const fields: BannerInput = {
     title: formData.get("title")?.toString() || "",
@@ -30,38 +35,10 @@ export async function createBannerAction(
     status: formData.get("status") as "activo" | "inactivo",
     start_date: formData.get("start_date")?.toString() || undefined,
     end_date: formData.get("end_date")?.toString() || undefined,
+    event_id: eventIdNum,
+
     sort_order: 0,
   };
-
-  const imageFile = formData.get("image") as File;
-
-  if (!imageFile || imageFile.size === 0) {
-    return {
-      success: false,
-      message: "La imagen del banner es obligatoria.",
-      zodErrors: {
-        image: ["Debes seleccionar un archivo de imagen válido."],
-      } as any,
-      data: fields,
-    };
-  }
-  const validTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!validTypes.includes(imageFile.type)) {
-    return {
-      success: false,
-      message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-      zodErrors: { image: ["El archivo debe ser una imagen."] } as any,
-      data: fields,
-    };
-  }
-  if (imageFile.size > 5 * 1024 * 1024) {
-    return {
-      success: false,
-      message: "La imagen supera el límite de 5MB.",
-      zodErrors: { image: ["El archivo es demasiado pesado."] } as any,
-      data: fields,
-    };
-  }
 
   const validatedFields = bannerSchema.safeParse(fields);
 
@@ -74,11 +51,20 @@ export async function createBannerAction(
       data: fields,
     };
   }
+
   try {
-    const s3Result = await uploadFileToS3Action(imageFile, "banners");
-    if (!s3Result.success || !s3Result.key || !s3Result.url) {
-      throw new Error(s3Result.message || "Error al subir la imagen a S3.");
+    const imageResult = await handleImageUpload(formData, "image", "banners");
+
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message,
+        data: fields,
+      };
     }
+
+    const imageUrl = imageResult.url;
+    const imageKey = imageResult.key;
     const {
       title,
       subtitle,
@@ -87,25 +73,26 @@ export async function createBannerAction(
       sort_order,
       status,
       start_date,
+      event_id,
       end_date,
     } = validatedFields.data;
-
     const query = `
       INSERT INTO banners (
-        title, subtitle, image_url, image_key, link_url, type, sort_order, status, start_date, end_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        title, subtitle, image_url, image_key, link_url, type, sort_order, status, start_date, event_id, end_date
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
     `;
 
     await pool.query(query, [
       title,
       subtitle || null,
-      s3Result.url,
-      s3Result.key,
+      imageUrl,
+      imageKey,
       link_url || null,
       type,
-      sort_order, // Entra siempre como 0
+      sort_order,
       status,
       start_date ? new Date(start_date) : null,
+      event_id,
       end_date ? new Date(end_date) : null,
     ]);
 
@@ -125,10 +112,11 @@ export async function updateBannerAction(
   prevState: ActionState<EditBannerInput>,
   formData: FormData,
 ): Promise<ActionState<EditBannerInput>> {
-  await requireAdminSession();
-
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
+  const rawEventId = formData.get("event_id")?.toString();
+  const eventIdNum =
+    rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
 
   const rawSortOrder = formData.get("sort_order")?.toString();
   const sortOrderNum = rawSortOrder ? parseInt(rawSortOrder, 10) : 0;
@@ -145,46 +133,38 @@ export async function updateBannerAction(
     status: formData.get("status") as "activo" | "inactivo",
     start_date: formData.get("start_date")?.toString() || "",
     end_date: formData.get("end_date")?.toString() || "",
+    event_id: eventIdNum,
   };
 
-  const imageFile = formData.get("image") as File;
-  let newImageUrl = null;
-  let newImageKey = null;
   try {
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-          zodErrors: { image: ["El archivo debe ser una imagen."] } as any,
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera el límite de 5MB.",
-          zodErrors: { image: ["El archivo es demasiado pesado."] } as any,
-          data: fields,
-        };
-      }
+    await requireAdminSession();
+
+    let newImageUrl = null;
+    let newImageKey = null;
+
+    const imageResult = await handleImageUpload(formData, "image", "banners");
+
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message,
+        zodErrors: {
+          image: [imageResult.message || "Error con la imagen"],
+        } as any,
+        data: fields,
+      };
+    }
+
+    if (imageResult.url && imageResult.key) {
+      newImageUrl = imageResult.url;
+      newImageKey = imageResult.key;
 
       const oldBannerQuery = "SELECT image_key FROM banners WHERE id = $1";
       const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
       const oldImageKey = oldBannerResult.rows[0]?.image_key;
 
-      const s3Result = await uploadFileToS3Action(imageFile, "banners");
-
-      if (s3Result.success) {
-        newImageUrl = s3Result.url;
-        newImageKey = s3Result.key;
-
-        if (oldImageKey) {
-          await deleteFileFromS3Action(oldImageKey);
-        }
-      } else {
-        throw new Error(s3Result.message || "Error al subir la nueva imagen.");
+      if (oldImageKey) {
+        await deleteFileFromS3Action(oldImageKey);
       }
     }
 
@@ -210,34 +190,36 @@ export async function updateBannerAction(
       status,
       start_date,
       end_date,
+      event_id,
     } = validatedFields.data;
 
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE banners SET 
           title = $1, subtitle = $2, link_url = $3, type = $4, sort_order = $5, 
-          status = $6, start_date = $7, end_date = $8, image_url = $9, image_key = $10, updated_at = NOW()
-        WHERE id = $11
+          status = $6, event_id = $7, start_date = $8, end_date = $9, image_url = $10, image_key = $11, updated_at = NOW()
+        WHERE id = $12
       `;
       await pool.query(query, [
         title,
         subtitle || null,
         link_url || null,
         type,
-        sort_order,
-        status,
-        start_date ? new Date(start_date) : null,
-        end_date ? new Date(end_date) : null,
-        newImageUrl,
-        newImageKey,
+        sort_order, // $5: sort_order
+        status, // $6: status
+        event_id, // $7: event_id (🔥 Agregado en su lugar)
+        start_date ? new Date(start_date) : null, // $8: start_date
+        end_date ? new Date(end_date) : null, // $9: end_date
+        newImageUrl, // $10: image_url
+        newImageKey, // $11: image_key
         id,
       ]);
     } else {
       const query = `
         UPDATE banners SET 
           title = $1, subtitle = $2, link_url = $3, type = $4, sort_order = $5, 
-          status = $6, start_date = $7, end_date = $8, updated_at = NOW()
-        WHERE id = $9
+          status = $6, event_id = $7, start_date = $8, end_date = $9, updated_at = NOW()
+        WHERE id = $10
       `;
       await pool.query(query, [
         title,
@@ -246,6 +228,7 @@ export async function updateBannerAction(
         type,
         sort_order,
         status,
+        event_id,
         start_date ? new Date(start_date) : null,
         end_date ? new Date(end_date) : null,
         id,
@@ -262,16 +245,16 @@ export async function updateBannerAction(
 }
 
 export async function deleteBannerAction(id: number) {
-  await requireAdminSession();
-
-  const getQuery = "SELECT image_key FROM banners WHERE id = $1";
-  const result = await pool.query(getQuery, [id]);
-  const banner = result.rows[0];
-
-  if (!banner) {
-    return { success: false, message: "El banner no existe." };
-  }
   try {
+    await requireAdminSession();
+
+    const getQuery = "SELECT image_key FROM banners WHERE id = $1";
+    const result = await pool.query(getQuery, [id]);
+    const banner = result.rows[0];
+
+    if (!banner) {
+      return { success: false, message: "El banner no existe." };
+    }
     if (banner.image_key) {
       await deleteFileFromS3Action(banner.image_key);
     }

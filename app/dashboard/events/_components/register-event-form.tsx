@@ -89,35 +89,62 @@ export function RegisterEventForm({
       return;
     }
 
-    // 🔥 VALIDACIÓN: Prevenir duplicados
-    const isDuplicate = categories.some(
+    const newMin = Number(newCat.applied_min_age) || 0;
+    const newMax = Number(newCat.applied_max_age) || 99;
+    const distId = Number(newCat.distance_id);
+    const genId = Number(newCat.gender_id);
+    const ageCatId = Number(newCat.age_category_id);
+
+    // 1. Validar lógica básica de edades
+    if (newMin >= newMax) {
+      toast.error("La edad mínima debe ser estrictamente menor que la máxima.");
+      return;
+    }
+
+    // 2. Validar que no exista exactamente la misma categoría de nombre
+    const isExactDuplicate = categories.some(
       (cat) =>
-        cat.distance_id === Number(newCat.distance_id) &&
-        cat.gender_id === Number(newCat.gender_id) &&
-        cat.age_category_id === Number(newCat.age_category_id),
+        cat.distance_id === distId &&
+        cat.gender_id === genId &&
+        cat.age_category_id === ageCatId,
     );
 
-    if (isDuplicate) {
+    if (isExactDuplicate) {
+      toast.error("Esta categoría exacta ya está en la lista.");
+      return;
+    }
+
+    // 3. 🔥 EL FIX: Validar Solapamiento (Cruce de Edades)
+    // Dos rangos se solapan si: (Min A <= Max B) y (Max A >= Min B)
+    const isOverlapping = categories.some((cat) => {
+      // Solo comparamos si están compitiendo en la misma distancia y género
+      if (cat.distance_id !== distId || cat.gender_id !== genId) return false;
+
+      return newMin <= cat.applied_max_age && newMax >= cat.applied_min_age;
+    });
+
+    if (isOverlapping) {
       toast.error(
-        "Esta combinación de distancia, género y edad ya está en la lista.",
+        "¡Cruce de edades! Este rango choca con otra categoría existente. Intenta usar rangos sin repetir números (ej: 6-11 y 12-17).",
       );
       return;
     }
 
+    // Si pasa todas las validaciones, lo agregamos
     setCategories([
       ...categories,
       {
-        distance_id: Number(newCat.distance_id),
-        gender_id: Number(newCat.gender_id),
-        age_category_id: Number(newCat.age_category_id),
-        applied_min_age: Number(newCat.applied_min_age) || 0,
-        applied_max_age: Number(newCat.applied_max_age) || 99,
+        distance_id: distId,
+        gender_id: genId,
+        age_category_id: ageCatId,
+        applied_min_age: newMin,
+        applied_max_age: newMax,
         price: Number(newCat.price) || 0,
         cupos: Number(newCat.cupos) || 0,
       },
     ]);
 
-    // 🔥 FIX: Reseteamos absolutamente todos los campos, incluyendo precio y cupos
+    // Limpiamos el formulario temporal
     setNewCat({
       distance_id: "",
       gender_id: "",
@@ -136,7 +163,6 @@ export function RegisterEventForm({
   const handleAction = (formData: FormData) => {
     if (categories.length === 0) {
       toast.error("Debes agregar al menos una categoría al evento.");
-      return;
     }
 
     const currentFile = formData.get("image") as File;

@@ -11,21 +11,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
+import { handleImageUpload } from "@/lib/upload";
 
 export async function createBrandAction(
   prevState: FormBrandState,
   formData: FormData,
 ): Promise<FormBrandState> {
+  const fields = {
+    name: formData.get("name")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    status: formData.get("status")?.toString() || "activo",
+  };
+
   try {
     await requireAdminSession();
-
-    const fields = {
-      name: formData.get("name")?.toString() || "",
-      slug: formData.get("slug")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      status: formData.get("status")?.toString() || "activo",
-    };
-
     const validatedFields = brandSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -51,34 +51,18 @@ export async function createBrandAction(
       };
     }
 
-    const imageFile = formData.get("image") as File;
-    let imageUrl = null;
-    let imageKey = null;
+    const imageResult = await handleImageUpload(formData, "image", "events");
 
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera el límite de 5MB.",
-          data: fields,
-        };
-      }
-
-      const s3Result = await uploadFileToS3Action(imageFile, "brands");
-      if (!s3Result.success || !s3Result.key || !s3Result.url) {
-        throw new Error(s3Result.message || "Error al subir la imagen a S3.");
-      }
-      imageUrl = s3Result.url;
-      imageKey = s3Result.key;
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message,
+        data: fields,
+      };
     }
+
+    const imageUrl = imageResult.url;
+    const imageKey = imageResult.key;
 
     const { name, slug, description, status } = validatedFields.data;
 
@@ -103,6 +87,7 @@ export async function createBrandAction(
     return {
       success: false,
       message: error.message || "Ocurrió un error inesperado en el servidor.",
+      data: fields,
     };
   }
 
@@ -113,8 +98,6 @@ export async function updateBrandAction(
   prevState: FormBrandState,
   formData: FormData,
 ): Promise<FormBrandState> {
-  await requireAdminSession();
-
   const fields = {
     id: formData.get("id")?.toString() || "",
     name: formData.get("name")?.toString() || "",
@@ -123,20 +106,22 @@ export async function updateBrandAction(
     status: formData.get("status")?.toString() || "activo",
   };
 
-  const validatedFields = editBrandSchema.safeParse(fields);
-
-  if (!validatedFields.success) {
-    const flattenedErrors = z.flattenError(validatedFields.error);
-    return {
-      success: false,
-      message: "Por favor, corrige los errores del formulario.",
-      zodErrors: flattenedErrors.fieldErrors,
-      data: fields,
-    };
-  }
-
-  const { id, name, slug, description, status } = validatedFields.data;
   try {
+    await requireAdminSession();
+    const validatedFields = editBrandSchema.safeParse(fields);
+
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores del formulario.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: fields,
+      };
+    }
+
+    const { id, name, slug, description, status } = validatedFields.data;
+
     const slugCheck = await pool.query(
       "SELECT id FROM brands WHERE slug = $1 AND id != $2",
       [slug, id],

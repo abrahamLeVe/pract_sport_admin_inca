@@ -17,47 +17,47 @@ export async function createEventAction(
   formData: FormData,
 ): Promise<FormEventState> {
   let client;
+  await requireAdminSession();
+
+  const categoriesRaw = formData.get("categories")?.toString() || "[]";
+  let categoriesParsed = [];
   try {
-    await requireAdminSession();
+    categoriesParsed = JSON.parse(categoriesRaw);
+  } catch (e) {
+    categoriesParsed = [];
+  }
 
-    const categoriesRaw = formData.get("categories")?.toString() || "[]";
-    let categoriesParsed = [];
-    try {
-      categoriesParsed = JSON.parse(categoriesRaw);
-    } catch (e) {
-      categoriesParsed = [];
-    }
+  const fields = {
+    title: formData.get("title")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    event_date: formData.get("event_date")?.toString() || "",
+    location_name: formData.get("location_name")?.toString() || "",
+    latitude: formData.get("latitude")
+      ? Number(formData.get("latitude"))
+      : null,
+    longitude: formData.get("longitude")
+      ? Number(formData.get("longitude"))
+      : null,
+    event_type_id: formData.get("event_type_id")
+      ? Number(formData.get("event_type_id"))
+      : 0,
+    status: formData.get("status")?.toString() || "draft",
+    categories: categoriesParsed,
+  };
 
-    const fields = {
-      title: formData.get("title")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      event_date: formData.get("event_date")?.toString() || "",
-      location_name: formData.get("location_name")?.toString() || "",
-      latitude: formData.get("latitude")
-        ? Number(formData.get("latitude"))
-        : null,
-      longitude: formData.get("longitude")
-        ? Number(formData.get("longitude"))
-        : null,
-      event_type_id: formData.get("event_type_id")
-        ? Number(formData.get("event_type_id"))
-        : 0,
-      status: formData.get("status")?.toString() || "draft",
-      categories: categoriesParsed,
+  const validatedFields = eventSchema.safeParse(fields);
+
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
     };
+  }
 
-    const validatedFields = eventSchema.safeParse(fields);
-
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
-
+  try {
     const imageFile = formData.get("image") as File;
     let imageUrl = null;
     let imageKey = null;
@@ -152,6 +152,7 @@ export async function createEventAction(
     return {
       success: false,
       message: error.message || "Ocurrió un error inesperado en el servidor.",
+      data: fields,
     };
   } finally {
     if (client) client.release();

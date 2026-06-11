@@ -1,6 +1,7 @@
 import { getBannerByIdAction } from "@/lib/data/banners";
 import { notFound } from "next/navigation";
 import { EditBannerForm } from "../../_components/edit-banner-form";
+import { getIdsTitlesEventsAction } from "@/lib/data/events";
 
 interface PageProps {
   params: Promise<{
@@ -17,10 +18,10 @@ export default async function EditBannerPage({ params }: PageProps) {
   }
 
   const banner = await getBannerByIdAction(bannerId);
-
+  const events = await getIdsTitlesEventsAction();
   if (!banner) {
     notFound();
   }
 
-  return <EditBannerForm initialData={banner} />;
+  return <EditBannerForm initialData={banner} events={events} />;
 }

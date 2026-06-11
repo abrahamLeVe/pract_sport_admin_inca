@@ -27,7 +27,16 @@ const INITIAL_STATE: ActionState<BannerInput> = {
   data: {},
 };
 
-export function BannerForm() {
+interface Events {
+  id: number;
+  title: string;
+}
+
+interface BannerFormProps {
+  events: Events[];
+}
+
+export function BannerForm({ events }: BannerFormProps) {
   const [formState, formAction, isPending] = useActionState(
     actions.banners.createBannerAction,
     INITIAL_STATE,
@@ -124,7 +133,6 @@ export function BannerForm() {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  {/* <FormError error={formState.zodErrors?.image} /> */}
                 </Field>
 
                 <Field>
@@ -239,6 +247,35 @@ export function BannerForm() {
                   </Field>
                 </div>
               </div>
+
+              <Field>
+                <FieldLabel htmlFor="event_id">
+                  Vincular a un Evento (Opcional)
+                </FieldLabel>
+                <Select
+                  name="event_id"
+                  defaultValue={
+                    formState.data?.event_id
+                      ? String(formState.data.event_id)
+                      : "none"
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="event_id">
+                    <SelectValue placeholder="Selecciona un evento si deseas vincularlo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ninguno (No vincular)</SelectItem>
+
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={String(event.id)}>
+                        {event.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormError error={formState.zodErrors?.event_id} />
+              </Field>
 
               <Field className="md:col-span-2 pt-4 border-t mt-2">
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">

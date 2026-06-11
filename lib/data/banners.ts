@@ -48,7 +48,7 @@ export async function getBannersAction({
 export async function getBannerByIdAction(id: number) {
   try {
     const query = `
-      SELECT id, title, subtitle, image_url, link_url, type, status, sort_order, start_date, end_date
+      SELECT id, title, subtitle, image_url, link_url, type, event_id, status, sort_order, start_date, end_date
       FROM banners
       WHERE id = $1
     `;

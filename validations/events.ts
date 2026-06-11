@@ -39,8 +39,18 @@ export const eventSchema = z.object({
     message: "La fecha del evento es obligatoria o el formato es inválido.",
   }),
   location_name: z.string().min(2, "La ubicación es obligatoria."),
-  latitude: z.coerce.number().optional().nullable(),
-  longitude: z.coerce.number().optional().nullable(),
+  latitude: z.coerce
+    .number()
+    .min(-90, "La latitud debe ser mayor a -90")
+    .max(90, "La latitud debe ser menor a 90")
+    .optional()
+    .nullable(),
+  longitude: z.coerce
+    .number()
+    .min(-180, "La longitud debe ser mayor a -180")
+    .max(180, "La longitud debe ser menor a 180")
+    .optional()
+    .nullable(),
   event_type_id: z.coerce.number().min(1, "Selecciona un tipo de evento."),
   status: z
     .enum(["draft", "published", "completed", "cancelled"])

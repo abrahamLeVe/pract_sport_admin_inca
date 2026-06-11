@@ -11,7 +11,6 @@ export const metadata = {
 };
 
 export default async function NewEventPage() {
-  // 🔥 Solicitamos los datos maestros en paralelo para no hacer lenta la carga
   const [eventTypes, distances, genders, ageCategories] = await Promise.all([
     getAllMasterEventTypesAction(),
     getAllMasterDistancesAction(),

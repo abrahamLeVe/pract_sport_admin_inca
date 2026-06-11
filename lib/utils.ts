@@ -5,7 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// 🔥 Función auxiliar para convertir "Zapatillas Running!" en "zapatillas-running"
 export const generateSlug = (text: string) => {
   return text
     .toString()

@@ -82,3 +82,16 @@ export async function getEventByIdAction(id: number) {
     return null;
   }
 }
+
+export async function getIdsTitlesEventsAction() {
+  try {
+    const query = `
+    select id, title
+    FROM events`;
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error(`❌ Error al obtener los eventos:`, error);
+    return [];
+  }
+}
