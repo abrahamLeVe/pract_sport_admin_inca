@@ -1,10 +1,7 @@
 import { z } from "zod";
-import React from "react";
-
 // ============================================================================
 // 1. ESQUEMAS DE VALIDACIÓN
 // ============================================================================
-
 export const bannerSchema = z.object({
   title: z
     .string()
@@ -22,22 +19,19 @@ export const bannerSchema = z.object({
   start_date: z.string().optional().or(z.literal("")),
   end_date: z.string().optional().or(z.literal("")),
 });
-
 // 🔥 DRY: Extendemos el esquema base para no repetir código
 export const editBannerSchema = bannerSchema.extend({
   id: z.coerce.number(),
 });
-
 // ============================================================================
 // 2. TIPOS INFERIDOS
 // ============================================================================
 export type BannerInput = z.infer<typeof bannerSchema>;
 export type EditBannerInput = z.infer<typeof editBannerSchema>;
-
 // ============================================================================
 // 3. PROPS DE COMPONENTES
 // ============================================================================
-export interface EditBannerFormProps extends React.ComponentProps<"div"> {
+export interface EditBannerFormProps {
   // 🔥 Tipado estricto combinando lo inferido + la imagen que viene de tu BD
   initialData: EditBannerInput & {
     image_url: string;

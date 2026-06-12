@@ -1,20 +1,12 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
 import {
   createEventCategoryAction,
-  updateEventCategoryAction,
   deleteEventCategoryAction,
+  updateEventCategoryAction,
 } from "@/app/actions/event-categories";
+import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,11 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil } from "lucide-react";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormError } from "@/components/form-error";
 import {
   Select,
   SelectContent,
@@ -35,20 +24,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DeleteConfirmButton } from "../../race-settings/_components/delete-confirm-button";
 import {
-  EventCategoryRow,
-  MasterAgeCategoryGrid,
-  MasterDataGrid,
-} from "@/validations/events";
-
-interface EventCategoriesTableProps {
-  eventId: number;
-  categories: EventCategoryRow[];
-  distances: MasterDataGrid[];
-  genders: MasterDataGrid[];
-  ageCategories: MasterAgeCategoryGrid[];
-}
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { EventCategoriesTableProps } from "@/validations/events";
+import { Pencil, Plus } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { DeleteConfirmButton } from "../../race-settings/_components/delete-confirm-button";
 
 export function EventCategoriesTable({
   eventId,
@@ -71,9 +59,10 @@ export function EventCategoriesTable({
   });
 
   const handleAction = async (prevState: any, formData: FormData) => {
-    if (formData.get("id"))
-      return updateEventCategoryAction(eventId, prevState, formData);
-    return createEventCategoryAction(eventId, prevState, formData);
+    if (formData.get("id")) {
+      return updateEventCategoryAction(prevState, formData);
+    }
+    return createEventCategoryAction(prevState, formData);
   };
 
   const [state, formAction, isPending] = useActionState(handleAction, {
@@ -151,6 +140,7 @@ export function EventCategoriesTable({
               action={formAction}
               className="space-y-4 mt-4"
             >
+              <input type="hidden" name="event_id" value={eventId} />
               {editingItem && (
                 <input type="hidden" name="id" value={editingItem.id} />
               )}
@@ -158,8 +148,13 @@ export function EventCategoriesTable({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="distance_id">Distancia</Label>
-                  <Select
+                  <input
+                    type="hidden"
                     name="distance_id"
+                    value={modalData.distance_id}
+                  />
+                  <Select
+                    name="ui_distance_id"
                     value={modalData.distance_id}
                     onValueChange={(val) =>
                       setModalData({ ...modalData, distance_id: val })
@@ -183,8 +178,14 @@ export function EventCategoriesTable({
 
                 <div className="space-y-2">
                   <Label htmlFor="gender_id">Género</Label>
-                  <Select
+                  <input
+                    type="hidden"
                     name="gender_id"
+                    value={modalData.gender_id}
+                  />
+
+                  <Select
+                    name="ui_gender_id"
                     value={modalData.gender_id}
                     onValueChange={(val) =>
                       setModalData({ ...modalData, gender_id: val })
@@ -208,8 +209,13 @@ export function EventCategoriesTable({
 
                 <div className="space-y-2">
                   <Label htmlFor="age_category_id">Edad (Maestra)</Label>
-                  <Select
+                  <input
+                    type="hidden"
                     name="age_category_id"
+                    value={modalData.age_category_id}
+                  />
+                  <Select
+                    name="ui_age_category_id"
                     value={modalData.age_category_id}
                     onValueChange={(val) => {
                       const ageCat = ageCategories.find(
@@ -255,7 +261,7 @@ export function EventCategoriesTable({
                     required
                     disabled={isPending}
                   />
-                  <FormError error={state.zodErrors?.min_age} />
+                  <FormError error={state.zodErrors?.applied_min_age} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="max_age">Edad Max.</Label>
@@ -270,7 +276,7 @@ export function EventCategoriesTable({
                     required
                     disabled={isPending}
                   />
-                  <FormError error={state.zodErrors?.max_age} />
+                  <FormError error={state.zodErrors?.applied_max_age} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="price">Precio (S/)</Label>

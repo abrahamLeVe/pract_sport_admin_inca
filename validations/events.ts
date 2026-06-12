@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ============================================================================
-// 1. ESQUEMA DE CATEGORÍAS (Fuente única para crear, editar y listar)
+// 1. ESQUEMAS DE CATEGORÍAS (Fuente única)
 // ============================================================================
 export const eventCategorySchema = z
   .object({
@@ -24,20 +24,17 @@ export const eventCategorySchema = z
     path: ["applied_max_age"],
   });
 
-// Esquema de extensión para cuando manipulamos una categoría individual ya existente
 export const editEventCategorySchema = eventCategorySchema.extend({
   id: z.coerce.number(),
 });
 
 // ============================================================================
-// 2. ESQUEMA PRINCIPAL DEL EVENTO
+// 2. ESQUEMAS DEL EVENTO PRINCIPAL
 // ============================================================================
 export const eventSchema = z.object({
   title: z.string().min(3, "El título debe tener al menos 3 caracteres."),
   description: z.string().optional(),
-  event_date: z.coerce.date({
-    message: "La fecha del evento es obligatoria o el formato es inválido.",
-  }),
+  event_date: z.string().min(1, "La fecha del evento es obligatoria"), // String para evitar conflictos de serialización Date->Client
   location_name: z.string().min(2, "La ubicación es obligatoria."),
   latitude: z.coerce
     .number()
@@ -60,52 +57,82 @@ export const eventSchema = z.object({
     .min(1, "Debes agregar al menos una categoría al evento."),
 });
 
-export const editEventSchema = eventSchema.extend({
+export const editEventSchema = eventSchema.omit({ categories: true }).extend({
   id: z.coerce.number(),
 });
 
 // ============================================================================
-// 3. INTERFACES DE ESTADOS PARA ACCIONES (Form States)
+// 3. TIPOS INFERIDOS (Para usar en Server Actions y UI)
 // ============================================================================
-export interface FormEventState {
-  success: boolean;
-  message: string;
-  zodErrors?: Record<string, string[]> | null;
-  data?: Record<string, any>;
-}
+export type EventCategoryInput = z.infer<typeof eventCategorySchema>;
+export type EditEventCategoryInput = z.infer<typeof editEventCategorySchema>;
+export type EventInput = z.infer<typeof eventSchema>;
+export type EditEventInput = z.infer<typeof editEventSchema>;
 
 // ============================================================================
-// 4. TIPOS RIGUROSOS PARA PROPS E INTERFACES DE TABLAS (Adiós a los any)
+// 4. ESTRUCTURAS DE BASE DE DATOS (Master Data & JOINS)
 // ============================================================================
-
-// Tipo inferido básico de la categoría
-export type EventCategoryFormData = z.infer<typeof eventCategorySchema>;
-
-// 🔥 EL TIPO MAESTRO: Representa exactamente una fila de categoría devuelta por tus SQL JOINS
-export interface EventCategoryRow {
-  id: number;
-  event_id: number;
-  distance_id: number;
-  distance_name: string; // Viene del LEFT JOIN md.name
-  gender_id: number;
-  gender_name: string; // Viene del LEFT JOIN mg.name
-  age_category_id: number;
-  age_category_name: string; // Viene del LEFT JOIN mac.name
-  applied_min_age: number;
-  applied_max_age: number;
-  price: number;
-  cupos: number;
-  registered_count: number; // Viene del contador de inscritos
-}
-
-// Tipos estructurales para los datos maestros auxiliares de las tablas
 export interface MasterDataGrid {
   id: number;
   name: string;
 }
+
 export interface MasterAgeCategoryGrid {
   id: number;
   name: string;
   default_min_age: number;
   default_max_age: number;
+}
+
+export interface EventCategoryRow {
+  id: number;
+  event_id: number;
+  distance_id: number;
+  distance_name: string;
+  gender_id: number;
+  gender_name: string;
+  age_category_id: number;
+  age_category_name: string;
+  applied_min_age: number;
+  applied_max_age: number;
+  price: number;
+  cupos: number;
+  registered_count: number;
+}
+
+// ============================================================================
+// 1. BLOQUES BASE DE CATÁLOGOS (Piezas de Lego)
+// ============================================================================
+
+// Catálogos exclusivos para el Evento (Información general)
+export interface EventMasterData {
+  eventTypes: MasterDataGrid[];
+}
+
+// Catálogos exclusivos para las Categorías (Lógica de negocio)
+export interface CategoryMasterData {
+  distances: MasterDataGrid[];
+  genders: MasterDataGrid[];
+  ageCategories: MasterAgeCategoryGrid[];
+}
+
+// ============================================================================
+// 2. PROPS DE LOS COMPONENTES (Armando las piezas)
+// ============================================================================
+
+// El registro usa TODO porque se hace en una sola pantalla
+export interface RegisterEventFormProps
+  extends EventMasterData, CategoryMasterData {}
+
+// La edición del evento SOLO necesita los tipos de evento
+export interface EditEventFormProps extends EventMasterData {
+  initialData: EditEventInput & {
+    image_url?: string | null;
+  };
+}
+
+// La tabla de categorías SOLO necesita los catálogos de categorías
+export interface EventCategoriesTableProps extends CategoryMasterData {
+  eventId: number;
+  categories: EventCategoryRow[];
 }

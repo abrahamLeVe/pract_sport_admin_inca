@@ -2,54 +2,57 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { ActionState } from "@/validations/core";
 import {
+  EditEventCategoryInput,
   editEventCategorySchema,
+  EventCategoryInput,
   eventCategorySchema,
-  FormEventState,
 } from "@/validations/events";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 export async function createEventCategoryAction(
-  event_id: number,
-  prevState: FormEventState,
+  prevState: ActionState<EventCategoryInput>,
   formData: FormData,
-): Promise<FormEventState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<EventCategoryInput>> {
+  await requireAdminSession();
 
-    const fields = {
-      distance_id: formData.get("distance_id")?.toString(),
-      gender_id: formData.get("gender_id")?.toString(),
-      age_category_id: formData.get("age_category_id")?.toString(),
-      applied_min_age: formData.get("applied_min_age")?.toString(),
-      applied_max_age: formData.get("applied_max_age")?.toString(),
-      price: formData.get("price")?.toString() || "0",
-      cupos: formData.get("cupos")?.toString() || "0",
+  const event_id = Number(formData.get("event_id"));
+
+  const fields = {
+    distance_id: Number(formData.get("distance_id")),
+    gender_id: Number(formData.get("gender_id")),
+    age_category_id: Number(formData.get("age_category_id")),
+    applied_min_age: Number(formData.get("min_age") || 0),
+    applied_max_age: Number(formData.get("max_age") || 0),
+    price: Number(formData.get("price") || 0),
+    cupos: Number(formData.get("cupos") || 0),
+  };
+
+  const validatedFields = eventCategorySchema.safeParse(fields);
+
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields, // ✅ TypeScript ahora será feliz porque todo es un Number
     };
+  }
 
-    const validatedFields = eventCategorySchema.safeParse(fields);
+  const {
+    distance_id,
+    gender_id,
+    age_category_id,
+    applied_min_age,
+    applied_max_age,
+    price,
+    cupos,
+  } = validatedFields.data;
 
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
-
-    const {
-      distance_id,
-      gender_id,
-      age_category_id,
-      applied_min_age,
-      applied_max_age,
-      price,
-      cupos,
-    } = validatedFields.data;
-
+  try {
     const overlapQuery = `
       SELECT mac.name AS conflicting_name 
       FROM event_categories ec
@@ -93,52 +96,53 @@ export async function createEventCategoryAction(
     return { success: true, message: "Categoría agregada correctamente." };
   } catch (error: any) {
     console.error("❌ Error createEventCategoryAction:", error.message);
-    return { success: false, message: "Error al guardar la categoría." };
+    return {
+      success: false,
+      message: "Error al guardar la categoría.",
+      data: fields,
+    };
   }
 }
 
 export async function updateEventCategoryAction(
-  event_id: number,
-  prevState: FormEventState,
+  prevState: ActionState<EditEventCategoryInput>,
   formData: FormData,
-): Promise<FormEventState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<EditEventCategoryInput>> {
+  await requireAdminSession();
+  const event_id = Number(formData.get("event_id"));
+  const fields = {
+    id: Number(formData.get("id")),
+    distance_id: Number(formData.get("distance_id")),
+    gender_id: Number(formData.get("gender_id")),
+    age_category_id: Number(formData.get("age_category_id")),
+    applied_min_age: Number(formData.get("min_age") || 0),
+    applied_max_age: Number(formData.get("max_age") || 0),
+    price: Number(formData.get("price") || 0),
+    cupos: Number(formData.get("cupos") || 0),
+  };
 
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      distance_id: formData.get("distance_id")?.toString(),
-      gender_id: formData.get("gender_id")?.toString(),
-      age_category_id: formData.get("age_category_id")?.toString(),
-      applied_min_age: formData.get("applied_min_age")?.toString(),
-      applied_max_age: formData.get("applied_max_age")?.toString(),
-      price: formData.get("price")?.toString() || "0",
-      cupos: formData.get("cupos")?.toString() || "0",
+  const validatedFields = editEventCategorySchema.safeParse(fields);
+
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
     };
-
-    const validatedFields = editEventCategorySchema.safeParse(fields);
-
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
-
-    const {
-      id,
-      distance_id,
-      gender_id,
-      age_category_id,
-      applied_min_age,
-      applied_max_age,
-      price,
-      cupos,
-    } = validatedFields.data;
-
+  }
+  const {
+    id,
+    distance_id,
+    gender_id,
+    age_category_id,
+    applied_min_age,
+    applied_max_age,
+    price,
+    cupos,
+  } = validatedFields.data;
+  try {
     const overlapQuery = `
       SELECT mac.name AS conflicting_name 
       FROM event_categories ec
@@ -155,7 +159,6 @@ export async function updateEventCategoryAction(
       applied_max_age,
       id,
     ]);
-
     if ((overlapResult.rowCount ?? 0) > 0) {
       const conflictingName = overlapResult.rows[0].conflicting_name;
       return {
@@ -164,7 +167,6 @@ export async function updateEventCategoryAction(
         data: fields,
       };
     }
-
     const query = `
       UPDATE event_categories SET 
         distance_id = $1, gender_id = $2, age_category_id = $3, 
@@ -182,18 +184,17 @@ export async function updateEventCategoryAction(
       id,
       event_id,
     ]);
-
     revalidatePath(`/dashboard/events/edit/${event_id}/categories`);
     return { success: true, message: "Categoría actualizada correctamente." };
   } catch (error: any) {
     console.error("❌ Error updateEventCategoryAction:", error.message);
-    return { success: false, message: "Error al actualizar." };
+    return { success: false, message: "Error al actualizar.", data: fields };
   }
 }
 
 export async function deleteEventCategoryAction(id: number, event_id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
     const deleteQuery =
       "DELETE FROM event_categories WHERE id = $1 AND event_id = $2";
     await pool.query(deleteQuery, [id, event_id]);
@@ -209,7 +210,6 @@ export async function deleteEventCategoryAction(id: number, event_id: number) {
           "No se puede eliminar. Ya existen atletas inscritos en esta categoría. Debes cancelar sus inscripciones y gestionar los reembolsos primero.",
       };
     }
-
     return { success: false, message: "No se pudo eliminar la categoría." };
   }
 }

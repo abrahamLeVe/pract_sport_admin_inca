@@ -13,10 +13,8 @@ export async function updateUserAction(
   formData: FormData,
 ): Promise<ActionState<EditUserInput>> {
   await requireAdminSession();
-
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
-
   const fields: EditUserInput = {
     id: numericId,
     name: formData.get("name")?.toString() || "",
@@ -26,25 +24,22 @@ export async function updateUserAction(
     password: formData.get("password")?.toString() || "",
   };
 
-  const validatedFields = EditUserSchema.safeParse(fields);
-
-  if (!validatedFields.success) {
-    const flattenedErrors = z.flattenError(validatedFields.error);
-    return {
-      success: false,
-      message: "Por favor, corrige los errores del formulario.",
-      zodErrors: flattenedErrors.fieldErrors,
-      data: fields,
-    };
-  }
-
-  const { id, name, email, role, status, password } = validatedFields.data;
   try {
+    const validatedFields = EditUserSchema.safeParse(fields);
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores del formulario.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: fields,
+      };
+    }
+    const { id, name, email, role, status, password } = validatedFields.data;
     const emailCheck = await pool.query(
       "SELECT id FROM users WHERE email = $1 AND id != $2",
       [email, id],
     );
-
     if ((emailCheck.rowCount ?? 0) > 0) {
       return {
         success: false,
@@ -53,7 +48,6 @@ export async function updateUserAction(
         data: fields,
       };
     }
-
     if (password && password.length > 0) {
       const hashedPassword = await bcrypt.hash(password, 10);
       const query = `
@@ -70,9 +64,8 @@ export async function updateUserAction(
       `;
       await pool.query(query, [name, email, role, status, id]);
     }
-
     revalidatePath("/dashboard/users");
-    return { success: true, message: "Usuario actualizado correctamente." };
+    return { success: true, message: "Usuario actualizado correctamente." }; //ojo
   } catch (error: any) {
     console.error("❌ Error en updateUserAction:", error.message);
     return {
@@ -88,9 +81,9 @@ export async function toggleUserStatusAction(
   currentStatus: string,
 ): Promise<ActionState> {
   await requireAdminSession();
-  const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
-
   try {
+    const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
+
     const query = `UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`;
     await pool.query(query, [nextStatus, id]);
 

@@ -13,7 +13,6 @@ export async function getBannersAction({
 }: GetBannersParams) {
   try {
     const offset = (page - 1) * limit;
-
     const bannersQuery = `
       SELECT id, title, subtitle, image_url, type, sort_order, status, start_date, end_date, created_at
       FROM banners
@@ -26,7 +25,6 @@ export async function getBannersAction({
       limit,
       offset,
     ]);
-
     const countQuery = `
       SELECT COUNT(*) FROM banners
       WHERE title ILIKE $1 OR subtitle ILIKE $1
@@ -34,7 +32,6 @@ export async function getBannersAction({
     const countResult = await pool.query(countQuery, [`%${query}%`]);
     const totalItems = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.ceil(totalItems / limit);
-
     return {
       banners: bannersResult.rows,
       totalPages: totalPages || 1,

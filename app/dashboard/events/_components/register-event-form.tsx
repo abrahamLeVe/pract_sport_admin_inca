@@ -2,6 +2,8 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -13,26 +15,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormEventState } from "@/validations/events";
+import { ActionState } from "@/validations/core";
+import { EventInput, RegisterEventFormProps } from "@/validations/events";
 import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 
-const INITIAL_STATE: FormEventState = {
+const INITIAL_STATE: ActionState<EventInput> = {
   success: false,
   message: "",
   zodErrors: null,
   data: {},
 };
-
-interface RegisterEventFormProps {
-  eventTypes: any[];
-  distances: any[];
-  genders: any[];
-  ageCategories: any[];
-}
 
 export function RegisterEventForm({
   eventTypes,
@@ -44,7 +39,9 @@ export function RegisterEventForm({
     actions.events.createEventAction,
     INITIAL_STATE,
   );
-
+  const [description, setDescription] = useState(
+    formState.data?.description ?? "",
+  );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
@@ -232,7 +229,6 @@ export function RegisterEventForm({
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -338,16 +334,18 @@ export function RegisterEventForm({
                 </div>
 
                 <Field>
-                  <FieldLabel htmlFor="description">
+                  <div className="text-sm font-medium leading-none mb-1">
                     Descripción (Opcional)
-                  </FieldLabel>
-                  <Input
-                    id="description"
-                    name="description"
-                    placeholder="Detalles de la ruta, punto de encuentro, etc..."
-                    defaultValue={formState.data?.description ?? ""}
+                  </div>
+
+                  <input type="hidden" name="description" value={description} />
+
+                  <RichTextEditor
+                    value={description}
+                    onChange={setDescription}
                     disabled={isPending}
                   />
+
                   <FormError error={formState.zodErrors?.description} />
                 </Field>
               </div>
@@ -367,6 +365,7 @@ export function RegisterEventForm({
                 <div className="bg-muted/30 p-4 rounded-lg border mb-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Select
+                      name="temp_distance_id"
                       value={newCat.distance_id}
                       onValueChange={(val) =>
                         setNewCat({ ...newCat, distance_id: val })
@@ -386,6 +385,7 @@ export function RegisterEventForm({
                     </Select>
 
                     <Select
+                      name="temp_gender_id"
                       value={newCat.gender_id}
                       onValueChange={(val) =>
                         setNewCat({ ...newCat, gender_id: val })
@@ -404,6 +404,7 @@ export function RegisterEventForm({
                     </Select>
 
                     <Select
+                      name="temp_age_category_id"
                       value={newCat.age_category_id}
                       onValueChange={(val) => {
                         const ageCat = ageCategories.find(

@@ -2,23 +2,30 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { handleImageUpload } from "@/lib/upload";
+import { ActionState } from "@/validations/core";
 import {
-  eventSchema,
+  EditEventInput,
   editEventSchema,
-  FormEventState,
+  EventInput,
+  eventSchema,
 } from "@/validations/events";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
+import { deleteFileFromS3Action } from "./storage";
 
+// ============================================================================
+// 1. CREATE EVENT
+// ============================================================================
 export async function createEventAction(
-  prevState: FormEventState,
+  prevState: ActionState<EventInput>,
   formData: FormData,
-): Promise<FormEventState> {
-  let client;
+): Promise<ActionState<EventInput>> {
+  // ✅ 1. Sesión FUERA del try
   await requireAdminSession();
 
+  let client;
   const categoriesRaw = formData.get("categories")?.toString() || "[]";
   let categoriesParsed = [];
   try {
@@ -41,12 +48,16 @@ export async function createEventAction(
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
       : 0,
-    status: formData.get("status")?.toString() || "draft",
+    status: formData.get("status") as
+      | "draft"
+      | "published"
+      | "completed"
+      | "cancelled"
+      | undefined,
     categories: categoriesParsed,
   };
 
   const validatedFields = eventSchema.safeParse(fields);
-
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
     return {
@@ -57,58 +68,39 @@ export async function createEventAction(
     };
   }
 
+  // ✅ 2. Uso del Helper para crear (Mucho más limpio)
+  const imageResult = await handleImageUpload(formData, "image", "events");
+  if (!imageResult.success) {
+    return {
+      success: false,
+      message: imageResult.message || "Error con la imagen",
+      zodErrors: {
+        image: [imageResult.message || "Error con la imagen"],
+      } as any,
+      data: fields,
+    };
+  }
+
+  const {
+    title,
+    description,
+    event_date,
+    location_name,
+    latitude,
+    longitude,
+    event_type_id,
+    status,
+    categories,
+  } = validatedFields.data;
+
   try {
-    const imageFile = formData.get("image") as File;
-    let imageUrl = null;
-    let imageKey = null;
-
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera el límite de 5MB.",
-          data: fields,
-        };
-      }
-
-      const s3Result = await uploadFileToS3Action(imageFile, "events");
-      if (!s3Result.success || !s3Result.key || !s3Result.url) {
-        throw new Error(s3Result.message || "Error al subir la imagen a S3.");
-      }
-      imageUrl = s3Result.url;
-      imageKey = s3Result.key;
-    }
-
-    const {
-      title,
-      description,
-      event_date,
-      location_name,
-      latitude,
-      longitude,
-      event_type_id,
-      status,
-      categories,
-    } = validatedFields.data;
-
     client = await pool.connect();
     await client.query("BEGIN");
 
     const eventQuery = `
-      INSERT INTO events (
-        title, description, event_date, location_name, latitude, longitude, event_type_id, status, image_url, image_key
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id
+      INSERT INTO events (title, description, event_date, location_name, latitude, longitude, event_type_id, status, image_url, image_key) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
     `;
-
     const eventResult = await client.query(eventQuery, [
       title,
       description || null,
@@ -118,16 +110,14 @@ export async function createEventAction(
       longitude,
       event_type_id,
       status,
-      imageUrl,
-      imageKey,
+      imageResult.url,
+      imageResult.key,
     ]);
 
     const newEventId = eventResult.rows[0].id;
-
     const categoryQuery = `
-      INSERT INTO event_categories (
-        event_id, distance_id, gender_id, age_category_id, applied_min_age, applied_max_age, price, cupos
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO event_categories (event_id, distance_id, gender_id, age_category_id, applied_min_age, applied_max_age, price, cupos) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
 
     for (const cat of categories) {
@@ -144,122 +134,109 @@ export async function createEventAction(
     }
 
     await client.query("COMMIT");
-
-    revalidatePath("/dashboard/events");
   } catch (error: any) {
     if (client) await client.query("ROLLBACK");
     console.error("❌ Error en createEventAction:", error.message);
     return {
       success: false,
-      message: error.message || "Ocurrió un error inesperado en el servidor.",
+      message: error.message || "Ocurrió un error inesperado.",
       data: fields,
     };
   } finally {
     if (client) client.release();
   }
 
+  revalidatePath("/dashboard/events");
   redirect("/dashboard/events");
 }
 
 export async function updateEventAction(
-  prevState: FormEventState,
+  prevState: ActionState<EditEventInput>,
   formData: FormData,
-): Promise<FormEventState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<EditEventInput>> {
+  await requireAdminSession();
 
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      title: formData.get("title")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      event_date: formData.get("event_date")?.toString() || "",
-      location_name: formData.get("location_name")?.toString() || "",
-      latitude: formData.get("latitude")
-        ? Number(formData.get("latitude"))
-        : null,
-      longitude: formData.get("longitude")
-        ? Number(formData.get("longitude"))
-        : null,
-      event_type_id: formData.get("event_type_id")
-        ? Number(formData.get("event_type_id"))
-        : 0,
-      status: formData.get("status")?.toString() || "draft",
+  const rawId = formData.get("id")?.toString();
+  const numericId = rawId ? parseInt(rawId, 10) : 0;
 
-      categories: [
-        {
-          distance_id: 1,
-          gender_id: 1,
-          age_category_id: 1,
-          applied_min_age: 0,
-          applied_max_age: 99,
-          price: 0,
-          cupos: 0,
-        },
-      ],
+  const fields = {
+    id: numericId,
+    title: formData.get("title")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    event_date: formData.get("event_date")?.toString() || "",
+    location_name: formData.get("location_name")?.toString() || "",
+    latitude: formData.get("latitude")
+      ? Number(formData.get("latitude"))
+      : null,
+    longitude: formData.get("longitude")
+      ? Number(formData.get("longitude"))
+      : null,
+    event_type_id: formData.get("event_type_id")
+      ? Number(formData.get("event_type_id"))
+      : 0,
+    status: formData.get("status") as
+      | "draft"
+      | "published"
+      | "completed"
+      | "cancelled"
+      | undefined,
+  };
+
+  const validatedFields = editEventSchema.safeParse(fields);
+
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
     };
+  }
 
-    const validatedFields = editEventSchema.safeParse(fields);
+  let newImageUrl = null;
+  let newImageKey = null;
+  const imageResult = await handleImageUpload(formData, "image", "events");
 
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
-    }
+  if (!imageResult.success) {
+    return {
+      success: false,
+      message: imageResult.message || "Error con la imagen",
+      zodErrors: {
+        image: [imageResult.message || "Error con la imagen"],
+      } as any,
+      data: fields,
+    };
+  }
 
-    const {
-      id,
-      title,
-      description,
-      event_date,
-      location_name,
-      latitude,
-      longitude,
-      event_type_id,
-      status,
-    } = validatedFields.data;
-
-    const imageFile = formData.get("image") as File;
-    let newImageUrl = null;
-    let newImageKey = null;
-
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera 5MB.",
-          data: fields,
-        };
-      }
-
-      const oldEventResult = await pool.query(
-        "SELECT image_key FROM events WHERE id = $1",
-        [id],
-      );
+  if (imageResult.url && imageResult.key) {
+    newImageUrl = imageResult.url;
+    newImageKey = imageResult.key;
+    try {
+      const oldEventQuery = "SELECT image_key FROM events WHERE id = $1";
+      const oldEventResult = await pool.query(oldEventQuery, [fields.id]);
       const oldImageKey = oldEventResult.rows[0]?.image_key;
-
-      const s3Result = await uploadFileToS3Action(imageFile, "events");
-      if (s3Result.success) {
-        newImageUrl = s3Result.url;
-        newImageKey = s3Result.key;
-
-        if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
-      } else {
-        throw new Error(s3Result.message || "Error al subir la nueva imagen.");
-      }
+      if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
+    } catch (err) {
+      console.error("⚠️ Error borrando imagen vieja:", err);
     }
+  }
 
+  const {
+    id,
+    title,
+    description,
+    event_date,
+    location_name,
+    latitude,
+    longitude,
+    event_type_id,
+    status,
+  } = validatedFields.data;
+
+  try {
+    // 3. ACTUALIZAMOS SOLO LA TABLA EVENTS (Nada de BEGIN/COMMIT)
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE events SET 
@@ -303,20 +280,19 @@ export async function updateEventAction(
     revalidatePath("/dashboard/events");
   } catch (error: any) {
     console.error("❌ Error en updateEventAction:", error.message);
-    return { success: false, message: error.message || "Error al actualizar." };
+    return {
+      success: false,
+      message: error.message || "Error al actualizar.",
+      data: fields,
+    };
   }
 
   redirect("/dashboard/events");
 }
 
-// =========================================================
-// LAS ACCIONES DE BORRAR Y CAMBIAR ESTADO SIGUEN EXACTAMENTE IGUAL
-// =========================================================
-
 export async function deleteEventAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
-
     const getQuery = "SELECT image_key FROM events WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const eventRecord = result.rows[0];
@@ -346,7 +322,7 @@ export async function deleteEventAction(id: number) {
 export async function toggleEventStatusAction(
   id: number,
   currentStatus: string,
-) {
+): Promise<ActionState> {
   try {
     const nextStatus = currentStatus === "published" ? "draft" : "published";
 

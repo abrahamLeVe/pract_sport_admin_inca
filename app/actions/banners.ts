@@ -2,29 +2,27 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { handleImageUpload } from "@/lib/upload";
 import {
   BannerInput,
   bannerSchema,
   EditBannerInput,
   editBannerSchema,
 } from "@/validations/banners";
+import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
-import { ActionState } from "@/validations/core";
-import { handleImageUpload } from "@/lib/upload";
+import { deleteFileFromS3Action } from "./storage";
 
 export async function createBannerAction(
   prevState: ActionState<BannerInput>,
   formData: FormData,
 ): Promise<ActionState<BannerInput>> {
   await requireAdminSession();
-
   const rawEventId = formData.get("event_id")?.toString();
   const eventIdNum =
     rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
-
   const fields: BannerInput = {
     title: formData.get("title")?.toString() || "",
     subtitle: formData.get("subtitle")?.toString() || "",
@@ -36,25 +34,20 @@ export async function createBannerAction(
     start_date: formData.get("start_date")?.toString() || undefined,
     end_date: formData.get("end_date")?.toString() || undefined,
     event_id: eventIdNum,
-
     sort_order: 0,
   };
-
-  const validatedFields = bannerSchema.safeParse(fields);
-
-  if (!validatedFields.success) {
-    const flattenedErrors = z.flattenError(validatedFields.error);
-    return {
-      success: false,
-      message: "Por favor, corrige los errores del formulario.",
-      zodErrors: flattenedErrors.fieldErrors,
-      data: fields,
-    };
-  }
-
   try {
+    const validatedFields = bannerSchema.safeParse(fields);
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores del formulario.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: fields,
+      };
+    }
     const imageResult = await handleImageUpload(formData, "image", "banners");
-
     if (!imageResult.success) {
       return {
         success: false,
@@ -62,7 +55,6 @@ export async function createBannerAction(
         data: fields,
       };
     }
-
     const imageUrl = imageResult.url;
     const imageKey = imageResult.key;
     const {
@@ -81,7 +73,6 @@ export async function createBannerAction(
         title, subtitle, image_url, image_key, link_url, type, sort_order, status, start_date, event_id, end_date
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
     `;
-
     await pool.query(query, [
       title,
       subtitle || null,
@@ -95,16 +86,15 @@ export async function createBannerAction(
       event_id,
       end_date ? new Date(end_date) : null,
     ]);
-
     revalidatePath("/dashboard/banners");
   } catch (error: any) {
     console.error("❌ Error en createBannerAction:", error.message);
     return {
       success: false,
       message: error.message || "Ocurrió un error inesperado en el servidor.",
+      data: fields,
     };
   }
-
   redirect("/dashboard/banners");
 }
 
@@ -112,15 +102,14 @@ export async function updateBannerAction(
   prevState: ActionState<EditBannerInput>,
   formData: FormData,
 ): Promise<ActionState<EditBannerInput>> {
+  await requireAdminSession();
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
   const rawEventId = formData.get("event_id")?.toString();
   const eventIdNum =
     rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
-
   const rawSortOrder = formData.get("sort_order")?.toString();
   const sortOrderNum = rawSortOrder ? parseInt(rawSortOrder, 10) : 0;
-
   const fields: EditBannerInput = {
     id: numericId,
     title: formData.get("title")?.toString() || "",
@@ -135,15 +124,10 @@ export async function updateBannerAction(
     end_date: formData.get("end_date")?.toString() || "",
     event_id: eventIdNum,
   };
-
   try {
-    await requireAdminSession();
-
     let newImageUrl = null;
     let newImageKey = null;
-
     const imageResult = await handleImageUpload(formData, "image", "banners");
-
     if (!imageResult.success) {
       return {
         success: false,
@@ -154,22 +138,17 @@ export async function updateBannerAction(
         data: fields,
       };
     }
-
     if (imageResult.url && imageResult.key) {
       newImageUrl = imageResult.url;
       newImageKey = imageResult.key;
-
       const oldBannerQuery = "SELECT image_key FROM banners WHERE id = $1";
       const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
       const oldImageKey = oldBannerResult.rows[0]?.image_key;
-
       if (oldImageKey) {
         await deleteFileFromS3Action(oldImageKey);
       }
     }
-
     const validatedFields = editBannerSchema.safeParse(fields);
-
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
       return {
@@ -179,7 +158,6 @@ export async function updateBannerAction(
         data: fields,
       };
     }
-
     const {
       id,
       title,
@@ -192,7 +170,6 @@ export async function updateBannerAction(
       end_date,
       event_id,
     } = validatedFields.data;
-
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE banners SET 
@@ -205,13 +182,13 @@ export async function updateBannerAction(
         subtitle || null,
         link_url || null,
         type,
-        sort_order, // $5: sort_order
-        status, // $6: status
-        event_id, // $7: event_id (🔥 Agregado en su lugar)
-        start_date ? new Date(start_date) : null, // $8: start_date
-        end_date ? new Date(end_date) : null, // $9: end_date
-        newImageUrl, // $10: image_url
-        newImageKey, // $11: image_key
+        sort_order,
+        status,
+        event_id,
+        start_date ? new Date(start_date) : null,
+        end_date ? new Date(end_date) : null,
+        newImageUrl,
+        newImageKey,
         id,
       ]);
     } else {
@@ -234,36 +211,33 @@ export async function updateBannerAction(
         id,
       ]);
     }
-
     revalidatePath("/dashboard/banners");
   } catch (error: any) {
     console.error("❌ Error en updateBannerAction:", error.message);
-    return { success: false, message: error.message || "Error al actualizar." };
+    return {
+      success: false,
+      message: error.message || "Error al actualizar.",
+      data: fields,
+    };
   }
-
   redirect("/dashboard/banners");
 }
 
 export async function deleteBannerAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
-
     const getQuery = "SELECT image_key FROM banners WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const banner = result.rows[0];
-
     if (!banner) {
       return { success: false, message: "El banner no existe." };
     }
     if (banner.image_key) {
       await deleteFileFromS3Action(banner.image_key);
     }
-
     const deleteQuery = "DELETE FROM banners WHERE id = $1";
     await pool.query(deleteQuery, [id]);
-
     revalidatePath("/dashboard/banners");
-
     return { success: true, message: "Banner eliminado correctamente." };
   } catch (error: any) {
     console.error("❌ Error en deleteBannerAction:", error.message);
@@ -279,19 +253,15 @@ export async function toggleBannerStatusAction(
   currentStatus: string,
 ): Promise<ActionState> {
   await requireAdminSession();
-
-  const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
-
   try {
+    const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
     const query = `
       UPDATE banners 
       SET status = $1, updated_at = NOW() 
       WHERE id = $2
     `;
     await pool.query(query, [nextStatus, id]);
-
     revalidatePath("/dashboard/banners");
-
     return {
       success: true,
       message: `Banner ${nextStatus === "activo" ? "activado" : "desactivado"} correctamente.`,

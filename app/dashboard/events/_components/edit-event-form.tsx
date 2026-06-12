@@ -2,6 +2,7 @@
 
 import { updateEventAction } from "@/app/actions/events";
 import { FormError } from "@/components/form-error";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -13,15 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditEventFormProps } from "@/validations/events";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
-
-interface EditEventFormProps {
-  initialData: any; // Usamos any para flexibilidad con la DB
-  eventTypes: any[]; // Recibimos los tipos de evento de la base de datos
-}
 
 export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
   const formatDateTimeLocal = (dateInput?: Date | string) => {
@@ -53,9 +50,9 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
     updateEventAction,
     initialState,
   );
-
+  const [description, setDescription] = useState(initialState.data.description);
   const [imagePreview, setImagePreview] = useState<string | null>(
-    initialData.image_url,
+    initialData.image_url ?? null,
   );
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
@@ -79,7 +76,7 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
       setImagePreview(URL.createObjectURL(file));
     } else {
       setSavedFile(null);
-      setImagePreview(initialData.image_url);
+      setImagePreview(initialData.image_url ?? null);
     }
   };
 
@@ -147,7 +144,6 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -253,16 +249,18 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                 </div>
 
                 <Field>
-                  <FieldLabel htmlFor="description">
+                  <div className="text-sm font-medium leading-none mb-1">
                     Descripción (Opcional)
-                  </FieldLabel>
-                  <Input
-                    id="description"
-                    name="description"
-                    placeholder="Detalles de la ruta, punto de encuentro, etc..."
-                    defaultValue={formState.data?.description ?? ""}
+                  </div>
+
+                  <input type="hidden" name="description" value={description} />
+
+                  <RichTextEditor
+                    value={description}
+                    onChange={setDescription}
                     disabled={isPending}
                   />
+
                   <FormError error={formState.zodErrors?.description} />
                 </Field>
 
