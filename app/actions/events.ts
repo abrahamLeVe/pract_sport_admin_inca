@@ -62,7 +62,7 @@ export async function createEventAction(
     categories: categoriesParsed,
   };
 
-  // 3. AHORA intentamos parsear (Si falla, devolvemos fields y no se borra nada)
+  // 3. Validamos JSON
   let routeGeojsonParsed = null;
   if (routeGeojsonRaw.trim() !== "") {
     try {
@@ -70,9 +70,8 @@ export async function createEventAction(
     } catch (e) {
       return {
         success: false,
-        message:
-          "El código de la Ruta GeoJSON es inválido. Asegúrate de copiarlo completo sin omitir llaves o comillas.",
-        data: fields, // ✅ El usuario recupera todos sus datos intactos
+        message: "El código de la Ruta GeoJSON es inválido.",
+        data: fields, // ✅ No se pierde nada
       };
     }
   }

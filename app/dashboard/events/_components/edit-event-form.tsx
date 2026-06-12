@@ -19,6 +19,7 @@ import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
+import { RoutePreviewMap } from "./route-preview-map";
 
 export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
   const formatDateTimeLocal = (dateInput?: Date | string) => {
@@ -50,6 +51,12 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
   const [formState, formAction, isPending] = useActionState(
     updateEventAction,
     initialState,
+  );
+
+  const [geojsonInput, setGeojsonInput] = useState(
+    initialData.route_geojson
+      ? JSON.stringify(initialData.route_geojson, null, 2)
+      : "",
   );
   const [description, setDescription] = useState(initialState.data.description);
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -249,32 +256,33 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                   </Field>
                 </div>
 
-                <Field>
+                <Field className="md:col-span-2">
+                  {" "}
+                  {/* Si estás en un grid, haz que ocupe todo el ancho */}
                   <FieldLabel htmlFor="route_geojson">
                     Ruta del Evento (GeoJSON)
                   </FieldLabel>
-                  <textarea
-                    id="route_geojson"
-                    name="route_geojson"
-                    className="w-full p-3 border rounded-md font-mono text-xs"
-                    rows={6}
-                    placeholder='{
-                                      "type": "Feature",
-                                      "geometry": {
-                                        "type": "LineString",
-                                        "coordinates": [
-                                          [-75.19589, -12.05004],
-                                          ...,
-                                          [-75.1924, -12.03894]
-                                        ]
-                                      }
-                                    }'
-                    defaultValue={
-                      formState.data?.route_geojson
-                        ? JSON.stringify(formState.data.route_geojson, null, 2)
-                        : ""
-                    }
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] mt-2">
+                    {/* COLUMNA IZQUIERDA: EL TEXTAREA */}
+                    <textarea
+                      id="route_geojson"
+                      name="route_geojson"
+                      className="w-full h-full p-3 border rounded-md font-mono text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder='{"type": "Feature", ...}'
+                      value={geojsonInput}
+                      onChange={(e) => setGeojsonInput(e.target.value)}
+                      disabled={isPending}
+                    />
+
+                    {/* COLUMNA DERECHA: EL MAPA EN VIVO */}
+                    <div className="w-full h-full border rounded-md overflow-hidden bg-background">
+                      <RoutePreviewMap geoJsonString={geojsonInput} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Puedes crear tu ruta en Google My Maps, exportarla a KML y
+                    convertirla a GeoJSON.
+                  </p>
                 </Field>
 
                 <Field>
