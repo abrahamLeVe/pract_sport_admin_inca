@@ -332,6 +332,33 @@ export function RegisterEventForm({
                     <FormError error={formState.zodErrors?.longitude} />
                   </Field>
                 </div>
+                <Field>
+                  <FieldLabel htmlFor="route_geojson">
+                    Ruta del Evento (GeoJSON)
+                  </FieldLabel>
+                  <textarea
+                    id="route_geojson"
+                    name="route_geojson"
+                    className="w-full p-3 border rounded-md font-mono text-xs"
+                    rows={6}
+                    placeholder='{
+                      "type": "Feature",
+                      "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                          [-75.19589, -12.05004],
+                          ...,
+                          [-75.1924, -12.03894]
+                        ]
+                      }
+                    }'
+                    defaultValue={
+                      formState.data?.route_geojson
+                        ? JSON.stringify(formState.data.route_geojson, null, 2)
+                        : ""
+                    }
+                  />
+                </Field>
 
                 <Field>
                   <div className="text-sm font-medium leading-none mb-1">

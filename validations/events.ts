@@ -48,6 +48,7 @@ export const eventSchema = z.object({
     .max(180, "La longitud debe ser menor a 180")
     .optional()
     .nullable(),
+  route_geojson: z.any().optional().nullable(),
   event_type_id: z.coerce.number().min(1, "Selecciona un tipo de evento."),
   status: z
     .enum(["draft", "published", "completed", "cancelled"])

@@ -69,6 +69,7 @@ export async function getEventByIdAction(id: number) {
         location_name, 
         latitude, 
         longitude, 
+        route_geojson,
         event_type_id, 
         status, 
         image_url

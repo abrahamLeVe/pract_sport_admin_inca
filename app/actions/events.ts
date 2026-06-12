@@ -22,9 +22,7 @@ export async function createEventAction(
   prevState: ActionState<EventInput>,
   formData: FormData,
 ): Promise<ActionState<EventInput>> {
-  // ✅ 1. Sesión FUERA del try
   await requireAdminSession();
-
   let client;
   const categoriesRaw = formData.get("categories")?.toString() || "[]";
   let categoriesParsed = [];
@@ -34,6 +32,10 @@ export async function createEventAction(
     categoriesParsed = [];
   }
 
+  // 1. Extraemos el texto crudo del GeoJSON
+  const routeGeojsonRaw = formData.get("route_geojson")?.toString() || "";
+
+  // 2. Armamos LOS FIELDS PRIMERO (usando el texto crudo para route_geojson)
   const fields = {
     title: formData.get("title")?.toString() || "",
     description: formData.get("description")?.toString() || "",
@@ -45,6 +47,9 @@ export async function createEventAction(
     longitude: formData.get("longitude")
       ? Number(formData.get("longitude"))
       : null,
+
+    route_geojson: routeGeojsonRaw, // ✅ Se queda como string para React
+
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
       : 0,
@@ -57,6 +62,22 @@ export async function createEventAction(
     categories: categoriesParsed,
   };
 
+  // 3. AHORA intentamos parsear (Si falla, devolvemos fields y no se borra nada)
+  let routeGeojsonParsed = null;
+  if (routeGeojsonRaw.trim() !== "") {
+    try {
+      routeGeojsonParsed = JSON.parse(routeGeojsonRaw);
+    } catch (e) {
+      return {
+        success: false,
+        message:
+          "El código de la Ruta GeoJSON es inválido. Asegúrate de copiarlo completo sin omitir llaves o comillas.",
+        data: fields, // ✅ El usuario recupera todos sus datos intactos
+      };
+    }
+  }
+
+  // 4. Validamos con Zod (Zod acepta el string porque le pusimos z.any())
   const validatedFields = eventSchema.safeParse(fields);
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
@@ -64,11 +85,10 @@ export async function createEventAction(
       success: false,
       message: "Por favor, corrige los errores del formulario.",
       zodErrors: flattenedErrors.fieldErrors,
-      data: fields,
+      data: fields, // ✅ El usuario recupera todos sus datos intactos
     };
   }
 
-  // ✅ 2. Uso del Helper para crear (Mucho más limpio)
   const imageResult = await handleImageUpload(formData, "image", "events");
   if (!imageResult.success) {
     return {
@@ -98,8 +118,8 @@ export async function createEventAction(
     await client.query("BEGIN");
 
     const eventQuery = `
-      INSERT INTO events (title, description, event_date, location_name, latitude, longitude, event_type_id, status, image_url, image_key) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
+      INSERT INTO events (title, description, event_date, location_name, latitude, longitude, route_geojson, event_type_id, status, image_url, image_key) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
     `;
     const eventResult = await client.query(eventQuery, [
       title,
@@ -108,6 +128,7 @@ export async function createEventAction(
       location_name,
       latitude,
       longitude,
+      routeGeojsonParsed, // 🔥 ¡AQUÍ mandamos el objeto JSON parseado a PostgreSQL!
       event_type_id,
       status,
       imageResult.url,
@@ -159,6 +180,10 @@ export async function updateEventAction(
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
 
+  // 1. Extraemos crudo
+  const routeGeojsonRaw = formData.get("route_geojson")?.toString() || "";
+
+  // 2. Armamos fields con el crudo
   const fields = {
     id: numericId,
     title: formData.get("title")?.toString() || "",
@@ -171,6 +196,9 @@ export async function updateEventAction(
     longitude: formData.get("longitude")
       ? Number(formData.get("longitude"))
       : null,
+
+    route_geojson: routeGeojsonRaw, // ✅ Se queda como string
+
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
       : 0,
@@ -182,6 +210,21 @@ export async function updateEventAction(
       | undefined,
   };
 
+  // 3. Validamos JSON
+  let routeGeojsonParsed = null;
+  if (routeGeojsonRaw.trim() !== "") {
+    try {
+      routeGeojsonParsed = JSON.parse(routeGeojsonRaw);
+    } catch (e) {
+      return {
+        success: false,
+        message: "El código de la Ruta GeoJSON es inválido.",
+        data: fields, // ✅ No se pierde nada
+      };
+    }
+  }
+
+  // 4. Validamos Zod
   const validatedFields = editEventSchema.safeParse(fields);
 
   if (!validatedFields.success) {
@@ -236,13 +279,12 @@ export async function updateEventAction(
   } = validatedFields.data;
 
   try {
-    // 3. ACTUALIZAMOS SOLO LA TABLA EVENTS (Nada de BEGIN/COMMIT)
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE events SET 
           title = $1, description = $2, event_date = $3, location_name = $4, 
-          latitude = $5, longitude = $6, event_type_id = $7, status = $8, image_url = $9, image_key = $10, updated_at = NOW()
-        WHERE id = $11
+          latitude = $5, longitude = $6, route_geojson = $7, event_type_id = $8, status = $9, image_url = $10, image_key = $11, updated_at = NOW()
+        WHERE id = $12
       `;
       await pool.query(query, [
         title,
@@ -251,6 +293,7 @@ export async function updateEventAction(
         location_name,
         latitude,
         longitude,
+        routeGeojsonParsed, // 🔥 Mandamos el objeto parseado a BD
         event_type_id,
         status,
         newImageUrl,
@@ -261,8 +304,8 @@ export async function updateEventAction(
       const query = `
         UPDATE events SET 
           title = $1, description = $2, event_date = $3, location_name = $4, 
-          latitude = $5, longitude = $6, event_type_id = $7, status = $8, updated_at = NOW()
-        WHERE id = $9
+          latitude = $5, longitude = $6, route_geojson = $7, event_type_id = $8, status = $9, updated_at = NOW()
+        WHERE id = $10
       `;
       await pool.query(query, [
         title,
@@ -271,12 +314,12 @@ export async function updateEventAction(
         location_name,
         latitude,
         longitude,
+        routeGeojsonParsed, // 🔥 Mandamos el objeto parseado a BD
         event_type_id,
         status,
         id,
       ]);
     }
-
     revalidatePath("/dashboard/events");
   } catch (error: any) {
     console.error("❌ Error en updateEventAction:", error.message);

@@ -212,6 +212,7 @@ CREATE TABLE events (
     location_name VARCHAR(255) NOT NULL,
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
+    route_geojson JSONB,
     -- 🔥 TU MEJORA APLICADA: Ahora es una llave foránea
     event_type_id INTEGER REFERENCES master_event_types(id) ON DELETE RESTRICT,
     image_url TEXT,
