@@ -29,7 +29,6 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
     return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   };
 
-  // 🔥 Adaptado a los nuevos nombres de columnas de la BD
   const initialState = {
     success: false,
     message: "",
@@ -262,7 +261,7 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                   <FieldLabel htmlFor="route_geojson">
                     Ruta del Evento (GeoJSON)
                   </FieldLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] mt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-75 mt-2">
                     {/* COLUMNA IZQUIERDA: EL TEXTAREA */}
                     <textarea
                       id="route_geojson"

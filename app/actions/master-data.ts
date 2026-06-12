@@ -2,18 +2,23 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { ActionState } from "@/validations/core";
 import {
+  AgeCategoryInput,
   ageCategorySchema,
+  DistanceInput,
   distanceSchema,
+  EditAgeCategoryInput,
   editAgeCategorySchema,
+  EditDistanceInput,
   editDistanceSchema,
+  EditEventTypeInput,
   editEventTypeSchema,
+  EditGenderInput,
   editGenderSchema,
+  EventTypeInput,
   eventTypeSchema,
-  FormAgeCategoryState,
-  FormDistanceState,
-  FormEventTypeState,
-  FormGenderState,
+  GenderInput,
   genderSchema,
 } from "@/validations/master-data";
 import { revalidatePath } from "next/cache";
@@ -22,13 +27,12 @@ import z from "zod";
 const REVALIDATE_ROUTE = "/dashboard/race-settings";
 
 export async function createMasterDistanceAction(
-  prevState: FormDistanceState,
+  prevState: ActionState<DistanceInput>,
   formData: FormData,
-): Promise<FormDistanceState> {
+): Promise<ActionState<DistanceInput>> {
+  await requireAdminSession();
+  const fields = { name: formData.get("name")?.toString() || "" };
   try {
-    await requireAdminSession();
-
-    const fields = { name: formData.get("name")?.toString() || "" };
     const validatedFields = distanceSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -62,22 +66,24 @@ export async function createMasterDistanceAction(
     return { success: true, message: "Distancia creada correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterDistanceAction:", error.message);
-    return { success: false, message: "Ocurrió un error inesperado." };
+    return {
+      success: false,
+      message: "Ocurrió un error inesperado.",
+      data: fields,
+    };
   }
 }
 
 export async function updateMasterDistanceAction(
-  prevState: FormDistanceState,
+  prevState: ActionState<EditDistanceInput>,
   formData: FormData,
-): Promise<FormDistanceState> {
+): Promise<ActionState<EditDistanceInput>> {
+  await requireAdminSession();
+  const fields = {
+    id: Number(formData.get("id") || ""),
+    name: formData.get("name")?.toString() || "",
+  };
   try {
-    await requireAdminSession();
-
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-    };
-
     const validatedFields = editDistanceSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -114,13 +120,13 @@ export async function updateMasterDistanceAction(
     return { success: true, message: "Distancia actualizada." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterDistanceAction:", error.message);
-    return { success: false, message: "Error al actualizar." };
+    return { success: false, message: "Error al actualizar.", data: fields };
   }
 }
 
 export async function deleteMasterDistanceAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
     await pool.query("DELETE FROM master_distances WHERE id = $1", [id]);
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Distancia eliminada." };
@@ -134,13 +140,12 @@ export async function deleteMasterDistanceAction(id: number) {
 }
 
 export async function createMasterGenderAction(
-  prevState: FormGenderState,
+  prevState: ActionState<GenderInput>,
   formData: FormData,
-): Promise<FormGenderState> {
+): Promise<ActionState<GenderInput>> {
+  await requireAdminSession();
+  const fields = { name: formData.get("name")?.toString() || "" };
   try {
-    await requireAdminSession();
-
-    const fields = { name: formData.get("name")?.toString() || "" };
     const validatedFields = genderSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -173,21 +178,25 @@ export async function createMasterGenderAction(
     return { success: true, message: "Género creado correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterGenderAction:", error.message);
-    return { success: false, message: "Ocurrió un error inesperado." };
+    return {
+      success: false,
+      message: "Ocurrió un error inesperado.",
+      data: fields,
+    };
   }
 }
 
 export async function updateMasterGenderAction(
-  prevState: FormGenderState,
+  prevState: ActionState<EditGenderInput>,
   formData: FormData,
-): Promise<FormGenderState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<EditGenderInput>> {
+  await requireAdminSession();
 
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-    };
+  const fields = {
+    id: Number(formData.get("id") || ""),
+    name: formData.get("name")?.toString() || "",
+  };
+  try {
     const validatedFields = editGenderSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -223,13 +232,13 @@ export async function updateMasterGenderAction(
     return { success: true, message: "Género actualizado." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterGenderAction:", error.message);
-    return { success: false, message: "Error al actualizar." };
+    return { success: false, message: "Error al actualizar.", data: fields };
   }
 }
 
 export async function deleteMasterGenderAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
     await pool.query("DELETE FROM master_genders WHERE id = $1", [id]);
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Género eliminado." };
@@ -247,18 +256,16 @@ export async function deleteMasterGenderAction(id: number) {
 // ============================================================================
 
 export async function createMasterAgeCategoryAction(
-  prevState: FormAgeCategoryState,
+  prevState: ActionState<AgeCategoryInput>,
   formData: FormData,
-): Promise<FormAgeCategoryState> {
+): Promise<ActionState<AgeCategoryInput>> {
+  await requireAdminSession();
+  const fields = {
+    name: formData.get("name")?.toString() || "",
+    default_min_age: Number(formData.get("default_min_age") || 0),
+    default_max_age: Number(formData.get("default_max_age") || 0),
+  };
   try {
-    await requireAdminSession();
-
-    const fields = {
-      name: formData.get("name")?.toString() || "",
-      default_min_age: formData.get("default_min_age"),
-      default_max_age: formData.get("default_max_age"),
-    };
-
     const validatedFields = ageCategorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -313,24 +320,27 @@ export async function createMasterAgeCategoryAction(
     return { success: true, message: "Categoría creada correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterAgeCategoryAction:", error.message);
-    return { success: false, message: "Ocurrió un error inesperado." };
+    return {
+      success: false,
+      message: "Ocurrió un error inesperado.",
+      data: fields,
+    };
   }
 }
 
 export async function updateMasterAgeCategoryAction(
-  prevState: FormAgeCategoryState,
+  prevState: ActionState<EditAgeCategoryInput>,
   formData: FormData,
-): Promise<FormAgeCategoryState> {
+): Promise<ActionState<EditAgeCategoryInput>> {
+  await requireAdminSession();
+
+  const fields = {
+    id: Number(formData.get("id") || ""),
+    name: formData.get("name")?.toString() || "",
+    default_min_age: Number(formData.get("default_min_age") || 0),
+    default_max_age: Number(formData.get("default_max_age") || 0),
+  };
   try {
-    await requireAdminSession();
-
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-      default_min_age: formData.get("default_min_age"),
-      default_max_age: formData.get("default_max_age"),
-    };
-
     const validatedFields = editAgeCategorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -385,13 +395,13 @@ export async function updateMasterAgeCategoryAction(
     return { success: true, message: "Categoría actualizada." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterAgeCategoryAction:", error.message);
-    return { success: false, message: "Error al actualizar." };
+    return { success: false, message: "Error al actualizar.", data: fields };
   }
 }
 
 export async function deleteMasterAgeCategoryAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
     await pool.query("DELETE FROM master_age_categories WHERE id = $1", [id]);
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Categoría eliminada." };
@@ -409,13 +419,12 @@ export async function deleteMasterAgeCategoryAction(id: number) {
 // ============================================================================
 
 export async function createMasterEventTypeAction(
-  prevState: FormEventTypeState,
+  prevState: ActionState<EventTypeInput>,
   formData: FormData,
-): Promise<FormEventTypeState> {
+): Promise<ActionState<EventTypeInput>> {
+  await requireAdminSession();
+  const fields = { name: formData.get("name")?.toString() || "" };
   try {
-    await requireAdminSession();
-
-    const fields = { name: formData.get("name")?.toString() || "" };
     const validatedFields = eventTypeSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -450,21 +459,25 @@ export async function createMasterEventTypeAction(
     return { success: true, message: "Tipo de evento creado correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterEventTypeAction:", error.message);
-    return { success: false, message: "Ocurrió un error inesperado." };
+    return {
+      success: false,
+      message: "Ocurrió un error inesperado.",
+      data: fields,
+    };
   }
 }
 
 export async function updateMasterEventTypeAction(
-  prevState: FormEventTypeState,
+  prevState: ActionState<EditEventTypeInput>,
   formData: FormData,
-): Promise<FormEventTypeState> {
-  try {
-    await requireAdminSession();
+): Promise<ActionState<EditEventTypeInput>> {
+  await requireAdminSession();
 
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-    };
+  const fields = {
+    id: Number(formData.get("id") || ""),
+    name: formData.get("name")?.toString() || "",
+  };
+  try {
     const validatedFields = editEventTypeSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -500,13 +513,13 @@ export async function updateMasterEventTypeAction(
     return { success: true, message: "Tipo de evento actualizado." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterEventTypeAction:", error.message);
-    return { success: false, message: "Error al actualizar." };
+    return { success: false, message: "Error al actualizar.", data: fields };
   }
 }
 
 export async function deleteMasterEventTypeAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
     await pool.query("DELETE FROM master_event_types WHERE id = $1", [id]);
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Tipo de evento eliminado." };

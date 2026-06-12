@@ -25,15 +25,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EventType } from "@/validations/master-data";
+import { EditEventTypeInput } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 
-export default function EventTypesTab({ data }: { data: EventType[] }) {
+export default function EventTypesTab({
+  data,
+}: {
+  data: EditEventTypeInput[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<EventType | null>(null);
+  const [editingItem, setEditingItem] = useState<EditEventTypeInput | null>(
+    null,
+  );
 
   const handleAction = async (prevState: any, formData: FormData) => {
     if (formData.get("id")) {
@@ -61,7 +67,7 @@ export default function EventTypesTab({ data }: { data: EventType[] }) {
     }
   }, [state]);
 
-  const openDialog = (item?: EventType) => {
+  const openDialog = (item?: EditEventTypeInput) => {
     setEditingItem(item || null);
     setIsOpen(true);
   };

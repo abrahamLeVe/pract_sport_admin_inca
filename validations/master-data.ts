@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 // ============================================================================
 // 1. DISTANCIAS (Master Distances)
 // ============================================================================
@@ -13,18 +12,11 @@ export const editDistanceSchema = distanceSchema.extend({
   id: z.coerce.number(),
 });
 
-export interface FormDistanceState {
-  success: boolean;
-  message: string;
-  zodErrors?: Record<string, string[]> | null;
-  data?: Record<string, any>;
-}
+export type DistanceInput = z.infer<typeof distanceSchema>;
+export type EditDistanceInput = z.infer<typeof editDistanceSchema>;
 
 export interface EditDistanceFormProps {
-  initialData: {
-    id: number;
-    name: string;
-  };
+  initialData: EditDistanceInput; // 🔥 Zod infiere los campos automáticamente
 }
 
 // ============================================================================
@@ -38,18 +30,11 @@ export const editGenderSchema = genderSchema.extend({
   id: z.coerce.number(),
 });
 
-export interface FormGenderState {
-  success: boolean;
-  message: string;
-  zodErrors?: Record<string, string[]> | null;
-  data?: Record<string, any>;
-}
+export type GenderInput = z.infer<typeof genderSchema>;
+export type EditGenderInput = z.infer<typeof editGenderSchema>;
 
 export interface EditGenderFormProps {
-  initialData: {
-    id: number;
-    name: string;
-  };
+  initialData: EditGenderInput;
 }
 
 // ============================================================================
@@ -58,7 +43,6 @@ export interface EditGenderFormProps {
 export const ageCategorySchema = z
   .object({
     name: z.string().min(2, "El nombre de la categoría es obligatorio."),
-    // Cambiamos 'invalid_type_error' por 'message'
     default_min_age: z.coerce
       .number({ message: "Debe ser un número" })
       .min(0, "La edad no puede ser negativa."),
@@ -66,7 +50,6 @@ export const ageCategorySchema = z
       .number({ message: "Debe ser un número" })
       .min(0, "La edad no puede ser negativa."),
   })
-  // VALIDACIÓN INTELIGENTE: Verifica que la edad máxima sea mayor a la mínima
   .refine((data) => data.default_max_age >= data.default_min_age, {
     message: "La edad máxima debe ser mayor o igual a la mínima.",
     path: ["default_max_age"],
@@ -76,24 +59,15 @@ export const editAgeCategorySchema = ageCategorySchema.extend({
   id: z.coerce.number(),
 });
 
-export interface FormAgeCategoryState {
-  success: boolean;
-  message: string;
-  zodErrors?: Record<string, string[]> | null;
-  data?: Record<string, any>;
-}
+export type AgeCategoryInput = z.infer<typeof ageCategorySchema>;
+export type EditAgeCategoryInput = z.infer<typeof editAgeCategorySchema>;
 
 export interface EditAgeCategoryFormProps {
-  initialData: {
-    id: number;
-    name: string;
-    default_min_age: number;
-    default_max_age: number;
-  };
+  initialData: EditAgeCategoryInput;
 }
 
 // ============================================================================
-// 2. TIPOS DE EVENTO (Master Event Types)
+// 4. TIPOS DE EVENTO (Master Event Types)
 // ============================================================================
 export const eventTypeSchema = z.object({
   name: z.string().min(2, "El nombre del tipo de evento es obligatorio."),
@@ -103,21 +77,9 @@ export const editEventTypeSchema = eventTypeSchema.extend({
   id: z.coerce.number(),
 });
 
-export interface FormEventTypeState {
-  success: boolean;
-  message: string;
-  zodErrors?: Record<string, string[]> | null;
-  data?: Record<string, any>;
-}
+export type EventTypeInput = z.infer<typeof eventTypeSchema>;
+export type EditEventTypeInput = z.infer<typeof editEventTypeSchema>;
 
 export interface EditEventTypeFormProps {
-  initialData: {
-    id: number;
-    name: string;
-  };
+  initialData: EditEventTypeInput;
 }
-
-export type Gender = z.infer<typeof editGenderSchema>;
-export type AgeCategory = z.infer<typeof editAgeCategorySchema>;
-export type Distance = z.infer<typeof editDistanceSchema>;
-export type EventType = z.infer<typeof editEventTypeSchema>;

@@ -25,15 +25,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Gender } from "@/validations/master-data";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { EditGenderInput } from "@/validations/master-data";
+import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 
-export default function GendersTab({ data }: { data: Gender[] }) {
+export default function GendersTab({ data }: { data: EditGenderInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Gender | null>(null);
+  const [editingItem, setEditingItem] = useState<EditGenderInput | null>(null);
 
   const handleAction = async (prevState: any, formData: FormData) => {
     if (formData.get("id")) {
@@ -60,7 +60,7 @@ export default function GendersTab({ data }: { data: Gender[] }) {
     }
   }, [state]);
 
-  const openDialog = (item?: Gender) => {
+  const openDialog = (item?: EditGenderInput) => {
     setEditingItem(item || null);
     setIsOpen(true);
   };

@@ -25,15 +25,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AgeCategory } from "@/validations/master-data";
+import { EditAgeCategoryInput } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 
-export default function AgesTab({ data }: { data: AgeCategory[] }) {
+export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<AgeCategory | null>(null);
+  const [editingItem, setEditingItem] = useState<EditAgeCategoryInput | null>(
+    null,
+  );
 
   const handleAction = async (prevState: any, formData: FormData) => {
     if (formData.get("id")) {
@@ -60,7 +62,7 @@ export default function AgesTab({ data }: { data: AgeCategory[] }) {
     }
   }, [state]);
 
-  const openDialog = (item?: AgeCategory) => {
+  const openDialog = (item?: EditAgeCategoryInput) => {
     setEditingItem(item || null);
     setIsOpen(true);
   };

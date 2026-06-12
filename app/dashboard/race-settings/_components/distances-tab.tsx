@@ -25,15 +25,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Distance } from "@/validations/master-data";
+import { EditDistanceInput } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 
-export default function DistancesTab({ data }: { data: Distance[] }) {
+export default function DistancesTab({ data }: { data: EditDistanceInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Distance | null>(null);
+  const [editingItem, setEditingItem] = useState<EditDistanceInput | null>(
+    null,
+  );
 
   const handleAction = async (prevState: any, formData: FormData) => {
     if (formData.get("id")) {
@@ -60,7 +62,7 @@ export default function DistancesTab({ data }: { data: Distance[] }) {
     }
   }, [state]);
 
-  const openDialog = (item?: Distance) => {
+  const openDialog = (item?: EditDistanceInput) => {
     setEditingItem(item || null);
     setIsOpen(true);
   };
