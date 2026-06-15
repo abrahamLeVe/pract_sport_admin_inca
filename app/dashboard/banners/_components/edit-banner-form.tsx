@@ -305,7 +305,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   </Button>
                 </div>
                 {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-center mt-2 font-medium">
+                  <p className="text-destructive text-sm text-right mt-2 font-medium">
                     {formState.message}
                   </p>
                 )}

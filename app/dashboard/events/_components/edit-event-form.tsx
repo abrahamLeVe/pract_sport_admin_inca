@@ -20,6 +20,7 @@ import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 import { RoutePreviewMap } from "./route-preview-map";
+import { Textarea } from "@/components/ui/textarea";
 
 export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
   const formatDateTimeLocal = (dateInput?: Date | string) => {
@@ -124,7 +125,7 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
 
                   <label
                     htmlFor="image"
-                    className="mt-2 mb-4 relative mx-auto flex w-48 aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
+                    className="mt-2 mb-4 relative mx-auto flex aspect-square max-w-lg cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
                   >
                     {imagePreview ? (
                       <img
@@ -256,25 +257,30 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                 </div>
 
                 <Field className="md:col-span-2">
-                  {" "}
-                  {/* Si estás en un grid, haz que ocupe todo el ancho */}
                   <FieldLabel htmlFor="route_geojson">
                     Ruta del Evento (GeoJSON)
                   </FieldLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-75 mt-2">
-                    {/* COLUMNA IZQUIERDA: EL TEXTAREA */}
-                    <textarea
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <Textarea
                       id="route_geojson"
                       name="route_geojson"
-                      className="w-full h-full p-3 border rounded-md font-mono text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder='{"type": "Feature", ...}'
+                      className="h-48 md:h-75 resize-none"
+                      placeholder='{
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [-75.19589, -12.05004],
+                              [-75.1924, -12.03894]
+                            ]
+                          }
+                        }'
                       value={geojsonInput}
                       onChange={(e) => setGeojsonInput(e.target.value)}
                       disabled={isPending}
                     />
 
-                    {/* COLUMNA DERECHA: EL MAPA EN VIVO */}
-                    <div className="w-full h-full border rounded-md overflow-hidden bg-background">
+                    <div className="w-full h-64 md:h-75 border rounded-md overflow-hidden bg-background">
                       <RoutePreviewMap geoJsonString={geojsonInput} />
                     </div>
                   </div>

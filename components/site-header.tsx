@@ -26,6 +26,7 @@ const routeTranslations: Record<string, string> = {
   brands: "Marcas",
   events: "Eventos",
   "race-settings": "Configuración de Competencias",
+  "store-settings": "Configuración de variantes de producto",
 };
 
 // 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre

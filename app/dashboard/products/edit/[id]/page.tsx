@@ -40,12 +40,15 @@ export default async function EditProductPage({ params }: PageProps) {
 
       <Suspense
         fallback={
-          <div className="p-8 text-center border rounded animate-pulse bg-gray-50 text-gray-500">
+          <div className="p-8 text-center border rounded animate-pulse bg-muted text-muted-foreground">
             Cargando tabla de variantes...
           </div>
         }
       >
-        <VariantsTable productId={productId} />
+        <VariantsTable
+          productId={product.id}
+          trackStock={product.track_stock}
+        />
       </Suspense>
     </div>
   );

@@ -71,12 +71,11 @@ export async function createEventAction(
       return {
         success: false,
         message: "El código de la Ruta GeoJSON es inválido.",
-        data: fields, // ✅ No se pierde nada
+        data: fields,
       };
     }
   }
 
-  // 4. Validamos con Zod (Zod acepta el string porque le pusimos z.any())
   const validatedFields = eventSchema.safeParse(fields);
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
@@ -84,11 +83,16 @@ export async function createEventAction(
       success: false,
       message: "Por favor, corrige los errores del formulario.",
       zodErrors: flattenedErrors.fieldErrors,
-      data: fields, // ✅ El usuario recupera todos sus datos intactos
+      data: fields,
     };
   }
 
-  const imageResult = await handleImageUpload(formData, "image", "events");
+  const imageResult = await handleImageUpload(
+    formData,
+    "image",
+    "events",
+    true,
+  );
   if (!imageResult.success) {
     return {
       success: false,

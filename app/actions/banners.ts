@@ -47,7 +47,14 @@ export async function createBannerAction(
         data: fields,
       };
     }
-    const imageResult = await handleImageUpload(formData, "image", "banners");
+
+    const imageResult = await handleImageUpload(
+      formData,
+      "image",
+      "banners",
+      true,
+    );
+    console.log("imageResult ", imageResult);
     if (!imageResult.success) {
       return {
         success: false,
@@ -57,6 +64,7 @@ export async function createBannerAction(
     }
     const imageUrl = imageResult.url;
     const imageKey = imageResult.key;
+
     const {
       title,
       subtitle,
@@ -127,11 +135,16 @@ export async function updateBannerAction(
   try {
     let newImageUrl = null;
     let newImageKey = null;
-    const imageResult = await handleImageUpload(formData, "image", "banners");
+    const imageResult = await handleImageUpload(
+      formData,
+      "image",
+      "banners",
+      true,
+    );
     if (!imageResult.success) {
       return {
         success: false,
-        message: imageResult.message,
+        message: imageResult.message || "Error con la imagen",
         zodErrors: {
           image: [imageResult.message || "Error con la imagen"],
         } as any,

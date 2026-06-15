@@ -2,30 +2,38 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { ActionState } from "@/validations/core";
 import {
+  EditVariantInput,
   editVariantSchema,
-  FormVariantState,
+  VariantInput,
   variantSchema,
 } from "@/validations/variants";
 import { revalidatePath } from "next/cache";
 import z from "zod";
 
 export async function createVariantAction(
-  prevState: FormVariantState,
+  prevState: ActionState<VariantInput>,
   formData: FormData,
-): Promise<FormVariantState> {
+): Promise<ActionState<VariantInput>> {
+  await requireAdminSession();
+
+  const rawSizeId = formData.get("size_id")?.toString();
+  const rawColorId = formData.get("color_id")?.toString();
+
+  const fields = {
+    product_id: Number(formData.get("product_id")),
+    size_id: rawSizeId ? Number(rawSizeId) : null,
+    color_id: rawColorId ? Number(rawColorId) : null,
+    sku: formData.get("sku")?.toString() || "",
+    stock: Number(formData.get("stock") || "0"),
+    track_stock: formData.get("track_stock")?.toString() !== "false",
+    status: (formData.get("status")?.toString() || "activo") as
+      | "activo"
+      | "inactivo",
+  };
+
   try {
-    await requireAdminSession();
-
-    const fields = {
-      product_id: formData.get("product_id")?.toString() || "",
-      size: formData.get("size")?.toString() || "",
-      color: formData.get("color")?.toString() || "",
-      sku: formData.get("sku")?.toString() || "",
-      stock: formData.get("stock")?.toString() || "0",
-      status: formData.get("status")?.toString() || "activo",
-    };
-
     const validatedFields = variantSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -38,25 +46,24 @@ export async function createVariantAction(
       };
     }
 
-    const { product_id, size, color, sku, stock, status } =
+    const { product_id, size_id, color_id, sku, stock, status, track_stock } =
       validatedFields.data;
 
     const duplicateCheck = await pool.query(
       `SELECT id FROM product_variants 
        WHERE product_id = $1 
-         AND COALESCE(size, '') = COALESCE($2, '') 
-         AND COALESCE(color, '') = COALESCE($3, '')`,
-      [product_id, size || null, color || null],
+         AND COALESCE(size_id, 0) = COALESCE($2, 0) 
+         AND COALESCE(color_id, 0) = COALESCE($3, 0)`,
+      [product_id, size_id || null, color_id || null],
     );
 
     if ((duplicateCheck.rowCount ?? 0) > 0) {
       return {
         success: false,
         message: "Ya existe una variante con esta misma Talla y Color.",
-
         zodErrors: {
-          size: ["Combinación duplicada"],
-          color: ["Combinación duplicada"],
+          size_id: ["Combinación duplicada"],
+          color_id: ["Combinación duplicada"],
         },
         data: fields,
       };
@@ -78,17 +85,18 @@ export async function createVariantAction(
     }
 
     const query = `
-      INSERT INTO product_variants (product_id, size, color, sku, stock, status)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO product_variants (product_id, size_id, color_id, sku, stock, status, track_stock)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
     `;
 
     await pool.query(query, [
       product_id,
-      size || null,
-      color || null,
+      size_id || null,
+      color_id || null,
       sku || null,
       stock,
       status,
+      track_stock,
     ]);
 
     revalidatePath(`/dashboard/products/edit/${product_id}`);
@@ -96,7 +104,6 @@ export async function createVariantAction(
     return {
       success: true,
       message: "Variante añadida exitosamente.",
-      data: {},
     };
   } catch (error: any) {
     console.error("❌ Error en createVariantAction:", error.message);
@@ -104,27 +111,34 @@ export async function createVariantAction(
     return {
       success: false,
       message: error.message || "Ocurrió un error inesperado en el servidor.",
+      data: fields,
     };
   }
 }
 
 export async function updateVariantAction(
-  prevState: FormVariantState,
+  prevState: ActionState<EditVariantInput>,
   formData: FormData,
-): Promise<FormVariantState> {
+): Promise<ActionState<EditVariantInput>> {
+  await requireAdminSession();
+
+  const rawSizeId = formData.get("size_id")?.toString();
+  const rawColorId = formData.get("color_id")?.toString();
+
+  const fields = {
+    id: Number(formData.get("id")),
+    product_id: Number(formData.get("product_id")),
+    size_id: rawSizeId ? Number(rawSizeId) : null,
+    color_id: rawColorId ? Number(rawColorId) : null,
+    sku: formData.get("sku")?.toString() || "",
+    stock: Number(formData.get("stock") || "0"),
+    track_stock: formData.get("track_stock")?.toString() !== "false",
+    status: (formData.get("status")?.toString() || "activo") as
+      | "activo"
+      | "inactivo",
+  };
+
   try {
-    await requireAdminSession();
-
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      product_id: formData.get("product_id")?.toString() || "",
-      size: formData.get("size")?.toString() || "",
-      color: formData.get("color")?.toString() || "",
-      sku: formData.get("sku")?.toString() || "",
-      stock: formData.get("stock")?.toString() || "0",
-      status: formData.get("status")?.toString() || "activo",
-    };
-
     const validatedFields = editVariantSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -137,16 +151,24 @@ export async function updateVariantAction(
       };
     }
 
-    const { id, product_id, size, color, sku, stock, status } =
-      validatedFields.data;
+    const {
+      id,
+      product_id,
+      size_id,
+      color_id,
+      sku,
+      stock,
+      status,
+      track_stock,
+    } = validatedFields.data;
 
     const duplicateCheck = await pool.query(
       `SELECT id FROM product_variants 
        WHERE product_id = $1 
-         AND COALESCE(size, '') = COALESCE($2, '') 
-         AND COALESCE(color, '') = COALESCE($3, '')
+         AND COALESCE(size_id, 0) = COALESCE($2, 0) 
+         AND COALESCE(color_id, 0) = COALESCE($3, 0)
          AND id != $4`,
-      [product_id, size || null, color || null, id],
+      [product_id, size_id || null, color_id || null, id],
     );
 
     if ((duplicateCheck.rowCount ?? 0) > 0) {
@@ -154,8 +176,8 @@ export async function updateVariantAction(
         success: false,
         message: "Ya existe otra variante con esta misma Talla y Color.",
         zodErrors: {
-          size: ["Combinación duplicada"],
-          color: ["Combinación duplicada"],
+          size_id: ["Combinación duplicada"],
+          color_id: ["Combinación duplicada"],
         },
         data: fields,
       };
@@ -178,16 +200,17 @@ export async function updateVariantAction(
 
     const query = `
       UPDATE product_variants SET 
-        size = $1, color = $2, sku = $3, stock = $4, status = $5, updated_at = NOW()
-      WHERE id = $6 AND product_id = $7
+        size_id = $1, color_id = $2, sku = $3, stock = $4, status = $5, track_stock = $6, updated_at = NOW()
+      WHERE id = $7 AND product_id = $8
     `;
 
     await pool.query(query, [
-      size || null,
-      color || null,
+      size_id || null,
+      color_id || null,
       sku || null,
       stock,
       status,
+      track_stock, // 🔥 3. Inyectamos track_stock aquí
       id,
       product_id,
     ]);
@@ -204,14 +227,15 @@ export async function updateVariantAction(
     return {
       success: false,
       message: error.message || "Error al actualizar la variante.",
+      data: fields,
     };
   }
 }
 
 export async function deleteVariantAction(id: number) {
-  try {
-    await requireAdminSession();
+  await requireAdminSession();
 
+  try {
     const getQuery = "SELECT product_id FROM product_variants WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const variant = result.rows[0];
@@ -237,9 +261,9 @@ export async function toggleVariantStatusAction(
   id: number,
   currentStatus: string,
 ) {
-  try {
-    await requireAdminSession();
+  await requireAdminSession();
 
+  try {
     const getQuery = "SELECT product_id FROM product_variants WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const variant = result.rows[0];

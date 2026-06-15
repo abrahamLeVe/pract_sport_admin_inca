@@ -75,7 +75,7 @@ CREATE TABLE banners (
     link_url TEXT,                             -- Ruta de redirección (ej: /eventos/maraton)
     type VARCHAR(50) DEFAULT 'general',        -- Categoría: 'oferta', 'evento', 'novedad', 'general'
     sort_order INT DEFAULT 0,                  -- Orden visual del carrusel
-    ADD COLUMN event_id INT NULL REFERENCES events(id) ON DELETE SET NULL;
+    event_id INT NULL,                         -- (FK agregada después para evitar problemas de dependencia circular)
     status VARCHAR(20) DEFAULT 'activo',       -- Estados: 'activo', 'inactivo'
     start_date TIMESTAMP,                      -- (Opcional) Inicio de vigencia
     end_date TIMESTAMP,                        -- (Opcional) Fin de vigencia automático
@@ -130,8 +130,9 @@ CREATE TABLE products (
     price DECIMAL(10, 2) NOT NULL,
     discount_price DECIMAL(10, 2),
     stock INTEGER DEFAULT 0,
+    track_stock BOOLEAN DEFAULT TRUE,
     
-    -- Relaciones (Integridad referencial: ON DELETE RESTRICT evita borrar categorías/marcas con productos)
+    -- Relaciones (ON DELETE RESTRICT evita borrar categorías/marcas si hay productos vinculados)
     category_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT,
     brand_id INTEGER REFERENCES brands(id) ON DELETE RESTRICT,
     
@@ -145,36 +146,96 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category_id);
 CREATE INDEX idx_products_brand ON products(brand_id);
 
--- 1. Tabla de Variantes de Producto
+-- ------------------------------------------------------------------------------
+-- NUEVAS TABLAS MAESTRAS (Para Filtros Globales)
+-- ------------------------------------------------------------------------------
+
+-- Tabla Maestra de Colores
+CREATE TABLE master_colors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,       -- Ej: 'Negro', 'Rojo'
+    hex_code VARCHAR(7),                    -- Ej: '#000000' 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla Maestra de Tallas
+CREATE TABLE master_sizes (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) NOT NULL UNIQUE,       -- Ej: 'S', 'M', 'L', '40', '42'
+    category VARCHAR(50),                   -- Ej: 'Ropa', 'Calzado', 'Accesorios' 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------------------------
+-- TABLA DE VARIANTES 
+-- ------------------------------------------------------------------------------
 CREATE TABLE product_variants (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    size VARCHAR(50),      -- Ej. '40', '42', 'M', 'L', 'Única'
-    color VARCHAR(50),     -- Ej. 'Rojo', 'Negro', 'Azul Marino'
-    sku VARCHAR(100),      -- Código único de barra/inventario (Opcional)
+    
+    size_id INTEGER REFERENCES master_sizes(id) ON DELETE RESTRICT,
+    color_id INTEGER REFERENCES master_colors(id) ON DELETE RESTRICT,
+    
+    sku VARCHAR(100) UNIQUE,               -- Código de barras/inventario 
     stock INTEGER NOT NULL DEFAULT 0,
+    track_stock BOOLEAN DEFAULT TRUE,      -- 🔥 ¡CORRECCIÓN INCLUIDA AQUÍ!
     status VARCHAR(20) DEFAULT 'activo',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Evita que el admin cree por error dos veces la variante "Polo Rojo - Talla M"
+    UNIQUE(product_id, size_id, color_id) 
 );
 
--- 2. Índice para acelerar las búsquedas en la tienda
+-- Índices para que los filtros de la web "Vuelen"
 CREATE INDEX idx_variants_product ON product_variants(product_id);
+CREATE INDEX idx_variants_color ON product_variants(color_id);
+CREATE INDEX idx_variants_size ON product_variants(size_id);
+
+-- ------------------------------------------------------------------------------
+-- TRIGGER PROFESIONAL: ACTUALIZACIÓN AUTOMÁTICA DE STOCK DEL PRODUCTO PADRE
+-- ------------------------------------------------------------------------------
+
+-- 1. Creamos la función matemática 
+CREATE OR REPLACE FUNCTION update_product_total_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE products
+    SET stock = (
+        SELECT COALESCE(SUM(stock), 0) 
+        FROM product_variants
+        WHERE product_id = COALESCE(NEW.product_id, OLD.product_id)
+          AND track_stock = TRUE 
+          AND status = 'activo' -- Solo sumamos si la variante está activa
+    )
+    WHERE id = COALESCE(NEW.product_id, OLD.product_id);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2. Creamos el Trigger (Con el arreglo de campos incluido)
+CREATE TRIGGER trigger_update_product_stock
+AFTER INSERT OR UPDATE OF stock, status, track_stock OR DELETE
+ON product_variants
+FOR EACH ROW
+EXECUTE FUNCTION update_product_total_stock();
+
+
+-- ==============================================================================
+-- SISTEMA PROFESIONAL DE GESTIÓN DE EVENTOS DEPORTIVOS
+-- ==============================================================================
 
 CREATE TABLE club_settings (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     logo_url TEXT,
-    primary_color VARCHAR(7) DEFAULT '#000000', -- Para guardar colores tipo #FFFFFF
+    primary_color VARCHAR(7) DEFAULT '#000000', 
     secondary_color VARCHAR(7) DEFAULT '#000000',
     description TEXT,
-    social_links JSONB DEFAULT '{}', -- Para redes sociales
+    social_links JSONB DEFAULT '{}', 
     updated_at TIMESTAMP DEFAULT NOW()
 );
-
--- ==============================================================================
--- SISTEMA PROFESIONAL DE GESTIÓN DE EVENTOS DEPORTIVOS
--- ==============================================================================
 
 -- ------------------------------------------------------------------------------
 -- 1. TABLAS MAESTRAS (Plantillas globales. Se llenan una sola vez)
@@ -213,7 +274,6 @@ CREATE TABLE events (
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
     route_geojson JSONB,
-    -- 🔥 TU MEJORA APLICADA: Ahora es una llave foránea
     event_type_id INTEGER REFERENCES master_event_types(id) ON DELETE RESTRICT,
     image_url TEXT,
     image_key TEXT,
@@ -221,6 +281,9 @@ CREATE TABLE events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ahora sí agregamos la FK a banners (Evitamos dependencias circulares)
+ALTER TABLE banners ADD CONSTRAINT fk_banners_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL;
 
 -- ------------------------------------------------------------------------------
 -- 3. CATEGORÍAS DEL EVENTO (Las reglas congeladas para ESTE evento)
@@ -232,15 +295,14 @@ CREATE TABLE event_categories (
     gender_id INTEGER REFERENCES master_genders(id) ON DELETE RESTRICT,
     age_category_id INTEGER REFERENCES master_age_categories(id) ON DELETE RESTRICT,
     
-    -- SNAPSHOT HISTÓRICO: Edades exactas que rigieron en ESTA carrera.
-    -- Si la tabla maestra cambia el próximo año, este evento NO se afecta.
+    -- SNAPSHOT HISTÓRICO
     applied_min_age INTEGER NOT NULL, 
     applied_max_age INTEGER NOT NULL,
     
     price DECIMAL(10, 2) NOT NULL DEFAULT 0,
     cupos INTEGER NOT NULL DEFAULT 0,
     
-    -- Evita que el admin duplique la misma categoría en el mismo evento
+    -- Evita duplicados en el mismo evento
     UNIQUE(event_id, distance_id, gender_id, age_category_id)
 );
 
@@ -253,9 +315,8 @@ CREATE TABLE event_registrations (
     category_id INTEGER REFERENCES event_categories(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     
-    -- SNAPSHOT DEL ATLETA: Si el usuario cambia su nombre o celular de emergencia 
-    -- en su perfil 2 años después, los datos de esta carrera pasada NO se alteran.
-    participant_details JSONB NOT NULL, -- Guarda: Nombre, DNI, Contacto de Emergencia, Tipo de Sangre, Talla.
+    -- SNAPSHOT DEL ATLETA
+    participant_details JSONB NOT NULL, 
     
     bib_number INTEGER, -- Número de dorsal asignado
     

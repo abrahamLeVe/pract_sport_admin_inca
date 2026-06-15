@@ -4,6 +4,8 @@ import {
 } from "@/app/actions/products";
 import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { Pagination } from "@/components/pagination";
+import { Search } from "@/components/search";
 import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,8 +29,6 @@ import { getProductsAction } from "@/lib/data/products";
 import { Edit2, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Pagination } from "../../../components/pagination";
-import { Search } from "../../../components/search";
 import ProductsLoading from "./_components/table-product-skeleton";
 
 interface PageProps {
@@ -109,7 +109,37 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                         </div>
                       </TableCell>
                       <TableCell>S/ {product.price}</TableCell>
-                      <TableCell>{product.stock} un.</TableCell>
+                      <TableCell>
+                        {product.has_variants ? (
+                          /* LÓGICA 1: PRODUCTOS CON TALLAS/COLORES */
+                          product.has_infinite_variants ? (
+                            <span className="text-muted-foreground italic">
+                              Infinito (En variantes)
+                            </span>
+                          ) : product.stock > 0 ? (
+                            <span className="font-medium">
+                              {product.stock} un. (Variado)
+                            </span>
+                          ) : (
+                            <span className="text-red-500 font-medium">
+                              Agotado
+                            </span>
+                          )
+                        ) : /* LÓGICA 2: PRODUCTOS SIMPLES (Sin variantes) */
+                        !product.track_stock ? (
+                          <span className="text-muted-foreground italic">
+                            Infinito / N/A
+                          </span>
+                        ) : product.stock > 0 ? (
+                          <span className="font-medium">
+                            {product.stock} un.
+                          </span>
+                        ) : (
+                          <span className="text-red-500 font-medium">
+                            Agotado
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={

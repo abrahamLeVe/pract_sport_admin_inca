@@ -79,6 +79,11 @@ const data = {
       url: "/dashboard/race-settings",
       icon: <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />,
     },
+    {
+      name: "configuración de variables de producto",
+      url: "/dashboard/store-settings",
+      icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
+    },
   ],
 };
 

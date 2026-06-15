@@ -17,60 +17,78 @@ import {
 import { generateSlug } from "@/lib/utils";
 import { EditProductFormProps } from "@/validations/products";
 import Link from "next/link";
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { ImageGalleryUploader } from "./image-gallery-uploader";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangleIcon } from "lucide-react";
 
 export function EditProductForm({
   initialData,
   categories,
   brands,
 }: EditProductFormProps) {
+  const hasVariants = Boolean(initialData.has_variants);
+
   const initialState = {
     success: false,
     message: "",
     zodErrors: null,
     data: {
-      id: String(initialData.id),
+      id: initialData.id,
       name: initialData.name || "",
       slug: initialData.slug || "",
       description: initialData.description || "",
-      price: initialData.price || "",
-      discount_price: initialData.discount_price || "",
-      stock: initialData.stock || "0",
-      category_id: String(initialData.category_id || ""),
-      brand_id: String(initialData.brand_id || ""),
-      status: initialData.status || "activo",
+      price: initialData.price,
+      discount_price: initialData.discount_price ?? undefined,
+      stock: initialData.stock,
+      category_id: initialData.category_id,
+      brand_id: initialData.brand_id,
+      status: (initialData.status as "activo" | "inactivo") || "activo",
+      track_stock: initialData.track_stock !== false,
     },
   };
-
   const [formState, formAction, isPending] = useActionState(
     actions.products.updateProductAction,
     initialState,
   );
-  const [name, setName] = useState(initialState.data.name);
-  const [slug, setSlug] = useState(initialState.data.slug);
-  const [description, setDescription] = useState(initialState.data.description);
+  const [name, setName] = useState<string>(initialData.name || "");
+  const [slug, setSlug] = useState<string>(initialData.slug || "");
+  const [description, setDescription] = useState<string>(
+    initialData.description || "",
+  );
+  const initialTrackStock =
+    initialData.track_stock !== false ? "true" : "false";
+  const [trackStock, setTrackStock] = useState(initialTrackStock);
+  const isTrackStockChanged = trackStock !== initialTrackStock;
   const [files, setFiles] = useState<File[]>([]);
-
   const initialImages =
     typeof initialData.images === "string"
       ? JSON.parse(initialData.images)
       : initialData.images || [];
-
   const [existingImages, setExistingImages] =
     useState<{ url: string; key: string }[]>(initialImages);
-
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setName(newName);
     setSlug(generateSlug(newName));
   };
-
   const handleAction = (formData: FormData) => {
     files.forEach((file) => formData.append("images", file));
     formData.append("existing_images", JSON.stringify(existingImages));
+
+    if (trackStock === "false") {
+      formData.set("stock", "0");
+    }
+
     startTransition(() => formAction(formData));
   };
+
+  useEffect(() => {
+    if (formState.success) {
+      toast.success(formState.message);
+    }
+  }, [formState]);
 
   return (
     <Card>
@@ -146,7 +164,8 @@ export function EditProductForm({
                 <FormError error={formState.zodErrors?.description} />
               </Field>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 🔥 FILA 1: PRECIOS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="price">Precio (S/)</FieldLabel>
                   <Input
@@ -176,19 +195,6 @@ export function EditProductForm({
                   />
                   <FormError error={formState.zodErrors?.discount_price} />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="stock">Stock Inicial</FieldLabel>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    placeholder="Ej. 50"
-                    defaultValue={formState.data?.stock ?? ""}
-                    disabled={isPending}
-                    required
-                  />
-                  <FormError error={formState.zodErrors?.stock} />
-                </Field>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,7 +202,7 @@ export function EditProductForm({
                   <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
                   <Select
                     name="category_id"
-                    defaultValue={formState.data?.category_id ?? ""}
+                    defaultValue={formState.data?.category_id?.toString() ?? ""}
                     disabled={isPending}
                     required
                   >
@@ -217,7 +223,7 @@ export function EditProductForm({
                   <FieldLabel htmlFor="brand_id">Marca</FieldLabel>
                   <Select
                     name="brand_id"
-                    defaultValue={formState.data?.brand_id ?? ""}
+                    defaultValue={formState.data?.brand_id?.toString() ?? ""}
                     disabled={isPending}
                     required
                   >
@@ -236,23 +242,106 @@ export function EditProductForm({
                 </Field>
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="status">Estado Operativo</FieldLabel>
-                <Select
-                  name="status"
-                  defaultValue={formState.data?.status ?? "activo"}
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormError error={formState.zodErrors?.status} />
-              </Field>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. EL ESTADO OPERATIVO SIEMPRE ES VISIBLE */}
+                <Field>
+                  <FieldLabel htmlFor="status">Estado Operativo</FieldLabel>
+                  <Select
+                    name="status"
+                    defaultValue={formState.data?.status ?? "activo"}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="activo">Activo</SelectItem>
+                      <SelectItem value="inactivo">Inactivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormError error={formState.zodErrors?.status} />
+                </Field>
+
+                {/* 2. LA MAGIA DE UX PARA EL INVENTARIO */}
+                {!hasVariants ? (
+                  <>
+                    <Field>
+                      <FieldLabel htmlFor="track_stock">
+                        Control de Inventario
+                      </FieldLabel>
+                      <Select
+                        name="track_stock"
+                        value={trackStock}
+                        onValueChange={setTrackStock}
+                        disabled={isPending}
+                      >
+                        <SelectTrigger id="track_stock">
+                          <SelectValue placeholder="¿Controlar stock?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">
+                            Sí, controlar unidades
+                          </SelectItem>
+                          <SelectItem value="false">
+                            No, stock infinito / bajo demanda
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormError
+                        error={formState.zodErrors?.track_stock as any}
+                      />
+
+                      {isTrackStockChanged && (
+                        <Alert className="max-w-md border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
+                          <AlertTriangleIcon />
+                          <AlertTitle>Control de stock</AlertTitle>
+                          <AlertDescription>
+                            Guarda los cambios del producto primero para aplicar
+                            esta configuración a tus tallas y colores.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </Field>
+
+                    {trackStock === "true" ? (
+                      <Field>
+                        <FieldLabel htmlFor="stock">Stock Total</FieldLabel>
+                        <Input
+                          id="stock"
+                          name="stock"
+                          type="number"
+                          placeholder="Ej. 50"
+                          key={`stock-input-${initialData.stock}`}
+                          defaultValue={
+                            formState.data?.stock ?? initialData.stock
+                          }
+                          disabled={isPending}
+                          required
+                        />
+                        <FormError error={formState.zodErrors?.stock} />
+                      </Field>
+                    ) : (
+                      <input type="hidden" name="stock" value="0" />
+                    )}
+                  </>
+                ) : (
+                  /* 3. EL MENSAJE QUE REEMPLAZA A LOS INPUTS SI HAY VARIANTES */
+                  <div className="col-span-1 md:col-span-2 bg-muted/30 p-4 rounded-lg border border-dashed flex flex-col items-center justify-center text-center">
+                    <p className="text-sm text-muted-foreground font-medium">
+                      📦 El inventario de este producto se gestiona
+                      automáticamente desde la tabla de variantes.
+                    </p>
+
+                    {/* Inputs ocultos para no romper el formulario al guardar */}
+                    <input type="hidden" name="track_stock" value="true" />
+                    <input
+                      type="hidden"
+                      name="stock"
+                      value={initialData.stock}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <Field className="pt-4 border-t mt-4">

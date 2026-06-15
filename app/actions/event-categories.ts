@@ -38,7 +38,7 @@ export async function createEventCategoryAction(
       success: false,
       message: "Por favor, corrige los errores del formulario.",
       zodErrors: flattenedErrors.fieldErrors,
-      data: fields, // ✅ TypeScript ahora será feliz porque todo es un Number
+      data: fields,
     };
   }
 

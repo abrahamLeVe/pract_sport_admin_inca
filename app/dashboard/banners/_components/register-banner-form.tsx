@@ -297,9 +297,8 @@ export function BannerForm({ events }: BannerFormProps) {
                       : "Subir y Crear Banner"}
                   </Button>
                 </div>
-
                 {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
+                  <p className="text-destructive text-sm text-right mt-2 font-medium">
                     {formState.message}
                   </p>
                 )}

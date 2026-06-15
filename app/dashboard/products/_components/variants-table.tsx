@@ -20,19 +20,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProductVariant } from "@/validations/variants";
 import { MoreHorizontal } from "lucide-react";
 import { EditVariantDialog } from "./edit-variant-dialog";
 import { RegisterVariantDialog } from "./register-variant-dialog";
 import { getVariantsByProductIdAction } from "@/lib/data/variant";
+import {
+  getAllMasterColorsAction,
+  getAllMasterSizesAction,
+} from "@/lib/data/store-masters";
 
 interface VariantsTableProps {
   productId: number;
+  trackStock: boolean;
 }
 
-export async function VariantsTable({ productId }: VariantsTableProps) {
-  const variants: ProductVariant[] =
-    await getVariantsByProductIdAction(productId);
+export async function VariantsTable({
+  productId,
+  trackStock,
+}: VariantsTableProps) {
+  const [variants, colors, sizes] = await Promise.all([
+    getVariantsByProductIdAction(productId),
+    getAllMasterColorsAction(),
+    getAllMasterSizesAction(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,7 +55,12 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
             Gestiona el inventario específico para cada talla y color.
           </p>
         </div>
-        <RegisterVariantDialog productId={productId} />
+        <RegisterVariantDialog
+          productId={productId}
+          colors={colors}
+          sizes={sizes}
+          parentTrackStock={trackStock}
+        />
       </div>
 
       <div className="rounded-md border bg-card">
@@ -56,7 +71,8 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
               <TableHead>Talla</TableHead>
               <TableHead>Color</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Stock</TableHead>
+              {/* 🔥 Si no rastrea stock, cambiamos el título de la columna */}
+              <TableHead>{trackStock ? "Stock" : "Inventario"}</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-12 text-center">Acciones</TableHead>
             </TableRow>
@@ -68,14 +84,28 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
                   <TableCell className="text-center">{index + 1}</TableCell>
 
                   <TableCell className="font-medium">
-                    {variant.size || (
-                      <span className="text-muted-foreground italic">-</span>
+                    {variant.size_name || (
+                      <span className="text-muted-foreground italic">
+                        General
+                      </span>
                     )}
                   </TableCell>
 
                   <TableCell>
-                    {variant.color || (
-                      <span className="text-muted-foreground italic">-</span>
+                    {variant.color_name ? (
+                      <div className="flex items-center gap-2">
+                        {variant.color_hex && (
+                          <div
+                            className="w-4 h-4 rounded-full border shadow-sm"
+                            style={{ backgroundColor: variant.color_hex }}
+                          />
+                        )}
+                        <span>{variant.color_name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground italic">
+                        Ninguno
+                      </span>
                     )}
                   </TableCell>
 
@@ -83,7 +113,16 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
                     {variant.sku || <span className="italic">N/A</span>}
                   </TableCell>
 
-                  <TableCell>{variant.stock} un.</TableCell>
+                  {/* 🔥 Si no rastrea stock, mostramos "Infinito", si no, el número */}
+                  <TableCell>
+                    {variant.track_stock !== false ? (
+                      <span>{variant.stock} un.</span>
+                    ) : (
+                      <span className="text-muted-foreground italic bg-muted/50 px-2 py-1 rounded text-xs font-medium">
+                        ♾️ Ilimitado
+                      </span>
+                    )}
+                  </TableCell>
 
                   <TableCell>
                     <Badge
@@ -104,11 +143,18 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Opciones</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <EditVariantDialog variant={variant} />
+
+                        <EditVariantDialog
+                          initialData={variant}
+                          productId={productId}
+                          colors={colors}
+                          sizes={sizes}
+                          parentTrackStock={trackStock} // 🔥 3. Se lo pasamos al modal de EDITAR
+                        />
 
                         <ToggleStatusActionItem
                           id={variant.id}
-                          itemName={`Talla ${variant.size || "Única"} - Color ${variant.color || "N/A"}`}
+                          itemName={`Talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"}`}
                           itemType="variante"
                           currentStatus={variant.status}
                           action={toggleVariantStatusAction}
@@ -116,7 +162,7 @@ export async function VariantsTable({ productId }: VariantsTableProps) {
 
                         <DeleteActionItem
                           id={variant.id}
-                          itemName={`Talla ${variant.size} - Color ${variant.color}`}
+                          itemName={`Talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"}`}
                           itemType="variante"
                           action={deleteVariantAction}
                           warningText="Se borrará el stock asociado a esta combinación."

@@ -11,15 +11,23 @@ export async function handleImageUpload(
   formData: FormData,
   fieldName: string = "image",
   folder: string,
+  isRequired: boolean = false,
 ): Promise<UploadImageResult> {
   const imageFile = formData.get(fieldName) as File;
 
-  // Si no hay archivo o está vacío, se considera un éxito sin subida (campo opcional)
   if (!imageFile || imageFile.size === 0) {
+    if (isRequired) {
+      return {
+        success: false,
+        message: "La imagen es obligatoria. Por favor, sube una.",
+        url: null,
+        key: null,
+      };
+    }
+
     return { success: true, url: null, key: null };
   }
 
-  // 1. Validar Formato
   const validTypes = ["image/jpeg", "image/png", "image/webp"];
   if (!validTypes.includes(imageFile.type)) {
     return {
@@ -30,7 +38,6 @@ export async function handleImageUpload(
     };
   }
 
-  // 2. Validar Peso (5MB)
   if (imageFile.size > 5 * 1024 * 1024) {
     return {
       success: false,
@@ -40,7 +47,6 @@ export async function handleImageUpload(
     };
   }
 
-  // 3. Subir a S3
   const s3Result = await uploadFileToS3Action(imageFile, folder);
   if (!s3Result.success || !s3Result.key || !s3Result.url) {
     return {
@@ -51,10 +57,52 @@ export async function handleImageUpload(
     };
   }
 
-  // Todo salió bien, retornamos las credenciales de la imagen
   return {
     success: true,
     url: s3Result.url,
     key: s3Result.key,
   };
+}
+
+export async function handleMultipleImagesUpload(
+  formData: FormData,
+  fieldName: string,
+  folder: string,
+  isRequired: boolean = false,
+) {
+  const files = formData.getAll(fieldName) as File[];
+  const validFiles = files.filter((f) => f.size > 0);
+
+  if (validFiles.length === 0) {
+    if (isRequired) {
+      return {
+        success: false,
+        message: "Debes subir al menos una imagen.",
+        images: [],
+      };
+    }
+    return { success: true, images: [] };
+  }
+
+  const validTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  for (const file of validFiles) {
+    if (!validTypes.includes(file.type)) {
+      return { success: false, message: "Solo JPG, PNG o WEBP permitidos." };
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, message: "Una imagen supera los 5MB." };
+    }
+  }
+
+  // 3. Subimos en paralelo
+  const imageUploads = await Promise.all(
+    validFiles.map((file) => uploadFileToS3Action(file, folder)),
+  );
+
+  const imagesJson = imageUploads
+    .filter((res) => res && res.success)
+    .map((res) => ({ url: res.url, key: res.key }));
+
+  return { success: true, images: imagesJson };
 }

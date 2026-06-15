@@ -15,12 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ActionState } from "@/validations/core";
 import { EventInput, RegisterEventFormProps } from "@/validations/events";
 import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
+import { RoutePreviewMap } from "./route-preview-map";
 
 const INITIAL_STATE: ActionState<EventInput> = {
   success: false,
@@ -57,6 +59,12 @@ export function RegisterEventForm({
     price: "",
     cupos: "",
   });
+
+  const [geojsonInput, setGeojsonInput] = useState(
+    formState.data?.route_geojson
+      ? JSON.stringify(formState.data.route_geojson, null, 2)
+      : "",
+  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,7 +211,7 @@ export function RegisterEventForm({
                   </p>
                   <label
                     htmlFor="image"
-                    className="mt-2 mb-4 relative mx-auto flex aspect-square w-48 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
+                    className="mt-2 mb-4 relative mx-auto flex aspect-square max-w-lg cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
                   >
                     {imagePreview ? (
                       <img
@@ -332,16 +340,17 @@ export function RegisterEventForm({
                     <FormError error={formState.zodErrors?.longitude} />
                   </Field>
                 </div>
-                <Field>
+
+                <Field className="md:col-span-2">
                   <FieldLabel htmlFor="route_geojson">
                     Ruta del Evento (GeoJSON)
                   </FieldLabel>
-                  <textarea
-                    id="route_geojson"
-                    name="route_geojson"
-                    className="w-full p-3 border rounded-md font-mono text-xs"
-                    rows={6}
-                    placeholder='{
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <Textarea
+                      id="route_geojson"
+                      name="route_geojson"
+                      className="h-48 md:h-75 resize-none"
+                      placeholder='{
                       "type": "Feature",
                       "geometry": {
                         "type": "LineString",
@@ -352,12 +361,18 @@ export function RegisterEventForm({
                         ]
                       }
                     }'
-                    defaultValue={
-                      formState.data?.route_geojson
-                        ? JSON.stringify(formState.data.route_geojson, null, 2)
-                        : ""
-                    }
-                  />
+                      defaultValue={geojsonInput}
+                      onChange={(e) => setGeojsonInput(e.target.value)}
+                      disabled={isPending}
+                    />
+                    <div className="w-full h-64 md:h-75 border rounded-md overflow-hidden bg-background">
+                      <RoutePreviewMap geoJsonString={geojsonInput} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Puedes crear tu ruta en Google My Maps, exportarla a KML y
+                    convertirla a GeoJSON.
+                  </p>
                 </Field>
 
                 <Field>

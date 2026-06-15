@@ -15,15 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateSlug } from "@/lib/utils";
-import {
-  FormProductState,
-  RegisterProductFormProps,
-} from "@/validations/products";
+import { ActionState } from "@/validations/core";
+import { ProductInput, RegisterProductFormProps } from "@/validations/products";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { ImageGalleryUploader } from "./image-gallery-uploader";
 
-const INITIAL_STATE: FormProductState = {
+const INITIAL_STATE: ActionState<ProductInput> = {
   success: false,
   message: "",
   zodErrors: null,
@@ -50,7 +48,9 @@ export function RegisterProductForm({
     setName(newName);
     setSlug(generateSlug(newName));
   };
-
+  const [trackStock, setTrackStock] = useState(
+    formState.data?.track_stock !== false ? "true" : "false",
+  );
   const handleAction = (formData: FormData) => {
     files.forEach((file) => formData.append("images", file));
     startTransition(() => formAction(formData));
@@ -130,7 +130,7 @@ export function RegisterProductForm({
                   <FormError error={formState.zodErrors?.description} />
                 </Field>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel htmlFor="price">Precio (S/)</FieldLabel>
                     <Input
@@ -160,19 +160,6 @@ export function RegisterProductForm({
                     />
                     <FormError error={formState.zodErrors?.discount_price} />
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="stock">Stock Inicial</FieldLabel>
-                    <Input
-                      id="stock"
-                      name="stock"
-                      type="number"
-                      placeholder="Ej. 50"
-                      defaultValue={formState.data?.stock ?? ""}
-                      disabled={isPending}
-                      required
-                    />
-                    <FormError error={formState.zodErrors?.stock} />
-                  </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,7 +167,9 @@ export function RegisterProductForm({
                     <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
                     <Select
                       name="category_id"
-                      defaultValue={formState.data?.category_id ?? ""}
+                      defaultValue={
+                        formState.data?.category_id?.toString() ?? ""
+                      }
                       disabled={isPending}
                       required
                     >
@@ -201,7 +190,7 @@ export function RegisterProductForm({
                     <FieldLabel htmlFor="brand_id">Marca</FieldLabel>
                     <Select
                       name="brand_id"
-                      defaultValue={formState.data?.brand_id ?? ""}
+                      defaultValue={formState.data?.brand_id?.toString() ?? ""}
                       disabled={isPending}
                       required
                     >
@@ -219,24 +208,68 @@ export function RegisterProductForm({
                     <FormError error={formState.zodErrors?.brand_id} />
                   </Field>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="status">Estado Inicial</FieldLabel>
+                    <Select
+                      name="status"
+                      defaultValue={formState.data?.status ?? "activo"}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="activo">Activo</SelectItem>
+                        <SelectItem value="inactivo">Inactivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormError error={formState.zodErrors?.status} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="track_stock">
+                      Control de Inventario
+                    </FieldLabel>
+                    <Select
+                      name="track_stock"
+                      value={trackStock}
+                      onValueChange={setTrackStock}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger id="track_stock">
+                        <SelectValue placeholder="¿Controlar stock?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">
+                          Sí, controlar unidades
+                        </SelectItem>
+                        <SelectItem value="false">
+                          No, stock infinito / bajo demanda
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-                <Field>
-                  <FieldLabel htmlFor="status">Estado Inicial</FieldLabel>
-                  <Select
-                    name="status"
-                    defaultValue={formState.data?.status ?? "activo"}
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="activo">Activo</SelectItem>
-                      <SelectItem value="inactivo">Inactivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormError error={formState.zodErrors?.status} />
-                </Field>
+                  {/* 🔥 EL CAMPO STOCK SOLO APARECE SI trackStock ES "true" */}
+                  {trackStock === "true" ? (
+                    <Field>
+                      <FieldLabel htmlFor="stock">Stock Inicial</FieldLabel>
+                      <Input
+                        id="stock"
+                        name="stock"
+                        type="number"
+                        placeholder="Ej. 50"
+                        defaultValue={formState.data?.stock ?? ""}
+                        disabled={isPending}
+                        required
+                      />
+                      <FormError error={formState.zodErrors?.stock} />
+                    </Field>
+                  ) : (
+                    /* Si es infinito, enviamos un input oculto con valor 0 para no romper la BD */
+                    <input type="hidden" name="stock" value="0" />
+                  )}
+                </div>
               </div>
 
               <Field className="pt-4 border-t mt-4">

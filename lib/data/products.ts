@@ -13,10 +13,22 @@ export async function getProductsAction({
     const offset = (page - 1) * limit;
 
     const productsQuery = `
-      SELECT id, name, slug, price, stock, status, images
-      FROM products
-      WHERE name ILIKE $1 OR slug ILIKE $1
-      ORDER BY created_at DESC
+      SELECT 
+        p.id, 
+        p.name, 
+        p.slug, 
+        p.price, 
+        p.stock, 
+        p.status, 
+        p.images, 
+        p.track_stock,
+        -- 🔥 1. Detectamos si tiene variantes en general
+        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id) as has_variants,
+        -- 🔥 2. Detectamos si AL MENOS UNA variante es de stock infinito
+        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.track_stock = false) as has_infinite_variants
+      FROM products p
+      WHERE p.name ILIKE $1 OR p.slug ILIKE $1
+      ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
 
@@ -48,9 +60,12 @@ export async function getProductsAction({
 export async function getProductByIdAction(id: number) {
   try {
     const query = `
-      SELECT id, name, slug, description, price, discount_price, stock, category_id, brand_id, images, status
-      FROM products 
-      WHERE id = $1
+      SELECT 
+        p.id, p.name, p.slug, p.description, p.price, p.discount_price, 
+        p.stock, p.category_id, p.brand_id, p.images, p.status, p.track_stock,
+        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id) as has_variants
+      FROM products p
+      WHERE p.id = $1
     `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
