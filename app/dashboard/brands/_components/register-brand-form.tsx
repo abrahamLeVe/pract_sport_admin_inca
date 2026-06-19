@@ -14,13 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateSlug } from "@/lib/utils";
-import { FormBrandState } from "@/validations/brands";
+import { BrandInput } from "@/validations/brands";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-const INITIAL_STATE: FormBrandState = {
+const INITIAL_STATE: ActionState<BrandInput> = {
   success: false,
   message: "",
   zodErrors: null,
@@ -130,7 +131,6 @@ export function RegisterBrandForm() {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

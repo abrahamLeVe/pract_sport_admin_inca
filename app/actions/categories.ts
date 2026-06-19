@@ -2,30 +2,35 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { handleImageUpload } from "@/lib/upload";
 import {
+  CategoryInput,
   categorySchema,
+  EditCategoryInput,
   editCategorySchema,
-  FormCategoryState,
 } from "@/validations/categories";
+import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
 
 export async function createCategoryAction(
-  prevState: FormCategoryState,
+  prevState: ActionState<CategoryInput>,
   formData: FormData,
-): Promise<FormCategoryState> {
+): Promise<ActionState<CategoryInput>> {
+  await requireAdminSession();
+
+  const fields = {
+    name: formData.get("name")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    status: formData.get("status")?.toString() as
+      | "activo"
+      | "inactivo"
+      | undefined,
+  };
   try {
-    await requireAdminSession();
-
-    const fields = {
-      name: formData.get("name")?.toString() || "",
-      slug: formData.get("slug")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      status: formData.get("status")?.toString() || "activo",
-    };
-
     const validatedFields = categorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -51,34 +56,16 @@ export async function createCategoryAction(
       };
     }
 
-    const imageFile = formData.get("image") as File;
-    let imageUrl = null;
-    let imageKey = null;
-
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido. Solo JPG, PNG o WEBP.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera el límite de 5MB.",
-          data: fields,
-        };
-      }
-
-      const s3Result = await uploadFileToS3Action(imageFile, "categories");
-      if (!s3Result.success || !s3Result.key || !s3Result.url) {
-        throw new Error(s3Result.message || "Error al subir la imagen a S3.");
-      }
-      imageUrl = s3Result.url;
-      imageKey = s3Result.key;
+    const imageResult = await handleImageUpload(formData, "image", "banners");
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message,
+        data: fields,
+      };
     }
+    const imageUrl = imageResult.url;
+    const imageKey = imageResult.key;
 
     const { name, slug, description, status } = validatedFields.data;
 
@@ -110,20 +97,22 @@ export async function createCategoryAction(
 }
 
 export async function updateCategoryAction(
-  prevState: FormCategoryState,
+  prevState: ActionState<EditCategoryInput>,
   formData: FormData,
-): Promise<FormCategoryState> {
+): Promise<ActionState<EditCategoryInput>> {
+  await requireAdminSession();
+
+  const fields = {
+    id: Number(formData.get("id")),
+    name: formData.get("name")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    status: formData.get("status")?.toString() as
+      | "activo"
+      | "inactivo"
+      | undefined,
+  };
   try {
-    await requireAdminSession();
-
-    const fields = {
-      id: formData.get("id")?.toString() || "",
-      name: formData.get("name")?.toString() || "",
-      slug: formData.get("slug")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      status: formData.get("status")?.toString() || "activo",
-    };
-
     const validatedFields = editCategorySchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -151,41 +140,28 @@ export async function updateCategoryAction(
       };
     }
 
-    const imageFile = formData.get("image") as File;
     let newImageUrl = null;
     let newImageKey = null;
-
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera 5MB.",
-          data: fields,
-        };
-      }
-
-      const oldCategoryResult = await pool.query(
-        "SELECT image_key FROM categories WHERE id = $1",
-        [id],
-      );
-      const oldImageKey = oldCategoryResult.rows[0]?.image_key;
-
-      const s3Result = await uploadFileToS3Action(imageFile, "categories");
-      if (s3Result.success) {
-        newImageUrl = s3Result.url;
-        newImageKey = s3Result.key;
-
-        if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
-      } else {
-        throw new Error(s3Result.message || "Error al subir la nueva imagen.");
+    const imageResult = await handleImageUpload(
+      formData,
+      "image",
+      "categories",
+    );
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message || "Error con la imagen",
+        data: fields,
+      };
+    }
+    if (imageResult.url && imageResult.key) {
+      newImageUrl = imageResult.url;
+      newImageKey = imageResult.key;
+      const oldBannerQuery = "SELECT image_key FROM categories WHERE id = $1";
+      const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
+      const oldImageKey = oldBannerResult.rows[0]?.image_key;
+      if (oldImageKey) {
+        await deleteFileFromS3Action(oldImageKey);
       }
     }
 
@@ -223,9 +199,8 @@ export async function updateCategoryAction(
 }
 
 export async function deleteCategoryAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
-
     const getQuery = "SELECT image_key FROM categories WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const category = result.rows[0];
@@ -256,6 +231,7 @@ export async function toggleCategoryStatusAction(
   id: number,
   currentStatus: string,
 ) {
+  await requireAdminSession();
   try {
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 

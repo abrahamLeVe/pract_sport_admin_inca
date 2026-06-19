@@ -32,10 +32,8 @@ export async function createEventAction(
     categoriesParsed = [];
   }
 
-  // 1. Extraemos el texto crudo del GeoJSON
   const routeGeojsonRaw = formData.get("route_geojson")?.toString() || "";
 
-  // 2. Armamos LOS FIELDS PRIMERO (usando el texto crudo para route_geojson)
   const fields = {
     title: formData.get("title")?.toString() || "",
     description: formData.get("description")?.toString() || "",
@@ -62,7 +60,6 @@ export async function createEventAction(
     categories: categoriesParsed,
   };
 
-  // 3. Validamos JSON
   let routeGeojsonParsed = null;
   if (routeGeojsonRaw.trim() !== "") {
     try {
@@ -97,9 +94,6 @@ export async function createEventAction(
     return {
       success: false,
       message: imageResult.message || "Error con la imagen",
-      zodErrors: {
-        image: [imageResult.message || "Error con la imagen"],
-      } as any,
       data: fields,
     };
   }
@@ -131,7 +125,7 @@ export async function createEventAction(
       location_name,
       latitude,
       longitude,
-      routeGeojsonParsed, // 🔥 ¡AQUÍ mandamos el objeto JSON parseado a PostgreSQL!
+      routeGeojsonParsed,
       event_type_id,
       status,
       imageResult.url,
@@ -183,10 +177,8 @@ export async function updateEventAction(
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
 
-  // 1. Extraemos crudo
   const routeGeojsonRaw = formData.get("route_geojson")?.toString() || "";
 
-  // 2. Armamos fields con el crudo
   const fields = {
     id: numericId,
     title: formData.get("title")?.toString() || "",
@@ -222,12 +214,11 @@ export async function updateEventAction(
       return {
         success: false,
         message: "El código de la Ruta GeoJSON es inválido.",
-        data: fields, // ✅ No se pierde nada
+        data: fields,
       };
     }
   }
 
-  // 4. Validamos Zod
   const validatedFields = editEventSchema.safeParse(fields);
 
   if (!validatedFields.success) {
@@ -249,9 +240,6 @@ export async function updateEventAction(
     return {
       success: false,
       message: imageResult.message || "Error con la imagen",
-      zodErrors: {
-        image: [imageResult.message || "Error con la imagen"],
-      } as any,
       data: fields,
     };
   }
@@ -296,7 +284,7 @@ export async function updateEventAction(
         location_name,
         latitude,
         longitude,
-        routeGeojsonParsed, // 🔥 Mandamos el objeto parseado a BD
+        routeGeojsonParsed,
         event_type_id,
         status,
         newImageUrl,
@@ -317,7 +305,7 @@ export async function updateEventAction(
         location_name,
         latitude,
         longitude,
-        routeGeojsonParsed, // 🔥 Mandamos el objeto parseado a BD
+        routeGeojsonParsed,
         event_type_id,
         status,
         id,

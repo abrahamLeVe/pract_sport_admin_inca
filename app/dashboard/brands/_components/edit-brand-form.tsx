@@ -14,24 +14,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateSlug } from "@/lib/utils";
-import { EditBrandFormProps } from "@/validations/brands";
+import { EditBrandFormProps, EditBrandInput } from "@/validations/brands";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
 export function EditBrandForm({ initialData }: EditBrandFormProps) {
-  const initialState = {
+  const initialState: ActionState<EditBrandInput> = {
     success: false,
     message: "",
     zodErrors: null,
     data: {
-      id: String(initialData.id),
+      id: initialData.id,
       name: initialData.name || "",
       slug: initialData.slug || "",
       description: initialData.description || "",
       status: initialData.status,
-    } as Record<string, any>,
+    },
   };
 
   const [formState, formAction, isPending] = useActionState(
@@ -141,7 +142,6 @@ export function EditBrandForm({ initialData }: EditBrandFormProps) {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

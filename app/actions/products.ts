@@ -73,7 +73,9 @@ export async function createProductAction(
       return {
         success: false,
         message: imageResult.message,
-        zodErrors: { images: [imageResult.message] } as any,
+        zodErrors: {
+          images: [imageResult.message || "Se requiere una imagen"],
+        },
         data: fields,
       };
     }
@@ -200,14 +202,16 @@ export async function updateProductAction(
       formData,
       "images",
       "products",
-      true,
+      false,
     );
 
     if (!imageResult.success) {
       return {
         success: false,
         message: imageResult.message || "Error al subir imágenes",
-        zodErrors: { images: [imageResult.message || "Error"] } as any,
+        zodErrors: {
+          images: [imageResult.message || "Se requiere una imagen"],
+        },
         data: fields,
       };
     }

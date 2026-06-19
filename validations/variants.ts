@@ -32,7 +32,10 @@ export interface EditColorFormProps {
 // 2. TALLAS (Master Sizes)
 // ============================================================================
 export const sizeSchema = z.object({
-  name: z.string().min(1, "El nombre de la talla es obligatorio (ej. M)."),
+  name: z
+    .string()
+    .min(1, "El nombre de la talla es obligatorio (ej. M).")
+    .max(20, "El nombre no puede tener más de 20 caracteres."),
   category: z.string().optional().nullable(),
 });
 

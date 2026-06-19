@@ -18,6 +18,7 @@ export const bannerSchema = z.object({
   status: z.enum(["activo", "inactivo"]),
   start_date: z.string().optional().or(z.literal("")),
   end_date: z.string().optional().or(z.literal("")),
+  image: z.any().optional(),
 });
 // 🔥 DRY: Extendemos el esquema base para no repetir código
 export const editBannerSchema = bannerSchema.extend({

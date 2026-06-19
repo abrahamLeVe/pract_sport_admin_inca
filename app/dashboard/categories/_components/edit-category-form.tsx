@@ -14,24 +14,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateSlug } from "@/lib/utils";
-import { EditCategoryFormProps } from "@/validations/categories";
+import {
+  EditCategoryFormProps,
+  EditCategoryInput,
+} from "@/validations/categories";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
 export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
-  const initialState = {
+  const initialState: ActionState<EditCategoryInput> = {
     success: false,
     message: "",
     zodErrors: null,
     data: {
-      id: String(initialData.id),
+      id: initialData.id,
       name: initialData.name || "",
       slug: initialData.slug || "",
       description: initialData.description || "",
       status: initialData.status,
-    } as Record<string, any>,
+    },
   };
 
   const [formState, formAction, isPending] = useActionState(
@@ -140,7 +144,6 @@ export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,7 +230,7 @@ export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
                 </div>
 
                 {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
+                  <p className="text-destructive text-sm text-right mt-2 font-medium">
                     {formState.message}
                   </p>
                 )}

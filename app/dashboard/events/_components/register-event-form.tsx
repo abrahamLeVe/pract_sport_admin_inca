@@ -342,36 +342,81 @@ export function RegisterEventForm({
                 </div>
 
                 <Field className="md:col-span-2">
-                  <FieldLabel htmlFor="route_geojson">
-                    Ruta del Evento (GeoJSON)
-                  </FieldLabel>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <Textarea
-                      id="route_geojson"
-                      name="route_geojson"
-                      className="h-48 md:h-75 resize-none"
-                      placeholder='{
-                      "type": "Feature",
-                      "geometry": {
-                        "type": "LineString",
-                        "coordinates": [
-                          [-75.19589, -12.05004],
-                          ...,
-                          [-75.1924, -12.03894]
-                        ]
-                      }
-                    }'
-                      defaultValue={geojsonInput}
-                      onChange={(e) => setGeojsonInput(e.target.value)}
-                      disabled={isPending}
-                    />
-                    <div className="w-full h-64 md:h-75 border rounded-md overflow-hidden bg-background">
-                      <RoutePreviewMap geoJsonString={geojsonInput} />
+                    {/* 🔥 Columna 1: Label y Textarea juntos y abrazados en el mismo contenedor */}
+                    <div className="flex flex-col gap-2">
+                      <FieldLabel htmlFor="route_geojson">
+                        Ruta del Evento (GeoJSON)
+                      </FieldLabel>
+                      <Textarea
+                        id="route_geojson"
+                        name="route_geojson"
+                        className="h-48 md:h-75 resize-none font-mono text-xs"
+                        placeholder='{
+                                      "type": "FeatureCollection",
+                                      "features": [
+                                        {
+                                          "type": "Feature",
+                                          "geometry": {
+                                            "type": "LineString",
+                                            "coordinates": [
+                                              [-75.2034, -12.07252],
+                                              [-75.19589, -12.05004]
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }'
+                        defaultValue={geojsonInput}
+                        onChange={(e) => setGeojsonInput(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    {/* 🔥 Columna 2: El mapa aislado en su propia caja */}
+                    <div className="flex flex-col gap-2">
+                      {/* Spacer opcional para que el mapa baje y se alinee perfectamente con el textarea en pantallas grandes */}
+                      <div className="h-5 hidden md:block"></div>
+                      <div className="w-full h-64 md:h-75 border rounded-md overflow-hidden bg-background">
+                        <RoutePreviewMap geoJsonString={geojsonInput} />
+                      </div>
                     </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-2">
-                    Puedes crear tu ruta en Google My Maps, exportarla a KML y
-                    convertirla a GeoJSON.
+
+                  {/* Mensaje de ayuda (se queda afuera, sin interrumpir al label) */}
+                  <p className="text-[12px] text-muted-foreground mt-3 leading-relaxed">
+                    <strong>Pasos:</strong> 1. Crea tu ruta en{" "}
+                    <a
+                      href="https://www.google.com/mymaps"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Google My Maps
+                    </a>
+                    . 2. Exporta la capa a formato KML. 3. Conviértela usando un{" "}
+                    <a
+                      href="https://mygeodata.cloud/converter/kml-to-geojson"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Conversor KML a GeoJSON
+                    </a>
+                    .
+                    <br />
+                    💡{" "}
+                    <em>
+                      ¿Dudas con el formato? Revisa la estructura correcta
+                      abriendo el ejemplo aquí:{" "}
+                      <a
+                        href="/ejemplo-geojson.txt"
+                        target="_blank"
+                        className="text-blue-500 hover:underline"
+                      >
+                        /ejemplo-geojson.txt
+                      </a>
+                    </em>
                   </p>
                 </Field>
 

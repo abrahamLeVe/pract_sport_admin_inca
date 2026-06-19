@@ -80,7 +80,7 @@ export function RegisterProductForm({
                     onFilesChange={setFiles}
                     htmlFor="gallery-upload"
                   />
-                  {/* Aquí puedes agregar validación si requieres mínimo 1 foto */}
+                  <FormError error={formState.zodErrors?.images} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

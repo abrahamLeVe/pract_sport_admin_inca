@@ -48,7 +48,6 @@ export async function createMasterColorAction(
 
     const { name, hex_code } = validatedFields.data;
 
-    // Verificar si el color ya existe
     const nameCheck = await pool.query(
       "SELECT id FROM master_colors WHERE name ILIKE $1",
       [name],
@@ -62,7 +61,6 @@ export async function createMasterColorAction(
       };
     }
 
-    // Si hex_code está vacío, lo guardamos como NULL en BD para mantener limpieza
     const finalHex = hex_code ? hex_code : null;
 
     await pool.query(

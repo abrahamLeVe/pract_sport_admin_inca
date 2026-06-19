@@ -210,7 +210,7 @@ export async function updateVariantAction(
       sku || null,
       stock,
       status,
-      track_stock, // 🔥 3. Inyectamos track_stock aquí
+      track_stock,
       id,
       product_id,
     ]);

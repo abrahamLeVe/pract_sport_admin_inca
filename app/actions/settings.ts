@@ -14,17 +14,17 @@ export async function updateClubSettingsAction(
   prevState: FormClubSettingsState,
   formData: FormData,
 ): Promise<FormClubSettingsState> {
+  await requireAdminSession();
+
+  const fields = {
+    name: formData.get("name")?.toString() || "",
+    primary_color: formData.get("primary_color")?.toString() || "",
+    secondary_color: formData.get("secondary_color")?.toString() || "",
+    description: formData.get("description")?.toString() || "",
+    social_links: formData.get("social_links")?.toString() || "[]",
+  };
+
   try {
-    await requireAdminSession();
-
-    const fields = {
-      name: formData.get("name")?.toString() || "",
-      primary_color: formData.get("primary_color")?.toString() || "",
-      secondary_color: formData.get("secondary_color")?.toString() || "",
-      description: formData.get("description")?.toString() || "",
-      social_links: formData.get("social_links")?.toString() || "[]",
-    };
-
     const validatedFields = clubSettingsSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -130,6 +130,10 @@ export async function updateClubSettingsAction(
     };
   } catch (error: any) {
     console.error("❌ Error en updateClubSettingsAction:", error.message);
-    return { success: false, message: error.message || "Error al actualizar." };
+    return {
+      success: false,
+      message: error.message || "Error al actualizar.",
+      data: fields,
+    };
   }
 }

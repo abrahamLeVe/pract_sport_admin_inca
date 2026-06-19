@@ -54,7 +54,7 @@ export async function createBannerAction(
       "banners",
       true,
     );
-    console.log("imageResult ", imageResult);
+
     if (!imageResult.success) {
       return {
         success: false,
@@ -133,21 +133,28 @@ export async function updateBannerAction(
     event_id: eventIdNum,
   };
   try {
+    const validatedFields = editBannerSchema.safeParse(fields);
+    if (!validatedFields.success) {
+      const flattenedErrors = z.flattenError(validatedFields.error);
+      return {
+        success: false,
+        message: "Por favor, corrige los errores del formulario.",
+        zodErrors: flattenedErrors.fieldErrors,
+        data: fields,
+      };
+    }
     let newImageUrl = null;
     let newImageKey = null;
     const imageResult = await handleImageUpload(
       formData,
       "image",
       "banners",
-      true,
+      false,
     );
     if (!imageResult.success) {
       return {
         success: false,
         message: imageResult.message || "Error con la imagen",
-        zodErrors: {
-          image: [imageResult.message || "Error con la imagen"],
-        } as any,
         data: fields,
       };
     }
@@ -160,16 +167,6 @@ export async function updateBannerAction(
       if (oldImageKey) {
         await deleteFileFromS3Action(oldImageKey);
       }
-    }
-    const validatedFields = editBannerSchema.safeParse(fields);
-    if (!validatedFields.success) {
-      const flattenedErrors = z.flattenError(validatedFields.error);
-      return {
-        success: false,
-        message: "Por favor, corrige los errores del formulario.",
-        zodErrors: flattenedErrors.fieldErrors,
-        data: fields,
-      };
     }
     const {
       id,

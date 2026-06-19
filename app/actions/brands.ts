@@ -3,29 +3,34 @@
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import {
+  BrandInput,
   brandSchema,
+  EditBrandInput,
   editBrandSchema,
-  FormBrandState,
 } from "@/validations/brands";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
 import { handleImageUpload } from "@/lib/upload";
+import { ActionState } from "@/validations/core";
 
 export async function createBrandAction(
-  prevState: FormBrandState,
+  prevState: ActionState<BrandInput>,
   formData: FormData,
-): Promise<FormBrandState> {
+): Promise<ActionState<BrandInput>> {
+  await requireAdminSession();
   const fields = {
     name: formData.get("name")?.toString() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
-    status: formData.get("status")?.toString() || "activo",
+    status: formData.get("status")?.toString() as
+      | "activo"
+      | "inactivo"
+      | undefined,
   };
 
   try {
-    await requireAdminSession();
     const validatedFields = brandSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -51,12 +56,12 @@ export async function createBrandAction(
       };
     }
 
-    const imageResult = await handleImageUpload(formData, "image", "events");
+    const imageResult = await handleImageUpload(formData, "image", "brands");
 
     if (!imageResult.success) {
       return {
         success: false,
-        message: imageResult.message,
+        message: imageResult.message || "Error con la imagen",
         data: fields,
       };
     }
@@ -95,19 +100,22 @@ export async function createBrandAction(
 }
 
 export async function updateBrandAction(
-  prevState: FormBrandState,
+  prevState: ActionState<EditBrandInput>,
   formData: FormData,
-): Promise<FormBrandState> {
+): Promise<ActionState<EditBrandInput>> {
+  await requireAdminSession();
   const fields = {
-    id: formData.get("id")?.toString() || "",
+    id: Number(formData.get("id")),
     name: formData.get("name")?.toString() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
-    status: formData.get("status")?.toString() || "activo",
+    status: formData.get("status")?.toString() as
+      | "activo"
+      | "inactivo"
+      | undefined,
   };
 
   try {
-    await requireAdminSession();
     const validatedFields = editBrandSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -135,44 +143,26 @@ export async function updateBrandAction(
       };
     }
 
-    const imageFile = formData.get("image") as File;
     let newImageUrl = null;
     let newImageKey = null;
-
-    if (imageFile && imageFile.size > 0) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(imageFile.type)) {
-        return {
-          success: false,
-          message: "Formato no permitido.",
-          data: fields,
-        };
-      }
-      if (imageFile.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          message: "La imagen supera 5MB.",
-          data: fields,
-        };
-      }
-
-      const oldBrandResult = await pool.query(
-        "SELECT image_key FROM brands WHERE id = $1",
-        [id],
-      );
-      const oldImageKey = oldBrandResult.rows[0]?.image_key;
-
-      const s3Result = await uploadFileToS3Action(imageFile, "brands");
-      if (s3Result.success) {
-        newImageUrl = s3Result.url;
-        newImageKey = s3Result.key;
-
-        if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
-      } else {
-        throw new Error(s3Result.message || "Error al subir la nueva imagen.");
+    const imageResult = await handleImageUpload(formData, "image", "brands");
+    if (!imageResult.success) {
+      return {
+        success: false,
+        message: imageResult.message || "Error con la imagen",
+        data: fields,
+      };
+    }
+    if (imageResult.url && imageResult.key) {
+      newImageUrl = imageResult.url;
+      newImageKey = imageResult.key;
+      const oldBannerQuery = "SELECT image_key FROM brands WHERE id = $1";
+      const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
+      const oldImageKey = oldBannerResult.rows[0]?.image_key;
+      if (oldImageKey) {
+        await deleteFileFromS3Action(oldImageKey);
       }
     }
-
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE brands SET 
@@ -211,9 +201,8 @@ export async function updateBrandAction(
 }
 
 export async function deleteBrandAction(id: number) {
+  await requireAdminSession();
   try {
-    await requireAdminSession();
-
     const getQuery = "SELECT image_key FROM brands WHERE id = $1";
     const result = await pool.query(getQuery, [id]);
     const brand = result.rows[0];
@@ -243,6 +232,8 @@ export async function toggleBrandStatusAction(
   id: number,
   currentStatus: string,
 ) {
+  await requireAdminSession();
+
   try {
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 

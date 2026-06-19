@@ -14,13 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateSlug } from "@/lib/utils";
-import { FormCategoryState } from "@/validations/categories";
+import { CategoryInput } from "@/validations/categories";
+import { ActionState } from "@/validations/core";
 import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
 
-const INITIAL_STATE: FormCategoryState = {
+const INITIAL_STATE: ActionState<CategoryInput> = {
   success: false,
   message: "",
   zodErrors: null,
@@ -130,7 +131,6 @@ export function RegisterCategoryForm() {
                     onChange={handleImageChange}
                     disabled={isPending}
                   />
-                  <FormError error={formState.zodErrors?.image as any} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,8 +155,8 @@ export function RegisterCategoryForm() {
                       id="slug"
                       name="slug"
                       placeholder="Ej. zapatillas-running"
-                      value={slug} // 🔥 Componente controlado autocompletado
-                      onChange={(e) => setSlug(e.target.value)} // Permite edición manual si el usuario quiere modificar el autogenerado
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
                       disabled={isPending}
                       required
                     />
@@ -217,7 +217,7 @@ export function RegisterCategoryForm() {
                 </div>
 
                 {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
+                  <p className="text-destructive text-sm text-right mt-2 font-medium">
                     {formState.message}
                   </p>
                 )}
