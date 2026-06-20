@@ -349,3 +349,54 @@ CREATE TABLE event_results (
     category_position INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ------------------------------------------------------------------------------
+-- 6. Pedidos desde la web
+-- ------------------------------------------------------------------------------
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    order_number VARCHAR(50) UNIQUE NOT NULL, -- Ej: 'ORD-2026-0001'
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Si el cliente tiene cuenta (opcional)
+    
+    -- Datos del cliente (por si es una compra como invitado)
+    customer_name VARCHAR(255) NOT NULL,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_phone VARCHAR(50) NOT NULL,
+    customer_dni VARCHAR(20), -- Muy importante para facturación en Perú
+    
+    -- Dirección de envío
+    shipping_address TEXT NOT NULL,
+    shipping_city VARCHAR(100),
+    shipping_postal_code VARCHAR(20),
+    
+    -- Totales y Pagos
+    total_amount DECIMAL(10, 2) NOT NULL,
+    payment_method VARCHAR(50), -- Ej: 'tarjeta', 'transferencia', 'mercadopago'
+    payment_status VARCHAR(50) DEFAULT 'pendiente', -- 'pendiente', 'pagado', 'fallido', 'reembolsado'
+    
+    -- Estado logístico
+    order_status VARCHAR(50) DEFAULT 'nuevo', -- 'nuevo', 'procesando', 'enviado', 'entregado', 'cancelado'
+    
+    -- Auditoría
+    notes TEXT, -- Notas adicionales del cliente o del administrador
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    
+    -- 🔥 AQUÍ ESTÁ LA CORRECCIÓN: Apuntamos a product_variants
+    variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL, 
+    
+    product_name VARCHAR(255) NOT NULL, 
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    
+    unit_price DECIMAL(10, 2) NOT NULL, 
+    subtotal DECIMAL(10, 2) NOT NULL,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

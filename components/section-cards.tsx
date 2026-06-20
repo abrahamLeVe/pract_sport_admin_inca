@@ -1,108 +1,103 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
-  CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ChartUpIcon, ChartDownIcon } from "@hugeicons/core-free-icons"
+} from "@/components/ui/card";
+import { Package, ShoppingCart, Users, Wallet } from "lucide-react";
 
-export function SectionCards() {
+interface SectionCardsProps {
+  kpis: {
+    revenue: number;
+    orders: number;
+    customers: number;
+    products: number;
+  };
+}
+
+export function SectionCards({ kpis }: SectionCardsProps) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: "PEN",
+    }).format(amount);
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+      {/* Tarjeta 1: Ingresos */}
       <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Total Revenue</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            $1,250.00
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} />
-              +12.5%
-            </Badge>
-          </CardAction>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardDescription className="text-sm font-medium">
+            Ingresos Totales
+          </CardDescription>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Trending up this month{" "}
-            <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Visitors for the last 6 months
-          </div>
-        </CardFooter>
+        <CardHeader className="pt-0">
+          <CardTitle className="text-2xl font-bold tabular-nums">
+            {formatCurrency(kpis.revenue)}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Solo pedidos pagados
+          </p>
+        </CardHeader>
       </Card>
+
+      {/* Tarjeta 2: Pedidos */}
       <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>New Customers</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            1,234
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <HugeiconsIcon icon={ChartDownIcon} strokeWidth={2} />
-              -20%
-            </Badge>
-          </CardAction>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardDescription className="text-sm font-medium">
+            Pedidos Recibidos
+          </CardDescription>
+          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Down 20% this period{" "}
-            <HugeiconsIcon icon={ChartDownIcon} strokeWidth={2} className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Acquisition needs attention
-          </div>
-        </CardFooter>
+        <CardHeader className="pt-0">
+          <CardTitle className="text-2xl font-bold tabular-nums">
+            {kpis.orders}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Transacciones totales en la tienda
+          </p>
+        </CardHeader>
       </Card>
+
+      {/* Tarjeta 3: Clientes */}
       <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Active Accounts</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            45,678
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} />
-              +12.5%
-            </Badge>
-          </CardAction>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardDescription className="text-sm font-medium">
+            Clientes Únicos
+          </CardDescription>
+          <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Strong user retention{" "}
-            <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Engagement exceed targets</div>
-        </CardFooter>
+        <CardHeader className="pt-0">
+          <CardTitle className="text-2xl font-bold tabular-nums">
+            {kpis.customers}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Compradores registrados
+          </p>
+        </CardHeader>
       </Card>
+
+      {/* Tarjeta 4: Productos */}
       <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Growth Rate</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            4.5%
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} />
-              +4.5%
-            </Badge>
-          </CardAction>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardDescription className="text-sm font-medium">
+            Catálogo Activo
+          </CardDescription>
+          <Package className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Steady performance increase{" "}
-            <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Meets growth projections</div>
-        </CardFooter>
+        <CardHeader className="pt-0">
+          <CardTitle className="text-2xl font-bold tabular-nums">
+            {kpis.products}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Productos creados
+          </p>
+        </CardHeader>
       </Card>
     </div>
-  )
+  );
 }

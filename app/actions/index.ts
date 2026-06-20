@@ -23,6 +23,7 @@ import {
   toggleEventStatusAction,
   updateEventAction,
 } from "./events";
+import { updateOrderStatusAction } from "./orders";
 import {
   createProductAction,
   deleteProductAction,
@@ -77,5 +78,8 @@ export const actions = {
     updateEventAction,
     deleteEventAction,
     toggleEventStatusAction,
+  },
+  orders: {
+    updateOrderStatusAction,
   },
 };

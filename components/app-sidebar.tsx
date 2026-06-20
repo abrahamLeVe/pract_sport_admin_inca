@@ -26,6 +26,7 @@ import {
   Settings05Icon,
   TimelineEventIcon,
   UserGroupIcon,
+  List,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
@@ -36,6 +37,11 @@ const data = {
       name: "Dashboard",
       url: "/dashboard",
       icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
+    },
+    {
+      name: "Pedidos",
+      url: "/dashboard/orders",
+      icon: <HugeiconsIcon icon={List} strokeWidth={2} />,
     },
     {
       name: "Banners",

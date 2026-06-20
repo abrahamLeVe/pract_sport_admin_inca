@@ -25,6 +25,7 @@ const routeTranslations: Record<string, string> = {
   categories: "Categorías",
   brands: "Marcas",
   events: "Eventos",
+  orders: "Pedidos",
   "race-settings": "Configuración de Competencias",
   "store-settings": "Configuración de variantes de producto",
 };
