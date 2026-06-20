@@ -30,6 +30,7 @@ import {
   toggleProductStatusAction,
   updateProductAction,
 } from "./products";
+import { updateRegistrationStatusAction } from "./registrations";
 import { updateClubSettingsAction } from "./settings";
 import { getPrivateVideoUrlAction, uploadFileToS3Action } from "./storage";
 import { updateUserAction } from "./users";
@@ -81,5 +82,8 @@ export const actions = {
   },
   orders: {
     updateOrderStatusAction,
+  },
+  registrations: {
+    updateRegistrationStatusAction,
   },
 };
