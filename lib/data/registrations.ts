@@ -1,14 +1,14 @@
 import pool from "@/lib/db";
 import { EventRegistration } from "@/validations/registrations";
 
-// Obtener todas las inscripciones (Para la tabla general)
-export async function getRegistrations(): Promise<EventRegistration[]> {
+export async function getRegistrations(
+  eventId?: number,
+): Promise<EventRegistration[]> {
   try {
-    const query = `
+    let query = `
       SELECT 
         r.*,
         e.title as event_title,
-        -- Unimos las distancias, edades y géneros para armar el nombre de la categoría
         CONCAT(md.name, ' - ', mac.name, ' - ', mg.name) as category_name
       FROM event_registrations r
       JOIN events e ON r.event_id = e.id
@@ -16,9 +16,20 @@ export async function getRegistrations(): Promise<EventRegistration[]> {
       LEFT JOIN master_distances md ON ec.distance_id = md.id
       LEFT JOIN master_age_categories mac ON ec.age_category_id = mac.id
       LEFT JOIN master_genders mg ON ec.gender_id = mg.id
-      ORDER BY r.created_at DESC
     `;
-    const { rows } = await pool.query(query);
+
+    // Valores dinámicos para proteger de inyección SQL
+    const values: any[] = [];
+
+    // Si nos pasan un ID de evento, filtramos la consulta
+    if (eventId) {
+      query += ` WHERE r.event_id = $1`;
+      values.push(eventId);
+    }
+
+    query += ` ORDER BY r.created_at DESC`;
+
+    const { rows } = await pool.query(query, values);
     return rows as EventRegistration[];
   } catch (error) {
     console.error("Error fetching registrations:", error);

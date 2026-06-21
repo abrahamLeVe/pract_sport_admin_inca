@@ -33,6 +33,15 @@ const paymentColors: Record<string, string> = {
 
 export const columns: ColumnDef<EventRegistration>[] = [
   {
+    accessorKey: "event_id",
+    header: "ID Evento",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground font-mono">
+        {row.original.event_id}
+      </span>
+    ),
+  },
+  {
     id: "atleta",
     // 🔥 LE ENSEÑAMOS AL BUSCADOR CÓMO LEER EL JSON (Busca por Nombre, Apellido o DNI)
     accessorFn: (row) =>
@@ -66,7 +75,7 @@ export const columns: ColumnDef<EventRegistration>[] = [
     id: "evento",
     header: "Evento y Categoría",
     cell: ({ row }) => (
-      <div className="flex flex-col max-w-[250px]">
+      <div className="flex flex-col max-w-62.5">
         <span className="font-medium truncate" title={row.original.event_title}>
           {row.original.event_title}
         </span>
