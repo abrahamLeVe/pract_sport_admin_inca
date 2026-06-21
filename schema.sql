@@ -402,3 +402,7 @@ CREATE TABLE order_items (
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_orders_order_number ON orders(order_number);
+CREATE INDEX idx_orders_customer_email ON orders(customer_email);
+CREATE INDEX idx_registrations_event_id ON event_registrations(event_id);
