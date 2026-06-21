@@ -1,44 +1,22 @@
+import { Brand } from "@/validations/brands";
 import pool from "../db";
 
-export async function getBrandsAction({
-  query,
-  page = 1,
-  limit = 5,
-}: {
-  query: string;
-  page: number;
-  limit: number;
-}) {
-  const offset = (page - 1) * limit;
-
+export async function getBrands(): Promise<Brand[]> {
   try {
-    const dataQuery = `
-      SELECT * FROM brands
-      WHERE name ILIKE $1 OR slug ILIKE $1
-      ORDER BY created_at DESC
-      LIMIT $2 OFFSET $3
-    `;
-    const dataValues = [`%${query}%`, limit, offset];
-    const result = await pool.query(dataQuery, dataValues);
-
-    const countQuery = `
-      SELECT COUNT(*) 
+    const query = `
+      SELECT *
       FROM brands
-      WHERE name ILIKE $1 OR slug ILIKE $1
+      ORDER BY created_at DESC
     `;
-    const countValues = [`%${query}%`];
-    const countResult = await pool.query(countQuery, countValues);
+    const { rows } = await pool.query(query);
 
-    const totalBrands = parseInt(countResult.rows[0].count, 10);
-    const totalPages = Math.ceil(totalBrands / limit);
-
-    return {
-      brands: result.rows,
-      totalPages,
-    };
+    return rows.map((row) => ({
+      ...row,
+      is_active: row.status === "activo",
+    })) as Brand[];
   } catch (error) {
-    console.error("❌ Error al obtener marcas:", error);
-    throw new Error("No se pudieron cargar las marcas.");
+    console.error("❌ Error en getBrands:", error);
+    return [];
   }
 }
 

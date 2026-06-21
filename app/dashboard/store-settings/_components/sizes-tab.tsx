@@ -24,20 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EditSizeInput } from "@/validations/variants";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
 import { Badge } from "@/components/ui/badge";
+import { DataTable } from "@/components/data-table"; // 🔥 Asegúrate de tener esta importación
+import { ColumnDef } from "@tanstack/react-table";
 
 export default function SizesTab({ data }: { data: EditSizeInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -77,6 +71,60 @@ export default function SizesTab({ data }: { data: EditSizeInput[] }) {
     setEditingItem(item || null);
     setIsOpen(true);
   };
+
+  // 🔥 1. Definimos las columnas de la DataTable aquí dentro
+  const columns: ColumnDef<EditSizeInput>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.id}</span>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nombre / Medida",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "category",
+      header: "Categoría",
+      cell: ({ row }) => {
+        const category = row.original.category;
+        return category ? (
+          <Badge variant="outline">{category}</Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm italic">General</span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Acciones</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openDialog(item)}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteConfirmButton
+              id={item.id}
+              action={deleteMasterSizeAction}
+              title="¿Eliminar Talla?"
+              description={`¿Seguro que deseas eliminar la talla "${item.name}"?`}
+            />
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
@@ -166,58 +214,10 @@ export default function SizesTab({ data }: { data: EditSizeInput[] }) {
         </Dialog>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Nombre / Medida</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">
-                No hay tallas registradas.
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
-
-                <TableCell>
-                  {item.category ? (
-                    <Badge variant="outline">{item.category}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-sm italic">
-                      General
-                    </span>
-                  )}
-                </TableCell>
-
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openDialog(item)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <DeleteConfirmButton
-                    id={item.id}
-                    action={deleteMasterSizeAction}
-                    title="¿Eliminar Talla?"
-                    description={`¿Seguro que deseas eliminar la talla "${item.name}"?`}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      {/* 🔥 2. Reemplazamos la tabla plana por la DataTable mágica */}
+      <div className="mt-4">
+        <DataTable columns={columns} data={data} searchKey="name" />
+      </div>
     </div>
   );
 }

@@ -17,19 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EditGenderInput } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
+import { DataTable } from "@/components/data-table"; // 🔥 Nueva importación
+import { ColumnDef } from "@tanstack/react-table"; // 🔥 Nueva importación
 
 export default function GendersTab({ data }: { data: EditGenderInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,6 +58,49 @@ export default function GendersTab({ data }: { data: EditGenderInput[] }) {
     setEditingItem(item || null);
     setIsOpen(true);
   };
+
+  // 🔥 1. Definición de columnas para la DataTable
+  // Solo mostramos "Nombre" y "Acciones", igual que en tu tabla original
+  const columns: ColumnDef<EditGenderInput>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.id}</span>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nombre del Género",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Acciones</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openDialog(item)}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteConfirmButton
+              id={item.id}
+              action={deleteMasterGenderAction}
+              title="¿Eliminar Género?"
+              description={`¿Seguro que deseas eliminar "${item.name}"?`}
+            />
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
@@ -127,44 +164,10 @@ export default function GendersTab({ data }: { data: EditGenderInput[] }) {
         </Dialog>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={2} className="text-center">
-                No hay géneros registrados.
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openDialog(item)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <DeleteConfirmButton
-                    id={item.id}
-                    action={deleteMasterGenderAction}
-                    title="¿Eliminar Género?"
-                    description={`¿Seguro que deseas eliminar "${item.name}"?`}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      {/* 🔥 2. Reemplazo de la tabla plana por la DataTable */}
+      <div className="mt-4">
+        <DataTable columns={columns} data={data} searchKey="name" />
+      </div>
     </div>
   );
 }

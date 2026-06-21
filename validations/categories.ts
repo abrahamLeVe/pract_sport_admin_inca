@@ -25,3 +25,21 @@ export interface EditCategoryFormProps {
     image_url: string;
   };
 }
+
+// ============================================================================
+// 3. INTERFAZ PARA LA TABLA
+// ============================================================================
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  image_key: string | null;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
+
+  // 🔥 Campo virtual para la DataTable
+  is_active?: boolean;
+}

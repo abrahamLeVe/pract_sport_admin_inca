@@ -6,7 +6,7 @@ import {
 import { Suspense } from "react";
 import ColorsTab from "./_components/colors-tab";
 import SizesTab from "./_components/sizes-tab";
-import TabRaceLoading from "./_components/tab-skeleton";
+import { TabSkeleton } from "./_components/tab-skeleton";
 
 export const metadata = {
   title: "Configuración de variables de producto",
@@ -50,13 +50,13 @@ export default function RaceSettingsPage() {
         </TabsList>
 
         <TabsContent value="colors">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <ColorsWrapper />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="sizes">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <SizesWrapper />
           </Suspense>
         </TabsContent>

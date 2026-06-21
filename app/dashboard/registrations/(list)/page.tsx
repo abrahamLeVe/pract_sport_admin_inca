@@ -1,4 +1,3 @@
-import { getRegistrations } from "@/lib/data/registrations";
 import {
   Card,
   CardContent,
@@ -6,14 +5,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { RegistrationsClient } from "./_components/registrations-client";
+import { getRegistrations } from "@/lib/data/registrations";
+import { RegistrationsClient } from "../_components/registrations-client";
 
 export const metadata = {
   title: "Inscripciones | Admin Inca",
 };
 
 export default async function RegistrationsPage() {
-  // Obtenemos los atletas inscritos desde la base de datos
   const registrations = await getRegistrations();
 
   return (
@@ -31,7 +30,6 @@ export default async function RegistrationsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Pasamos los datos a la tabla cliente */}
           <RegistrationsClient data={registrations} />
         </CardContent>
       </Card>

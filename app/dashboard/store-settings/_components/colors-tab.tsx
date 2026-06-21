@@ -17,19 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EditColorInput } from "@/validations/variants";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
+import { DataTable } from "@/components/data-table"; // 🔥 Asegúrate de tener esta importación
+import { ColumnDef } from "@tanstack/react-table";
 
 export default function ColorsTab({ data }: { data: EditColorInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,6 +58,69 @@ export default function ColorsTab({ data }: { data: EditColorInput[] }) {
     setEditingItem(item || null);
     setIsOpen(true);
   };
+
+  // 🔥 1. Definimos las columnas de la DataTable aquí dentro
+  // para tener acceso a la función `openDialog`
+  const columns: ColumnDef<EditColorInput>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.id}</span>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nombre",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "hex_code",
+      header: "Muestra (Hex)",
+      cell: ({ row }) => {
+        const item = row.original;
+        return item.hex_code ? (
+          <div className="flex items-center gap-2">
+            <div
+              className="w-5 h-5 rounded-full border shadow-sm"
+              style={{ backgroundColor: item.hex_code }}
+            />
+            <span className="text-sm font-mono text-muted-foreground">
+              {item.hex_code}
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground italic">Ninguno</span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Acciones</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openDialog(item)}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteConfirmButton
+              id={item.id}
+              action={deleteMasterColorAction}
+              title="¿Eliminar Color?"
+              description={`¿Seguro que deseas eliminar el color "${item.name}"?`}
+            />
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
@@ -128,7 +185,6 @@ export default function ColorsTab({ data }: { data: EditColorInput[] }) {
                       editingItem?.hex_code || state.data?.hex_code || "#000000"
                     }
                     onChange={(e) => {
-                      // Al mover el selector de color, actualizamos el texto del input contiguo
                       const textInput = document.getElementById(
                         "hex_code",
                       ) as HTMLInputElement;
@@ -165,66 +221,10 @@ export default function ColorsTab({ data }: { data: EditColorInput[] }) {
         </Dialog>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Muestra (Hex)</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">
-                No hay colores registrados.
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
-
-                <TableCell>
-                  {item.hex_code ? (
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-5 h-5 rounded-full border shadow-sm"
-                        style={{ backgroundColor: item.hex_code }}
-                      />
-                      <span className="text-sm font-mono text-muted-foreground">
-                        {item.hex_code}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground italic">
-                      Ninguno
-                    </span>
-                  )}
-                </TableCell>
-
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openDialog(item)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <DeleteConfirmButton
-                    id={item.id}
-                    action={deleteMasterColorAction}
-                    title="¿Eliminar Color?"
-                    description={`¿Seguro que deseas eliminar el color "${item.name}"?`}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      {/* 🔥 2. Reemplazamos la tabla plana por la DataTable mágica */}
+      <div className="mt-4">
+        <DataTable columns={columns} data={data} searchKey="name" />
+      </div>
     </div>
   );
 }

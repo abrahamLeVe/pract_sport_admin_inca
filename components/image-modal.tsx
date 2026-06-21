@@ -4,6 +4,7 @@ import { ImageIcon, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface ImageModalProps {
   imageUrl: string | null;
@@ -42,15 +43,17 @@ export function ImageModal({
       <div
         onClick={() => setIsOpen(true)}
         className={cn(
-          "relative cursor-pointer overflow-hidden rounded border bg-muted transition-all hover:scale-110 hover:ring-2 hover:ring-primary/50",
+          "relative cursor-pointer overflow-hidden rounded-md border bg-muted transition-all hover:scale-110 hover:ring-2 hover:ring-primary/50",
           thumbnailClassName || "h-10 w-10", // Tamaño por defecto
         )}
         title="Ver imagen completa"
       >
-        <img
+        <Image
           src={imageUrl}
           alt={altText}
-          className="h-full w-full object-cover"
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, 33vw"
         />
       </div>
 

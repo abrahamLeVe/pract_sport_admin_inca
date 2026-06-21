@@ -66,3 +66,27 @@ export interface RegisterProductFormProps {
 export interface EditProductFormProps extends RegisterProductFormProps {
   initialData: EditProductInput & { has_variants?: boolean | string | number };
 }
+
+// ============================================================================
+// 4. INTERFAZ PARA LA TABLA
+// ============================================================================
+export interface ProductTableItem {
+  id: number;
+  name: string;
+  slug: string;
+  price: number;
+  discount_price: number | null;
+  stock: number;
+  status: string;
+  images: { url: string; key: string }[] | null;
+
+  // Campos cruzados (JOINs)
+  category_name: string | null;
+  brand_name: string | null;
+
+  created_at: Date;
+
+  // 🔥 Campos virtuales para la DataTable
+  is_active?: boolean;
+  main_image?: string | null;
+}

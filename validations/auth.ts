@@ -44,3 +44,19 @@ export type EditUserInput = z.infer<typeof EditUserSchema>;
 export interface EditUserFormProps {
   initialData: EditUserInput;
 }
+
+// ============================================================================
+// 4. INTERFAZ PARA LA TABLA
+// ============================================================================
+export interface UserTableItem {
+  id: number; // Usamos string o number dependiendo de si usas UUIDs o IDs seriales
+  name: string | null;
+  email: string;
+  image_url: string | null; // Aquí vendrá el avatar del usuario
+  role: string;
+  status: string;
+  created_at: Date;
+
+  // 🔥 Campo virtual para la DataTable
+  is_active?: boolean;
+}

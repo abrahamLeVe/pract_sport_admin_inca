@@ -1,44 +1,23 @@
+import { Banner } from "@/validations/banners";
 import pool from "../db";
 
-interface GetBannersParams {
-  query?: string;
-  page?: number;
-  limit?: number;
-}
-
-export async function getBannersAction({
-  query = "",
-  page = 1,
-  limit = 5,
-}: GetBannersParams) {
+export async function getBanners(): Promise<Banner[]> {
   try {
-    const offset = (page - 1) * limit;
-    const bannersQuery = `
-      SELECT id, title, subtitle, image_url, type, sort_order, status, start_date, end_date, created_at
+    const query = `
+      SELECT *
       FROM banners
-      WHERE title ILIKE $1 OR subtitle ILIKE $1
       ORDER BY sort_order ASC, created_at DESC
-      LIMIT $2 OFFSET $3
     `;
-    const bannersResult = await pool.query(bannersQuery, [
-      `%${query}%`,
-      limit,
-      offset,
-    ]);
-    const countQuery = `
-      SELECT COUNT(*) FROM banners
-      WHERE title ILIKE $1 OR subtitle ILIKE $1
-    `;
-    const countResult = await pool.query(countQuery, [`%${query}%`]);
-    const totalItems = parseInt(countResult.rows[0].count, 10);
-    const totalPages = Math.ceil(totalItems / limit);
-    return {
-      banners: bannersResult.rows,
-      totalPages: totalPages || 1,
-    };
+    const { rows } = await pool.query(query);
+
+    // Mapeamos los resultados para agregar el boolean 'is_active' que usa la tabla
+    return rows.map((row) => ({
+      ...row,
+      is_active: row.status === "activo",
+    })) as Banner[];
   } catch (error) {
-    console.error("❌ Error en getBannersAction:", error);
-    return { banners: [], totalPages: 1 };
+    console.error("❌ Error en getBanners:", error);
+    return [];
   }
 }
 

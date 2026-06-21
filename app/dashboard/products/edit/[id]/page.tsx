@@ -1,5 +1,5 @@
-import { getBrandsAction } from "@/lib/data/brands";
-import { getCategoriesAction } from "@/lib/data/categories";
+import { getBrands } from "@/lib/data/brands";
+import { getCategories } from "@/lib/data/categories";
 import { getProductByIdAction } from "@/lib/data/products";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -22,8 +22,8 @@ export default async function EditProductPage({ params }: PageProps) {
 
   const [product, categoriesResponse, brandsResponse] = await Promise.all([
     getProductByIdAction(productId),
-    getCategoriesAction({ query: "", page: 1, limit: 100 }),
-    getBrandsAction({ query: "", page: 1, limit: 100 }),
+    getCategories(),
+    getBrands(),
   ]);
 
   if (!product) {
@@ -34,8 +34,8 @@ export default async function EditProductPage({ params }: PageProps) {
     <div className="flex flex-col gap-6 max-w-3xl mx-auto">
       <EditProductForm
         initialData={product}
-        categories={categoriesResponse.categories}
-        brands={brandsResponse.brands}
+        categories={categoriesResponse}
+        brands={brandsResponse}
       />
 
       <Suspense

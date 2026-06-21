@@ -137,3 +137,22 @@ export interface EventCategoriesTableProps extends CategoryMasterData {
   eventId: number;
   categories: EventCategoryRow[];
 }
+
+// ============================================================================
+// 3. INTERFAZ PARA LA TABLA
+// ============================================================================
+export interface EventTableItem {
+  id: number;
+  title: string;
+  slug: string;
+  location_name: string;
+  event_date: Date;
+  status: string;
+  image_url: string | null;
+  image_key: string | null;
+  created_at: Date;
+  updated_at: Date;
+
+  // 🔥 Campo virtual para la DataTable
+  is_active?: boolean;
+}

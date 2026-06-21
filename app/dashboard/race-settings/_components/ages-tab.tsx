@@ -17,19 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EditAgeCategoryInput } from "@/validations/master-data";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmButton } from "./delete-confirm-button";
+import { DataTable } from "@/components/data-table"; // 🔥 Importación de la DataTable
+import { ColumnDef } from "@tanstack/react-table"; // 🔥 Importación de ColumnDef
 
 export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -66,6 +60,59 @@ export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
     setEditingItem(item || null);
     setIsOpen(true);
   };
+
+  // 🔥 1. Definición de las columnas de la DataTable (Incluyendo el ID)
+  const columns: ColumnDef<EditAgeCategoryInput>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{row.original.id}</span>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nombre de la Categoría",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
+    },
+    {
+      id: "rango_edad",
+      // Unimos los valores para que el buscador pueda filtrar por la edad mínima o máxima
+      accessorFn: (row) => `${row.default_min_age} - ${row.default_max_age}`,
+      header: "Rango de Edad (Ref.)",
+      cell: ({ row }) => (
+        <span>
+          {row.original.default_min_age} - {row.original.default_max_age} años
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Acciones</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="flex justify-end items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openDialog(item)}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteConfirmButton
+              id={item.id}
+              action={deleteMasterAgeCategoryAction}
+              title="¿Eliminar Categoría de Edad?"
+              description={`¿Seguro que deseas eliminar "${item.name}"?`}
+            />
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
@@ -177,48 +224,11 @@ export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
         </Dialog>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Rango de Edad (referenciales)</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center">
-                No hay categorías registradas.
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>
-                  {item.default_min_age} - {item.default_max_age} años
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openDialog(item)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <DeleteConfirmButton
-                    id={item.id}
-                    action={deleteMasterAgeCategoryAction}
-                    title="¿Eliminar Categoría de Edad?"
-                    description={`¿Seguro que deseas eliminar "${item.name}"?`}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      {/* 🔥 2. Reemplazo de la tabla por la DataTable */}
+      <div className="mt-4">
+        {/* Usamos el ID de la columna combinada para que busque por nombre y edad */}
+        <DataTable columns={columns} data={data} searchKey="name" />
+      </div>
     </div>
   );
 }

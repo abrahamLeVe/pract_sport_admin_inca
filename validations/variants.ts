@@ -94,14 +94,15 @@ export const editVariantSchema = baseVariantSchema
 export type VariantInput = z.infer<typeof variantSchema>;
 export type EditVariantInput = z.infer<typeof editVariantSchema>;
 
-// ============================================================================
 // 4. PROPS PARA COMPONENTES DE VARIANTES
 // ============================================================================
+
 export interface RegisterVariantFormProps {
   productId: number;
-  // Pasamos los catálogos para que puedas llenar los <select> en tu formulario
-  colors: { id: number; name: string; hex_code: string | null }[];
-  sizes: { id: number; name: string; category: string | null }[];
+  // 🔥 Usamos directamente los tipos de Zod en lugar de reescribirlos
+  colors: EditColorInput[];
+  sizes: EditSizeInput[];
+  parentTrackStock?: boolean;
 }
 
 export interface EditVariantFormProps extends RegisterVariantFormProps {

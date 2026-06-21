@@ -1,30 +1,87 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function TabRaceLoading() {
-  const skeletonRows = Array.from({ length: 5 });
-
+export function TabSkeleton() {
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm w-full">
-      <div className="flex justify-between items-center mb-6 gap-0.5">
-        <Skeleton className="h-14 w-32 sm:h-7 sm:w-64" />
+      {/* 1. Esqueleto del Encabezado */}
+      <div className="flex justify-between items-center">
+        {/* Título */}
+        <Skeleton className="h-7 w-[200px]" />
 
-        <Skeleton className="h-9 w-40 rounded-full!" />
+        {/* Botón "+ Nuevo Color" (¡Ahora con forma de píldora!) */}
+        <Skeleton className="h-10 w-[130px] rounded-full" />
       </div>
-      <div className="w-full">
-        <div className="flex justify-between w-full h-10 border-b px-4">
-          <div className="flex justify-between gap-4 w-[25%]">
-            <Skeleton className="h-5 w-5" />
-            <Skeleton className="h-5 w-15" />
-          </div>
-          <div>
-            <Skeleton className="h-5 w-15" />
-          </div>
+
+      {/* 2. Esqueleto de la DataTable */}
+      <div className="mt-4 space-y-4">
+        {/* Controles superiores */}
+        <div className="flex items-center justify-between">
+          {/* Buscador (Forma de píldora) */}
+          <Skeleton className="h-10 w-[250px] md:w-[350px] rounded-full" />
+
+          {/* Botón "Columnas Visibles" (Forma de píldora) */}
+          <Skeleton className="h-10 w-[150px] rounded-full" />
         </div>
 
-        <div className="px-4 py-7 space-y-8">
-          {skeletonRows.map((_, index) => (
-            <Skeleton key={index} className="h-5 w-full" />
+        {/* Tabla Falsa (Usamos porcentajes para alineación perfecta) */}
+        <div className="rounded-md border">
+          {/* Cabecera */}
+          <div className="h-12 bg-muted/20 border-b flex items-center px-4">
+            <div className="w-[10%]">
+              <Skeleton className="h-4 w-6" />
+            </div>
+            <div className="w-[40%]">
+              <Skeleton className="h-4 w-[80px]" />
+            </div>
+            <div className="w-[30%]">
+              <Skeleton className="h-4 w-[110px]" />
+            </div>
+            <div className="w-[20%] flex justify-end">
+              <Skeleton className="h-4 w-[60px]" />
+            </div>
+          </div>
+
+          {/* 5 Filas simulando los datos */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[65px] border-b flex items-center px-4 hover:bg-muted/10"
+            >
+              {/* ID */}
+              <div className="w-[10%]">
+                <Skeleton className="h-4 w-4" />
+              </div>
+
+              {/* Nombre del Color */}
+              <div className="w-[40%]">
+                <Skeleton className="h-4 w-[100px] md:w-[140px]" />
+              </div>
+
+              {/* Muestra Hex (Círculo exacto + Texto) */}
+              <div className="w-[30%] flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                <Skeleton className="h-4 w-[65px]" />
+              </div>
+
+              {/* Acciones (Ya no son cajas grandes, simulamos el tamaño de los iconos) */}
+              <div className="w-[20%] flex justify-end gap-4 pr-2">
+                <Skeleton className="h-4 w-4 rounded-sm opacity-50" />
+                <Skeleton className="h-4 w-4 rounded-sm opacity-50" />
+              </div>
+            </div>
           ))}
+        </div>
+
+        {/* Paginación Inferior */}
+        <div className="flex items-center justify-between pt-2">
+          {/* Texto inferior izquierdo: "0 de N filas..." */}
+          <Skeleton className="h-4 w-[150px]" />
+
+          {/* Botones Anterior/Siguiente (Forma de píldora) */}
+          <div className="flex space-x-2">
+            <Skeleton className="h-9 w-[80px] rounded-full" />
+            <Skeleton className="h-9 w-[80px] rounded-full" />
+          </div>
         </div>
       </div>
     </div>

@@ -1,59 +1,40 @@
+import { ProductTableItem } from "@/validations/products";
 import pool from "../db";
 
-export async function getProductsAction({
-  query,
-  page,
-  limit,
-}: {
-  query: string;
-  page: number;
-  limit: number;
-}) {
+export async function getProducts(): Promise<ProductTableItem[]> {
   try {
-    const offset = (page - 1) * limit;
-
-    const productsQuery = `
+    const query = `
       SELECT 
-        p.id, 
-        p.name, 
-        p.slug, 
-        p.price, 
-        p.stock, 
-        p.status, 
-        p.images, 
-        p.track_stock,
-        -- 🔥 1. Detectamos si tiene variantes en general
-        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id) as has_variants,
-        -- 🔥 2. Detectamos si AL MENOS UNA variante es de stock infinito
-        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.track_stock = false) as has_infinite_variants
+        p.*,
+        c.name as category_name,
+        b.name as brand_name
       FROM products p
-      WHERE p.name ILIKE $1 OR p.slug ILIKE $1
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN brands b ON p.brand_id = b.id
       ORDER BY p.created_at DESC
-      LIMIT $2 OFFSET $3
     `;
+    const { rows } = await pool.query(query);
 
-    const countQuery = `
-      SELECT COUNT(*)
-      FROM products
-      WHERE name ILIKE $1 OR slug ILIKE $1
-    `;
+    return rows.map((row) => {
+      // Extraemos la primera imagen de la galería (si existe)
+      let main_image = null;
+      if (row.images && Array.isArray(row.images) && row.images.length > 0) {
+        main_image = row.images[0].url;
+      }
 
-    const searchQuery = `%${query}%`;
-
-    const [productsResult, countResult] = await Promise.all([
-      pool.query(productsQuery, [searchQuery, limit, offset]),
-      pool.query(countQuery, [searchQuery]),
-    ]);
-
-    const totalPages = Math.ceil(Number(countResult.rows[0].count) / limit);
-
-    return {
-      products: productsResult.rows,
-      totalPages,
-    };
+      return {
+        ...row,
+        price: parseFloat(row.price),
+        discount_price: row.discount_price
+          ? parseFloat(row.discount_price)
+          : null,
+        is_active: row.status === "activo",
+        main_image,
+      };
+    }) as ProductTableItem[];
   } catch (error) {
-    console.error("❌ Error al obtener productos:", error);
-    return { products: [], totalPages: 0 };
+    console.error("❌ Error en getProducts:", error);
+    return [];
   }
 }
 

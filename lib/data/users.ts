@@ -1,61 +1,28 @@
+import { UserTableItem } from "@/validations/auth";
 import pool from "../db";
 
-export interface GetUsersParams {
-  query?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface UserRow {
-  id: number;
-  name: string | null;
-  email: string;
-  role: string;
-  status: string;
-  created_at: Date;
-}
-
-export async function getUsersAction({
-  query = "",
-  page = 1,
-  limit = 5,
-}: GetUsersParams) {
-  const offset = (page - 1) * limit;
-  const searchVal = `%${query}%`;
-
+// Obtener todos los usuarios (La DataTable paginará)
+export async function getUsers(): Promise<UserTableItem[]> {
   try {
-    const usersQuery = `
-      SELECT id, name, email, role, status, created_at 
+    const query = `
+      SELECT *
       FROM users
-      WHERE name ILIKE $1 OR email ILIKE $1
-      ORDER BY id DESC
-      LIMIT $2 OFFSET $3
+      ORDER BY created_at DESC
     `;
-    const usersResult = await pool.query<UserRow>(usersQuery, [
-      searchVal,
-      limit,
-      offset,
-    ]);
+    const { rows } = await pool.query(query);
 
-    const countQuery = `
-      SELECT COUNT(*) FROM users
-      WHERE name ILIKE $1 OR email ILIKE $1
-    `;
-    const countResult = await pool.query(countQuery, [searchVal]);
-
-    const totalItems = parseInt(countResult.rows[0].count, 10);
-    const totalPages = Math.ceil(totalItems / limit);
-
-    return {
-      users: usersResult.rows,
-      totalPages,
-      currentPage: page,
-    };
+    return rows.map((row) => ({
+      ...row,
+      // Consideramos activo si su estado es 'activo' o 'active'
+      is_active: row.status === "activo" || row.status === "active",
+    })) as UserTableItem[];
   } catch (error) {
-    console.error("❌ Error en getUsersAction:", error);
-    return { users: [], totalPages: 0, currentPage: 1 };
+    console.error("❌ Error en getUsers:", error);
+    return [];
   }
 }
+
+// (Mantén aquí abajo tu función export async function getUserById... intacta)
 
 export async function getUserByIdAction(id: number) {
   try {

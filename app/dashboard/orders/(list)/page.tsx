@@ -6,14 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { OrdersClient } from "./_components/orders-client";
+import { OrdersClient } from "../_components/orders-client";
 
 export const metadata = {
   title: "Pedidos | Admin Inca",
 };
 
 export default async function OrdersPage() {
-  // Obtenemos los pedidos desde la base de datos (Server-side)
   const orders = await getOrders();
 
   return (
@@ -31,7 +30,6 @@ export default async function OrdersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Le pasamos la data real a nuestro componente de cliente */}
           <OrdersClient data={orders} />
         </CardContent>
       </Card>

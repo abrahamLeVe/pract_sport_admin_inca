@@ -10,7 +10,7 @@ import AgesTab from "./_components/ages-tab";
 import DistancesTab from "./_components/distances-tab";
 import EventTypesTab from "./_components/event-types-tab";
 import GendersTab from "./_components/genders-tab";
-import TabRaceLoading from "./_components/tab-skeleton";
+import { TabSkeleton } from "./_components/tab-skeleton";
 
 export const metadata = {
   title: "Configuración de Competencias",
@@ -76,25 +76,25 @@ export default function RaceSettingsPage() {
         </TabsList>
 
         <TabsContent value="distances">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <DistancesWrapper />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="genders">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <GendersWrapper />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="ages">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <AgesWrapper />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="event-types">
-          <Suspense fallback={<TabRaceLoading />}>
+          <Suspense fallback={<TabSkeleton />}>
             <EventTypesWrapper />
           </Suspense>
         </TabsContent>

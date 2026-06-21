@@ -1,47 +1,24 @@
+import { Category } from "@/validations/categories";
 import pool from "../db";
 
-export async function getCategoriesAction({
-  query,
-  page = 1,
-  limit = 5,
-}: {
-  query: string;
-  page: number;
-  limit: number;
-}) {
-  const offset = (page - 1) * limit;
-
+export async function getCategories(): Promise<Category[]> {
   try {
-    const dataQuery = `
-      SELECT * FROM categories
-      WHERE name ILIKE $1 OR slug ILIKE $1
-      ORDER BY created_at DESC
-      LIMIT $2 OFFSET $3
-    `;
-    const dataValues = [`%${query}%`, limit, offset];
-    const result = await pool.query(dataQuery, dataValues);
-
-    const countQuery = `
-      SELECT COUNT(*) 
+    const query = `
+      SELECT *
       FROM categories
-      WHERE name ILIKE $1 OR slug ILIKE $1
+      ORDER BY created_at DESC
     `;
-    const countValues = [`%${query}%`];
-    const countResult = await pool.query(countQuery, countValues);
+    const { rows } = await pool.query(query);
 
-    const totalCategories = parseInt(countResult.rows[0].count, 10);
-    const totalPages = Math.ceil(totalCategories / limit);
-
-    return {
-      categories: result.rows,
-      totalPages,
-    };
+    return rows.map((row) => ({
+      ...row,
+      is_active: row.status === "activo",
+    })) as Category[];
   } catch (error) {
-    console.error("❌ Error al obtener categorías:", error);
-    throw new Error("No se pudieron cargar las categorías.");
+    console.error("❌ Error en getCategories:", error);
+    return [];
   }
 }
-
 export async function getCategoryByIdAction(id: number) {
   try {
     const query = `
