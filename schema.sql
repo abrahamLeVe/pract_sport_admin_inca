@@ -377,6 +377,8 @@ CREATE TABLE orders (
     
     -- Estado logístico
     order_status VARCHAR(50) DEFAULT 'nuevo', -- 'nuevo', 'procesando', 'enviado', 'entregado', 'cancelado'
+    operation_number VARCHAR(100);
+    payment_receipt_url TEXT;
     
     -- Auditoría
     notes TEXT, -- Notas adicionales del cliente o del administrador

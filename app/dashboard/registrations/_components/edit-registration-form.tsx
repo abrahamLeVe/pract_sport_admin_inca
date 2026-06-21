@@ -26,7 +26,7 @@ import {
   EventRegistration,
   UpdateRegistrationStatusInput,
 } from "@/validations/registrations";
-import { Activity, CheckCircle, CreditCard, Hash, User } from "lucide-react";
+import { CheckCircle, CreditCard, User } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -162,17 +162,16 @@ export function EditRegistrationForm({
               </p>
             </div>
             {initialData.payment_receipt_url && (
-              <div className="md:col-span-2 mt-4">
-                <p className="text-muted-foreground mb-2">Voucher Adjunto</p>
-                {/* Aquí podrías usar tu componente de visualización de imágenes si lo tienes */}
-                <a
-                  href={initialData.payment_receipt_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Ver comprobante de pago
-                </a>
+              <div className="pt-2">
+                <Button variant="outline" size="sm" asChild className="w-full">
+                  <a
+                    href={initialData.payment_receipt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ver comprobante de pago
+                  </a>
+                </Button>
               </div>
             )}
           </CardContent>
@@ -199,7 +198,10 @@ export function EditRegistrationForm({
                   defaultValue={initialData.payment_status}
                   disabled={isPending}
                 >
-                  <SelectTrigger id="payment_status">
+                  <SelectTrigger
+                    id="order_status"
+                    className="w-full bg-background"
+                  >
                     <SelectValue placeholder="Seleccionar pago" />
                   </SelectTrigger>
                   <SelectContent>
@@ -223,7 +225,10 @@ export function EditRegistrationForm({
                   defaultValue={initialData.registration_status}
                   disabled={isPending}
                 >
-                  <SelectTrigger id="registration_status">
+                  <SelectTrigger
+                    id="order_status"
+                    className="w-full bg-background"
+                  >
                     <SelectValue placeholder="Seleccionar estado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,6 +255,7 @@ export function EditRegistrationForm({
                     value={bib}
                     onChange={(e) => setBib(e.target.value)}
                     disabled={isPending}
+                    className="bg-background"
                   />
 
                   {/* BOTÓN SUGERENCIA: Solo aparece si nunca tuvo dorsal y el campo está vacío */}

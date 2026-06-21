@@ -1,63 +1,53 @@
 import { z } from "zod";
 
-// ============================================================================
-// 1. ESQUEMAS DE VALIDACIÓN (Para el Admin Panel)
-// ============================================================================
-
-// Esquema para cuando el administrador quiera cambiar el estado de un pedido
+// 1. Esquema para la actualización de estados (lo que usa el Server Action)
 export const updateOrderStatusSchema = z.object({
-  id: z.coerce.number(),
-  order_status: z.enum([
-    "nuevo",
-    "procesando",
-    "enviado",
-    "entregado",
-    "cancelado",
-  ]),
-  payment_status: z
-    .enum(["pendiente", "pagado", "fallido", "reembolsado"])
-    .optional(),
-  notes: z.string().optional(),
+  id: z.union([z.string(), z.number()]),
+  order_status: z.string().min(1, "El estado de envío es requerido"),
+  payment_status: z.string().min(1, "El estado de pago es requerido"),
+  notes: z.string().optional().nullable(),
 });
-
-// ============================================================================
-// 2. TIPOS INFERIDOS (Para TypeScript)
-// ============================================================================
 
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 
-// Tipo para representar un Item del Pedido (Lo que leeremos de la BD)
+// ============================================================================
+// 2. INTERFACES ESTRICTAS PARA LA BASE DE DATOS Y COMPONENTES
+// ============================================================================
+
+// Interfaz para cada producto dentro de la orden
 export interface OrderItem {
   id: number;
   order_id: number;
   product_id: number;
-  variant_id: number | null;
-  product_name: string;
+  variant_id?: number | null;
   quantity: number;
-  unit_price: number;
-  subtotal: number;
+  unit_price: number | string; // Postgres devuelve decimales como strings
+  subtotal: number | string;
+  product_name: string;
+  variant_details?: string | null;
 }
 
-// Tipo para representar el Pedido Completo (Lo que mostraremos en la tabla)
+// Interfaz para la Orden Completa
 export interface Order {
   id: number;
   order_number: string;
-  user_id: number | null;
+  customer_id?: number | null;
   customer_name: string;
   customer_email: string;
-  customer_phone: string;
-  customer_dni: string | null;
-  shipping_address: string;
-  shipping_city: string | null;
-  shipping_postal_code: string | null; // 🔥 ESTA ES LA LÍNEA QUE FALTABA
-  total_amount: number;
-  payment_method: string | null;
-  payment_status: "pendiente" | "pagado" | "fallido" | "reembolsado";
-  order_status: "nuevo" | "procesando" | "enviado" | "entregado" | "cancelado";
-  notes: string | null;
-  created_at: Date;
-  updated_at: Date;
-
-  // Relación con los items
+  customer_dni?: string | null;
+  customer_phone?: string | null;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_postal_code?: string | null;
+  total_amount: number | string;
+  order_status: string;
+  payment_status: string;
+  payment_method?: string | null;
+  notes?: string | null;
+  operation_number?: string | null;
+  payment_receipt_url?: string | null;
+  created_at: Date | string;
+  updated_at?: Date | string | null;
+  // 🔥 Anidamos los items estrictamente tipados
   items?: OrderItem[];
 }
