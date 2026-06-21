@@ -17,36 +17,67 @@ import Link from "next/link";
 
 // 1. Configuramos los colores de los estados visuales
 const statusColors: Record<string, string> = {
-  nuevo: "bg-blue-500 hover:bg-blue-600",
-  procesando: "bg-yellow-500 hover:bg-yellow-600",
-  enviado: "bg-purple-500 hover:bg-purple-600",
-  entregado: "bg-green-500 hover:bg-green-600",
-  cancelado: "bg-red-500 hover:bg-red-600",
+  nuevo: "bg-blue-500 hover:bg-blue-600 border-transparent",
+  procesando: "bg-yellow-500 hover:bg-yellow-600 border-transparent text-white",
+  enviado: "bg-purple-500 hover:bg-purple-600 border-transparent text-white",
+  entregado: "bg-green-500 hover:bg-green-600 border-transparent text-white",
+  cancelado: "bg-red-500 hover:bg-red-600 border-transparent text-white",
 };
 
 const paymentColors: Record<string, string> = {
-  pendiente: "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30",
-  pagado: "bg-green-500/20 text-green-700 hover:bg-green-500/30",
-  fallido: "bg-red-500/20 text-red-700 hover:bg-red-500/30",
-  reembolsado: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30",
+  pendiente:
+    "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30 border-yellow-200",
+  pagado:
+    "bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-200",
+  fallido: "bg-red-500/20 text-red-700 hover:bg-red-500/30 border-red-200",
+  reembolsado:
+    "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-200",
 };
 
 // 2. Definimos las Columnas de la Tabla
 export const columns: ColumnDef<Order>[] = [
   {
-    accessorKey: "order_number",
+    id: "busqueda", // 🔥 Identificador combinado para el buscador múltiple
+    accessorFn: (row) =>
+      `${row.order_number} ${row.customer_name} ${row.customer_email}`,
     header: "N° Pedido",
     cell: ({ row }) => (
-      <span className="font-medium">{row.original.order_number}</span>
+      <span className="font-mono font-bold text-muted-foreground">
+        #{row.original.order_number}
+      </span>
     ),
   },
   {
-    accessorKey: "customer_name",
+    accessorKey: "created_at", // 🔥 Nueva columna de Fecha
+    header: "Fecha",
+    cell: ({ row }) => {
+      const date = new Date(row.original.created_at);
+      return (
+        <span className="text-sm whitespace-nowrap">
+          {date.toLocaleDateString("es-PE", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
+      );
+    },
+  },
+  {
+    id: "cliente",
     header: "Cliente",
     cell: ({ row }) => (
-      <div className="flex flex-col">
-        <span className="font-medium">{row.original.customer_name}</span>
-        <span className="text-xs text-muted-foreground">
+      <div className="flex flex-col max-w-[200px]">
+        <span
+          className="font-medium truncate"
+          title={row.original.customer_name}
+        >
+          {row.original.customer_name}
+        </span>
+        <span
+          className="text-xs text-muted-foreground truncate"
+          title={row.original.customer_email}
+        >
           {row.original.customer_email}
         </span>
       </div>
@@ -81,7 +112,7 @@ export const columns: ColumnDef<Order>[] = [
   },
   {
     accessorKey: "order_status",
-    header: "Estado de Envío",
+    header: "Estado",
     cell: ({ row }) => {
       const status = row.original.order_status;
       return (
@@ -93,37 +124,40 @@ export const columns: ColumnDef<Order>[] = [
   },
   {
     id: "actions",
+    header: () => <div className="text-right">Acciones</div>,
     cell: ({ row }) => {
       const order = row.original;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/orders/edit/${order.id}`}
-                className="cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4" /> Ver detalles
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/orders/edit/${order.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Actualizar Estado
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Abrir menú</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Opciones</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/dashboard/orders/edit/${order.id}`}
+                  className="cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4" /> Ver detalles
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/dashboard/orders/edit/${order.id}`}
+                  className="cursor-pointer"
+                >
+                  <Edit className="mr-2 h-4 w-4" /> Actualizar Estado
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },
@@ -137,7 +171,8 @@ interface OrdersClientProps {
 export function OrdersClient({ data }: OrdersClientProps) {
   return (
     <>
-      <DataTable columns={columns} data={data} searchKey="order_number" />
+      {/* 🔥 Le pasamos el ID "busqueda" para que busque por Orden, Nombre o Correo a la vez */}
+      <DataTable columns={columns} data={data} searchKey="busqueda" />
     </>
   );
 }

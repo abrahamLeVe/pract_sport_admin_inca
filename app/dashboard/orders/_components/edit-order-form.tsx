@@ -2,7 +2,6 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ActionState } from "@/validations/core";
 import { Order, UpdateOrderStatusInput } from "@/validations/orders";
 import { Package, Truck, User } from "lucide-react";
-import { startTransition, useActionState } from "react";
+import { useActionState } from "react";
 
 interface EditOrderFormProps {
   initialData: Order;

@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,12 +26,13 @@ import {
   EventRegistration,
   UpdateRegistrationStatusInput,
 } from "@/validations/registrations";
-import { Activity, CreditCard, User } from "lucide-react";
+import { Activity, CheckCircle, CreditCard, Hash, User } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 
 interface EditRegistrationFormProps {
   initialData: EventRegistration;
-  nextAvailableBib: number; // 🔥 Nueva propiedad
+  nextAvailableBib: number;
 }
 
 export function EditRegistrationForm({
@@ -69,7 +71,7 @@ export function EditRegistrationForm({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* COLUMNA IZQUIERDA: Detalles del Atleta y Evento */}
       <div className="lg:col-span-2 space-y-6">
-        {/* Ficha Médica y Personal del Atleta */}
+        {/* Información del Atleta */}
         <Card>
           <CardHeader className="flex flex-row items-center gap-2">
             <User className="w-5 h-5 text-muted-foreground" />
@@ -84,7 +86,7 @@ export function EditRegistrationForm({
             </div>
             <div>
               <p className="text-muted-foreground">
-                Documento ({details.documentType})
+                {details.documentType || "Documento"}
               </p>
               <p className="font-medium">{details.documentNumber}</p>
             </div>
@@ -96,100 +98,90 @@ export function EditRegistrationForm({
               <p className="text-muted-foreground">Teléfono</p>
               <p className="font-medium">{details.phone}</p>
             </div>
-            <div>
-              <p className="text-muted-foreground">Talla de Polo</p>
-              <p className="font-medium">
-                {details.tshirtSize || "No especificada"}
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Tipo de Sangre</p>
-              <p className="font-medium text-red-600">
-                {details.bloodType || "No especificado"}
-              </p>
-            </div>
+            {details.tshirtSize && (
+              <div>
+                <p className="text-muted-foreground">Talla de Polo</p>
+                <Badge variant="outline">{details.tshirtSize}</Badge>
+              </div>
+            )}
+            {details.bloodType && (
+              <div>
+                <p className="text-muted-foreground">Tipo de Sangre</p>
+                <Badge
+                  variant="destructive"
+                  className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+                >
+                  {details.bloodType}
+                </Badge>
+              </div>
+            )}
           </CardContent>
-          <Separator />
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Contacto de Emergencia</CardTitle>
+        </Card>
+
+        {/* Información del Evento */}
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-muted-foreground" />
+            <CardTitle>Inscripción al Evento</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm pb-6">
+          <CardContent className="space-y-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Nombre</p>
-              <p className="font-medium">
-                {details.emergencyContact || "No registrado"}
-              </p>
+              <p className="text-muted-foreground">Evento</p>
+              <p className="font-medium text-lg">{initialData.event_title}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Teléfono</p>
-              <p className="font-medium">
-                {details.emergencyPhone || "No registrado"}
-              </p>
+              <p className="text-muted-foreground">Categoría Seleccionada</p>
+              <p className="font-medium">{initialData.category_name}</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Detalles Logísticos (Evento y Pago) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <Activity className="w-5 h-5 text-muted-foreground" />
-              <CardTitle>Detalle del Evento</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <p className="text-muted-foreground">Evento</p>
-                <p className="font-medium">{initialData.event_title}</p>
+        {/* Detalles del Pago */}
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <CreditCard className="w-5 h-5 text-muted-foreground" />
+            <CardTitle>Evidencia de Pago</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Método de Pago</p>
+              <p className="font-medium capitalize">
+                {initialData.payment_method || "No registrado"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Monto Declarado</p>
+              <p className="font-medium">
+                {formatCurrency(initialData.payment_amount)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">N° de Operación</p>
+              <p className="font-medium">
+                {initialData.operation_number || "N/A"}
+              </p>
+            </div>
+            {initialData.payment_receipt_url && (
+              <div className="md:col-span-2 mt-4">
+                <p className="text-muted-foreground mb-2">Voucher Adjunto</p>
+                {/* Aquí podrías usar tu componente de visualización de imágenes si lo tienes */}
+                <a
+                  href={initialData.payment_receipt_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Ver comprobante de pago
+                </a>
               </div>
-              <div>
-                <p className="text-muted-foreground">Categoría</p>
-                <p className="font-medium">{initialData.category_name}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Fecha de Registro</p>
-                <p className="font-medium">
-                  {new Date(initialData.created_at).toLocaleString("es-PE")}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2">
-              <CreditCard className="w-5 h-5 text-muted-foreground" />
-              <CardTitle>Información Financiera</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <p className="text-muted-foreground">Monto Declarado</p>
-                <p className="font-medium text-lg">
-                  {formatCurrency(initialData.payment_amount)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Método de Pago</p>
-                <p className="font-medium capitalize">
-                  {initialData.payment_method || "No registrado"}
-                </p>
-              </div>
-              {initialData.operation_number && (
-                <div>
-                  <p className="text-muted-foreground">
-                    N° de Operación (Voucher)
-                  </p>
-                  <p className="font-medium font-mono bg-muted px-2 py-1 rounded inline-block mt-1">
-                    {initialData.operation_number}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* COLUMNA DERECHA: Formulario de Control y Aprobación */}
       <div className="space-y-6">
-        <Card>
+        <Card className="sticky top-14">
           <CardHeader>
             <CardTitle>Panel de Aprobación</CardTitle>
             <CardDescription>
@@ -308,6 +300,11 @@ export function EditRegistrationForm({
                     {formState.message}
                   </p>
                 )}
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/dashboard/registrations">
+                    Volver a inscripciones
+                  </Link>
+                </Button>
               </div>
             </form>
           </CardContent>

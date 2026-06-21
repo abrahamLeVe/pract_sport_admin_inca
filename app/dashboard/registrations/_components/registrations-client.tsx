@@ -17,44 +17,46 @@ import Link from "next/link";
 
 // Colores para los estados de inscripción
 const registrationColors: Record<string, string> = {
-  pending: "bg-yellow-500 hover:bg-yellow-600",
-  approved: "bg-green-500 hover:bg-green-600",
-  cancelled: "bg-red-500 hover:bg-red-600",
+  pending: "bg-yellow-500 hover:bg-yellow-600 text-white",
+  approved: "bg-green-500 hover:bg-green-600 text-white",
+  cancelled: "bg-red-500 hover:bg-red-600 text-white",
 };
 
 // Colores para los estados de pago
 const paymentColors: Record<string, string> = {
-  unpaid: "bg-red-500/20 text-red-700 hover:bg-red-500/30",
-  pending: "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30", // Por si usan transferencias
-  paid: "bg-green-500/20 text-green-700 hover:bg-green-500/30",
-  failed: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30",
-  refunded: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30",
+  unpaid: "bg-red-500/20 text-red-700 hover:bg-red-500/30 border-red-200",
+  pending:
+    "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30 border-yellow-200",
+  paid: "bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-200",
+  failed: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-200",
+  refunded: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-200",
 };
 
 export const columns: ColumnDef<EventRegistration>[] = [
   {
-    accessorKey: "event_id",
-    header: "ID Evento",
+    accessorKey: "id",
+    header: "Ticket",
     cell: ({ row }) => (
-      <span className="text-muted-foreground font-mono">
-        {row.original.event_id}
+      <span className="text-muted-foreground font-mono text-sm">
+        #{row.original.id}
       </span>
     ),
   },
   {
     id: "atleta",
-    // 🔥 LE ENSEÑAMOS AL BUSCADOR CÓMO LEER EL JSON (Busca por Nombre, Apellido o DNI)
     accessorFn: (row) =>
-      `${row.participant_details.firstName} ${row.participant_details.lastName} ${row.participant_details.documentNumber}`,
+      `${row.participant_details?.firstName || ""} ${row.participant_details?.lastName || ""} ${row.participant_details?.documentNumber || ""}`,
     header: "Atleta",
     cell: ({ row }) => {
       const details = row.original.participant_details;
       return (
         <div className="flex flex-col">
           <span className="font-medium">
-            {details.firstName} {details.lastName}
+            {details?.firstName || "Sin nombre"} {details?.lastName || ""}
           </span>
-          <span className="text-xs text-muted-foreground">{details.email}</span>
+          <span className="text-xs text-muted-foreground">
+            {details?.email || ""}
+          </span>
         </div>
       );
     },
@@ -66,7 +68,7 @@ export const columns: ColumnDef<EventRegistration>[] = [
       const details = row.original.participant_details;
       return (
         <span className="text-sm">
-          {details.documentType}: {details.documentNumber}
+          {details?.documentType || "Doc"}: {details?.documentNumber || "-"}
         </span>
       );
     },
@@ -75,7 +77,9 @@ export const columns: ColumnDef<EventRegistration>[] = [
     id: "evento",
     header: "Evento y Categoría",
     cell: ({ row }) => (
-      <div className="flex flex-col max-w-62.5">
+      <div className="flex flex-col max-w-[250px]">
+        {" "}
+        {/* 🔥 MEJORA 4: Clase Tailwind válida */}
         <span className="font-medium truncate" title={row.original.event_title}>
           {row.original.event_title}
         </span>
@@ -87,6 +91,22 @@ export const columns: ColumnDef<EventRegistration>[] = [
         </span>
       </div>
     ),
+  },
+  {
+    accessorKey: "created_at",
+    header: "Fecha",
+    cell: ({ row }) => {
+      const date = new Date(row.original.created_at);
+      return (
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {date.toLocaleDateString("es-PE", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "bib_number",
@@ -109,11 +129,10 @@ export const columns: ColumnDef<EventRegistration>[] = [
     header: "Pago",
     cell: ({ row }) => {
       const status = row.original.payment_status;
-      // Traducciones rápidas
       const statusText =
         {
           unpaid: "No Pagado",
-          pending: "Pendiente",
+          pending: "Por Validar",
           paid: "Pagado",
           failed: "Fallido",
           refunded: "Reembolsado",
@@ -139,7 +158,7 @@ export const columns: ColumnDef<EventRegistration>[] = [
         }[status] || status;
 
       return (
-        <Badge className={`text-white ${registrationColors[status]}`}>
+        <Badge className={`border-transparent ${registrationColors[status]}`}>
           {statusText}
         </Badge>
       );
@@ -173,7 +192,7 @@ export const columns: ColumnDef<EventRegistration>[] = [
                 href={`/dashboard/registrations/edit/${registration.id}`}
                 className="cursor-pointer"
               >
-                <Edit className="mr-2 h-4 w-4" /> Asignar Dorsal
+                <Edit className="mr-2 h-4 w-4" /> Validar y Asignar
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -193,7 +212,7 @@ export function RegistrationsClient({ data }: RegistrationsClientProps) {
       <DataTable
         columns={columns}
         data={data}
-        // Deshabilitamos la búsqueda por ahora porque el nombre está dentro del JSONB
+        // Buscará perfectamente por nombre, apellido o DNI gracias al accessorFn
         searchKey="atleta"
       />
     </>
