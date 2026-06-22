@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-
 import { NavGeneric } from "@/components/nav-generic";
 import { NavUser } from "@/components/nav-user";
 import {
@@ -18,10 +17,8 @@ import {
   CommandIcon,
   DashboardSquare01Icon,
   Folder01Icon,
-  HelpCircleIcon,
   ImageIcon,
   ProductLoadingIcon,
-  SearchIcon,
   Settings01Icon,
   Settings05Icon,
   TimelineEventIcon,
@@ -32,69 +29,75 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 
+// Organizamos los datos en grupos claros
 const data = {
-  navMain: [
+  // Operaciones diarias (Todos los roles)
+  sales: [
     {
       name: "Dashboard",
       url: "/dashboard",
-      icon: <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={DashboardSquare01Icon} />,
     },
     {
       name: "Pedidos",
       url: "/dashboard/orders",
-      icon: <HugeiconsIcon icon={List} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={List} />,
     },
     {
       name: "Registros",
       url: "/dashboard/registrations",
-      icon: <HugeiconsIcon icon={RegisterIcon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={RegisterIcon} />,
     },
+  ],
+  // Catálogo y Contenido (Vendedores/Admin)
+  catalog: [
     {
-      name: "Banners",
-      url: "/dashboard/banners",
-      icon: <HugeiconsIcon icon={ImageIcon} strokeWidth={2} />,
+      name: "Productos",
+      url: "/dashboard/products",
+      icon: <HugeiconsIcon icon={ProductLoadingIcon} />,
     },
     {
       name: "Categorías",
       url: "/dashboard/categories",
-      icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={Folder01Icon} />,
     },
     {
       name: "Marcas",
       url: "/dashboard/brands",
-      icon: <HugeiconsIcon icon={BrandfetchIcon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={BrandfetchIcon} />,
     },
     {
-      name: "Productos",
-      url: "/dashboard/products",
-      icon: <HugeiconsIcon icon={ProductLoadingIcon} strokeWidth={2} />,
+      name: "Banners",
+      url: "/dashboard/banners",
+      icon: <HugeiconsIcon icon={ImageIcon} />,
     },
   ],
-  navSuperadmin: [
+  // Configuración de Sistema (Solo Super Admin)
+  admin: [
     {
-      name: "Gestión de Usuarios",
+      name: "Usuarios",
       url: "/dashboard/users",
-      icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
-    },
-    {
-      name: "Configuración del Club",
-      url: "/dashboard/settings",
-      icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={UserGroupIcon} />,
     },
     {
       name: "Eventos",
       url: "/dashboard/events",
-      icon: <HugeiconsIcon icon={TimelineEventIcon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={TimelineEventIcon} />,
     },
     {
-      name: "configuración de Competencias",
+      name: "Club Settings",
+      url: "/dashboard/settings",
+      icon: <HugeiconsIcon icon={Settings05Icon} />,
+    },
+    {
+      name: "Competencias",
       url: "/dashboard/race-settings",
-      icon: <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={Settings01Icon} />,
     },
     {
-      name: "configuración de variables de producto",
+      name: "Variables Store",
       url: "/dashboard/store-settings",
-      icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
+      icon: <HugeiconsIcon icon={Settings05Icon} />,
     },
   ],
 };
@@ -111,34 +114,34 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <Link href="/dashboard">
-                <HugeiconsIcon
-                  icon={CommandIcon}
-                  strokeWidth={2}
-                  className="size-5!"
-                />
-                <span className="text-base font-semibold">Inka Team Admin</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-
+      <SidebarHeader>{/* ... tu logo ... */}</SidebarHeader>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            className="data-[slot=sidebar-menu-button]:p-1.5!"
+          >
+            <Link href="/dashboard">
+              <HugeiconsIcon
+                icon={CommandIcon}
+                strokeWidth={2}
+                className="size-5!"
+              />
+              <span className="text-base font-semibold">Inka Team Admin</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
       <SidebarContent>
-        <NavGeneric items={data.navMain} />
+        {/* Renderizado de grupos */}
+        <NavGeneric title="Operaciones" items={data.sales} />
+        <NavGeneric title="Catálogo" items={data.catalog} />
 
         {user.role === "SUPERADMIN" && (
           <NavGeneric
             title="Administración"
+            items={data.admin}
             hideOnCollapse={true}
-            items={data.navSuperadmin}
           />
         )}
       </SidebarContent>

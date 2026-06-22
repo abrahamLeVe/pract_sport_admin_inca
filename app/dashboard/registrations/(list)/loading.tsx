@@ -7,8 +7,6 @@ export default function LoadingPage() {
       {/* 1. Esqueleto del Encabezado (Título y Botón) */}
       <div className="flex items-center justify-between space-y-2">
         <Skeleton className="h-8 w-[250px]" />
-        {/* 🔥 Botón superior derecho (Ahora con forma de píldora) */}
-        <Skeleton className="h-10 w-[150px] rounded-full" />
       </div>
 
       {/* 2. Esqueleto del Contenedor Principal */}

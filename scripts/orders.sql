@@ -245,3 +245,39 @@ VALUES
     'Polo de Entrenamiento Under Armour', 
     1, 120.10, 120.10
 );
+
+-- ==============================================================================
+-- 📊 DATOS FALSOS PARA PROBAR EL DASHBOARD INTERACTIVO
+-- ==============================================================================
+
+-- 1. PEDIDOS DE HOY Y AYER (Se verán en TODOS los filtros, desde "7 días")
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-001', 'Juan Perez', 'juan@test.com', '999111222', 'El Tambo', 150.00, 'tarjeta', 'pagado', 'entregado', NOW()),
+('ORD-DASH-002', 'Maria Lopez', 'maria@test.com', '999333444', 'Chilca', 350.00, 'yape', 'pagado', 'enviado', NOW() - INTERVAL '1 day');
+
+-- 2. PEDIDO DE HACE 5 DÍAS (Se verá desde el filtro "7 días" en adelante)
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-003', 'Carlos Diaz', 'carlos@test.com', '999555666', 'Huancayo Centro', 220.50, 'transferencia', 'pagado', 'entregado', NOW() - INTERVAL '5 days');
+
+-- 3. PEDIDOS DE HACE 12 Y 14 DÍAS (Aparecerán recién cuando elijas "15 días" o "30 días")
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-004', 'Ana Torres', 'ana@test.com', '999777888', 'San Carlos', 480.00, 'tarjeta', 'pagado', 'entregado', NOW() - INTERVAL '12 days'),
+('ORD-DASH-005', 'Luis Gomez', 'luis@test.com', '999000111', 'Pilcomayo', 130.00, 'yape', 'pagado', 'entregado', NOW() - INTERVAL '14 days');
+
+-- 4. PEDIDO DE HACE 25 DÍAS (Pico de ventas. Solo se verá si eliges "30 días" o más)
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-006', 'Sofia Ruiz', 'sofia@test.com', '999222333', 'Sicaya', 850.00, 'tarjeta', 'pagado', 'entregado', NOW() - INTERVAL '25 days');
+
+-- 5. PEDIDO DE HACE 2 MESES (Solo aparecerá si eliges "90 días" o "Último año")
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-007', 'Pedro Soto', 'pedro@test.com', '999444555', 'El Tambo', 540.00, 'transferencia', 'pagado', 'entregado', NOW() - INTERVAL '60 days');
+
+-- 6. PEDIDO TRAMPA: Creado ayer, pero "PENDIENTE" de pago (NO DEBE SUMAR a los ingresos)
+INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, total_amount, payment_method, payment_status, order_status, created_at)
+VALUES 
+('ORD-DASH-008', 'Marta Lima', 'marta@test.com', '999666777', 'Chilca', 999.00, 'yape', 'pendiente', 'nuevo', NOW() - INTERVAL '1 day');

@@ -83,10 +83,6 @@ CREATE TABLE banners (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2.2. Índices de optimización para el front-end (Carga rápida del carrusel)
-CREATE INDEX idx_banners_order_status ON banners(sort_order, status);
-
-
 -- ------------------------------------------------------------------------------
 -- MÓDULO 3: SISTEMA DE CATÁLOGO E INVENTARIO
 -- ------------------------------------------------------------------------------
@@ -142,10 +138,6 @@ CREATE TABLE products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índice para búsquedas rápidas por categoría o marca
-CREATE INDEX idx_products_category ON products(category_id);
-CREATE INDEX idx_products_brand ON products(brand_id);
-
 -- ------------------------------------------------------------------------------
 -- NUEVAS TABLAS MAESTRAS (Para Filtros Globales)
 -- ------------------------------------------------------------------------------
@@ -186,11 +178,6 @@ CREATE TABLE product_variants (
     -- Evita que el admin cree por error dos veces la variante "Polo Rojo - Talla M"
     UNIQUE(product_id, size_id, color_id) 
 );
-
--- Índices para que los filtros de la web "Vuelen"
-CREATE INDEX idx_variants_product ON product_variants(product_id);
-CREATE INDEX idx_variants_color ON product_variants(color_id);
-CREATE INDEX idx_variants_size ON product_variants(size_id);
 
 -- ------------------------------------------------------------------------------
 -- TRIGGER PROFESIONAL: ACTUALIZACIÓN AUTOMÁTICA DE STOCK DEL PRODUCTO PADRE
@@ -403,6 +390,39 @@ CREATE TABLE order_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_orders_order_number ON orders(order_number);
-CREATE INDEX idx_orders_customer_email ON orders(customer_email);
-CREATE INDEX idx_registrations_event_id ON event_registrations(event_id);
+-- ==============================================================================
+-- 🚀 ÍNDICES DE OPTIMIZACIÓN DE BASE DE DATOS (ORDENADOS)
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- 1. SISTEMA DE MARKETING (Carga rápida del carrusel)
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_banners_order_status ON banners(sort_order, status);
+
+-- ------------------------------------------------------------------------------
+-- 2. SISTEMA DE CATÁLOGO (Búsquedas rápidas en la tienda)
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id);
+
+CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_variants_color ON product_variants(color_id);
+CREATE INDEX IF NOT EXISTS idx_variants_size ON product_variants(size_id);
+
+-- ------------------------------------------------------------------------------
+-- 3. GESTIÓN DE PEDIDOS Y DASHBOARD
+-- ------------------------------------------------------------------------------
+-- Acelera el buscador de la tabla de Pedidos
+CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
+
+-- Acelera el Dashboard (búsqueda por fechas)
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+
+-- ------------------------------------------------------------------------------
+-- 4. INSCRIPCIONES A EVENTOS
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_registrations_event_id ON event_registrations(event_id);
+
+-- Acelera el buscador de Inscripciones buscando dentro del JSON
+CREATE INDEX IF NOT EXISTS idx_registrations_participant ON event_registrations USING GIN (participant_details);

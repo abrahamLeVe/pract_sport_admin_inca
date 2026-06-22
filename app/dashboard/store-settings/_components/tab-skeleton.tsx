@@ -6,10 +6,10 @@ export function TabSkeleton() {
       {/* 1. Esqueleto del Encabezado */}
       <div className="flex justify-between items-center">
         {/* Título */}
-        <Skeleton className="h-7 w-[200px]" />
+        <Skeleton className="h-6 w-[200px]" />
 
         {/* Botón "+ Nuevo Color" (¡Ahora con forma de píldora!) */}
-        <Skeleton className="h-10 w-[130px] rounded-full" />
+        <Skeleton className="h-9 w-[130px] rounded-full" />
       </div>
 
       {/* 2. Esqueleto de la DataTable */}
@@ -17,10 +17,10 @@ export function TabSkeleton() {
         {/* Controles superiores */}
         <div className="flex items-center justify-between">
           {/* Buscador (Forma de píldora) */}
-          <Skeleton className="h-10 w-[250px] md:w-[350px] rounded-full" />
+          <Skeleton className="h-9 w-[250px] md:w-[350px] rounded-full" />
 
           {/* Botón "Columnas Visibles" (Forma de píldora) */}
-          <Skeleton className="h-10 w-[150px] rounded-full" />
+          <Skeleton className="h-9 w-[140px] rounded-full" />
         </div>
 
         {/* Tabla Falsa (Usamos porcentajes para alineación perfecta) */}
