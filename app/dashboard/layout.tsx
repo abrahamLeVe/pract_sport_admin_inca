@@ -2,6 +2,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "@/auth";
+import { getNotificationList } from "../actions/notifications";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const session = await auth();
+  const alerts = await getNotificationList();
 
   return (
     <SidebarProvider
@@ -32,7 +34,7 @@ export default async function DashboardLayout({
       />
 
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader initialAlerts={alerts} />
         <div className="@container/main">
           <div className="px-4 lg:px-6 py-4 md:py-6 max-w-7xl mx-auto">
             {children}

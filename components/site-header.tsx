@@ -13,6 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import React from "react";
 import { ModeToggle } from "./mode-toggle";
+import { NotificationBell } from "./notification-bell";
 
 // 1. Quitamos "new" del diccionario estático general
 const routeTranslations: Record<string, string> = {
@@ -41,7 +42,7 @@ const newTranslations: Record<string, string> = {
   events: "Nuevo Evento",
 };
 
-export function SiteHeader() {
+export function SiteHeader({ initialAlerts }: { initialAlerts: any[] }) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -111,7 +112,9 @@ export function SiteHeader() {
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <NotificationBell initialAlerts={initialAlerts} />
+          <Separator orientation="vertical" />
           <ModeToggle />
         </div>
       </div>
