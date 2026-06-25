@@ -10,27 +10,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EventRegistration } from "@/validations/registrations";
+import {
+  EventRegistration,
+  paymentColors,
+  registrationColors,
+} from "@/validations/registrations";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Eye, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-
-// Colores para los estados de inscripción
-const registrationColors: Record<string, string> = {
-  pending: "bg-yellow-500 hover:bg-yellow-600 text-white",
-  approved: "bg-green-500 hover:bg-green-600 text-white",
-  cancelled: "bg-red-500 hover:bg-red-600 text-white",
-};
-
-// Colores para los estados de pago
-const paymentColors: Record<string, string> = {
-  unpaid: "bg-red-500/20 text-red-700 hover:bg-red-500/30 border-red-200",
-  pending:
-    "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30 border-yellow-200",
-  paid: "bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-200",
-  failed: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-200",
-  refunded: "bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border-gray-200",
-};
 
 export const columns: ColumnDef<EventRegistration>[] = [
   {

@@ -199,7 +199,7 @@ export function EditRegistrationForm({
                   disabled={isPending}
                 >
                   <SelectTrigger
-                    id="order_status"
+                    id="payment_status"
                     className="w-full bg-background"
                   >
                     <SelectValue placeholder="Seleccionar pago" />
@@ -226,7 +226,7 @@ export function EditRegistrationForm({
                   disabled={isPending}
                 >
                   <SelectTrigger
-                    id="order_status"
+                    id="registration_status"
                     className="w-full bg-background"
                   >
                     <SelectValue placeholder="Seleccionar estado" />

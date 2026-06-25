@@ -90,7 +90,7 @@ export async function updateRegistrationStatusAction(
 
     revalidatePath("/dashboard/registrations");
     revalidatePath(`/dashboard/registrations/edit/${id}`);
-
+    revalidatePath("/dashboard");
     return {
       success: true,
       message: "Atleta actualizado correctamente. Dorsal asignado.",

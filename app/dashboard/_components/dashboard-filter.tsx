@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -8,17 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export function DashboardFilter({ currentDays }: { currentDays: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Función que actualiza la URL cuando seleccionas otra opción
   const handleValueChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("days", value);
-    // Cambia la ruta (ej: /dashboard?days=7)
     router.push(`${pathname}?${params.toString()}`);
   };
 

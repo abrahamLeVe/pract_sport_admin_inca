@@ -14,7 +14,6 @@ export async function updateOrderStatusAction(
   prevState: ActionState<UpdateOrderStatusInput>,
   formData: FormData,
 ): Promise<ActionState<UpdateOrderStatusInput>> {
-  // Protegemos la ruta: solo administradores pueden cambiar estados
   await requireAdminSession();
 
   const fields = {
@@ -25,7 +24,6 @@ export async function updateOrderStatusAction(
   };
 
   try {
-    // Validamos que los datos sean correctos según nuestro esquema
     const validatedFields = updateOrderStatusSchema.safeParse(fields);
 
     if (!validatedFields.success) {
@@ -40,7 +38,6 @@ export async function updateOrderStatusAction(
 
     const { id, order_status, payment_status, notes } = validatedFields.data;
 
-    // Actualizamos el pedido en la base de datos
     const query = `
       UPDATE orders 
       SET order_status = $1, 
@@ -57,9 +54,8 @@ export async function updateOrderStatusAction(
       id,
     ]);
 
-    // Le decimos a Next.js que refresque la tabla de pedidos
     revalidatePath("/dashboard/orders");
-    revalidatePath(`/dashboard/orders/${id}`); // Por si estamos en la vista de detalle
+    revalidatePath(`/dashboard/orders/${id}`);
 
     return {
       success: true,
