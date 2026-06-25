@@ -26,10 +26,14 @@ export function DashboardFilter({ currentDays }: { currentDays: number }) {
         Analizando:
       </span>
       <Select
+        name="filter_days"
         defaultValue={currentDays.toString()}
         onValueChange={handleValueChange}
       >
-        <SelectTrigger className="w-[160px] bg-background">
+        <SelectTrigger
+          id="filter_days_trigger"
+          className="w-[160px] bg-background"
+        >
           <SelectValue placeholder="Seleccionar rango" />
         </SelectTrigger>
         <SelectContent>

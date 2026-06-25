@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import React from "react";
+import { GlobalSearch } from "./global-search";
 import { ModeToggle } from "./mode-toggle";
 import { NotificationBell } from "./notification-bell";
 
@@ -113,6 +114,9 @@ export function SiteHeader({ initialAlerts }: { initialAlerts: any[] }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex">
+            <GlobalSearch />
+          </div>
           <NotificationBell initialAlerts={initialAlerts} />
           <Separator orientation="vertical" />
           <ModeToggle />
