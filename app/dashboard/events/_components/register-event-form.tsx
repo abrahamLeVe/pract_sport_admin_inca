@@ -3,6 +3,7 @@
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ActionState } from "@/validations/core";
 import { EventInput, RegisterEventFormProps } from "@/validations/events";
-import { ImagePlus, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { toast } from "sonner";
@@ -44,7 +45,6 @@ export function RegisterEventForm({
   const [description, setDescription] = useState(
     formState.data?.description ?? "",
   );
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
   const [categories, setCategories] = useState<any[]>(
@@ -65,28 +65,6 @@ export function RegisterEventForm({
       ? JSON.stringify(formState.data.route_geojson, null, 2)
       : "",
   );
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(file.type)) {
-        toast.error("Formato no válido. Solo JPG, PNG o WEBP.");
-        e.target.value = "";
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("La imagen supera el límite de 5MB.");
-        e.target.value = "";
-        return;
-      }
-      setSavedFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setSavedFile(null);
-      setImagePreview(null);
-    }
-  };
 
   const addCategory = () => {
     if (!newCat.distance_id || !newCat.gender_id || !newCat.age_category_id) {
@@ -206,37 +184,18 @@ export function RegisterEventForm({
                     Afiche del Evento (Opcional)
                   </FieldLabel>
                   <p className="text-[13px] text-muted-foreground">
-                    Tamaño recomendado: <b>800 x 800 px</b> (formato cuadrado o
-                    vertical).
+                    Tamaño mínimo recomendado: <b>800 x 800 px</b> (1:1).
+                    Formato preferido: <b>.webp</b>.
                   </p>
-                  <label
-                    htmlFor="image"
-                    className="mt-2 mb-4 relative mx-auto flex aspect-square max-w-lg cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
-                  >
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-                        <ImagePlus className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs font-medium text-center px-4">
-                          Subir afiche
-                        </span>
-                      </div>
-                    )}
-                  </label>
-                  <input
-                    id="image"
-                    type="file"
-                    name="image"
-                    className="sr-only"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleImageChange}
-                    disabled={isPending}
-                  />
+                  <div className="max-w-lg mx-auto mt-2 mb-4">
+                    <SingleImageUploader
+                      id="image"
+                      initialImage={null}
+                      onFileSelect={setSavedFile}
+                      aspectClass="aspect-square rounded-xl"
+                      placeholderText="Cambiar imagen"
+                    />
+                  </div>
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

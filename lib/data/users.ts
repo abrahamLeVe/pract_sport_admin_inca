@@ -22,19 +22,17 @@ export async function getUsers(): Promise<UserTableItem[]> {
   }
 }
 
-// (Mantén aquí abajo tu función export async function getUserById... intacta)
-
 export async function getUserByIdAction(id: number) {
   try {
     const query = `
-      SELECT id, name, email, role, status 
+      SELECT id, name, image, email, role, status 
       FROM users 
       WHERE id = $1
     `;
     const result = await pool.query(query, [id]);
 
     if (result.rows.length === 0) return null;
-    return result.rows[0];
+    return result.rows[0] as UserTableItem;
   } catch (error) {
     console.error("❌ Error en getUserByIdAction:", error);
     return null;

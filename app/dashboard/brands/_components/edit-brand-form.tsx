@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -16,10 +17,8 @@ import {
 import { generateSlug } from "@/lib/utils";
 import { EditBrandFormProps, EditBrandInput } from "@/validations/brands";
 import { ActionState } from "@/validations/core";
-import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
-import { toast } from "sonner";
 
 export function EditBrandForm({ initialData }: EditBrandFormProps) {
   const initialState: ActionState<EditBrandInput> = {
@@ -40,9 +39,6 @@ export function EditBrandForm({ initialData }: EditBrandFormProps) {
     initialState,
   );
 
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    initialData.image_url,
-  );
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
   const [name, setName] = useState(initialData.name || "");
@@ -52,30 +48,6 @@ export function EditBrandForm({ initialData }: EditBrandFormProps) {
     const newName = e.target.value;
     setName(newName);
     setSlug(generateSlug(newName));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(file.type)) {
-        toast.error("Formato no válido. Solo JPG, PNG o WEBP.");
-        e.target.value = "";
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("La imagen supera el límite de 5MB.");
-        e.target.value = "";
-        return;
-      }
-
-      setSavedFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setSavedFile(null);
-      setImagePreview(initialData.image_url); // Si cancela, vuelve a la imagen original
-    }
   };
 
   const handleAction = (formData: FormData) => {
@@ -109,39 +81,18 @@ export function EditBrandForm({ initialData }: EditBrandFormProps) {
                   </FieldLabel>
 
                   <p className="text-[13px] text-muted-foreground">
-                    Tamaño recomendado: <b>500 x 500 px</b> (formato cuadrado
-                    1:1).
+                    Tamaño mínimo recomendado: <b>800 x 800 px</b> (1:1).
+                    Formato preferido: <b>.webp</b>.
                   </p>
-
-                  <label
-                    htmlFor="image"
-                    className="mt-2 mb-4 relative mx-auto flex w-48 aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
-                  >
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="h-full w-full object-cover" // cover mantendrá la imagen perfecta en el cuadro
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-                        <ImagePlus className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs font-medium text-center px-4">
-                          Cambiar imagen
-                        </span>
-                      </div>
-                    )}
-                  </label>
-
-                  <input
-                    id="image"
-                    type="file"
-                    name="image"
-                    className="sr-only"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleImageChange}
-                    disabled={isPending}
-                  />
+                  <div className="w-48 mx-auto mt-2 mb-4">
+                    <SingleImageUploader
+                      id="image"
+                      initialImage={initialData.image_url}
+                      onFileSelect={setSavedFile}
+                      aspectClass="aspect-square rounded-xl"
+                      placeholderText="Cambiar imagen"
+                    />
+                  </div>
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -13,18 +13,14 @@ import {
   ListOrdered,
 } from "lucide-react";
 
-// Extensiones limpias fuera del componente
-const extensions = [
-  StarterKit,
-  LinkExtension.configure({
-    openOnClick: false,
-    autolink: true,
-    HTMLAttributes: {
-      class:
-        "text-blue-500 underline cursor-pointer hover:text-blue-700 transition-colors",
-    },
-  }),
-];
+import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface RichTextEditorProps {
   value: string;
@@ -37,8 +33,22 @@ export function RichTextEditor({
   onChange,
   disabled,
 }: RichTextEditorProps) {
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+
   const editor = useEditor({
-    extensions,
+    extensions: [
+      StarterKit.configure({
+        link: false,
+      }),
+      LinkExtension.configure({
+        autolink: true,
+        HTMLAttributes: {
+          class:
+            "text-blue-500 underline cursor-pointer hover:text-blue-700 transition-colors",
+        },
+      }),
+    ],
     content: value,
     editable: !disabled,
     immediatelyRender: false,
@@ -51,21 +61,35 @@ export function RichTextEditor({
     },
   });
 
-  // Esqueleto ultra simple (un solo bloque del tamaño del editor)
   if (!editor) {
     return (
       <Skeleton className="h-[160px] w-full rounded-md border border-input shadow-sm" />
     );
   }
 
-  // Lógica reducida para enlaces
-  const toggleLink = () => {
-    if (editor.isActive("link")) {
-      editor.chain().focus().unsetLink().run();
+  const handleOpenLinkClick = (open: boolean) => {
+    if (open) {
+      if (editor.isActive("link")) {
+        // Si ya hay un enlace seleccionado, funcionará como Toggle (lo quita) y no abre el popover
+        editor.chain().focus().unsetLink().run();
+        setIsLinkOpen(false);
+      } else {
+        // Si no hay enlace, limpiamos el input y abrimos el popover
+        setLinkUrl("");
+        setIsLinkOpen(true);
+      }
     } else {
-      const url = window.prompt("URL del enlace:", "");
-      if (url) editor.chain().focus().setLink({ href: url }).run();
+      setIsLinkOpen(false);
     }
+  };
+
+  const applyLink = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (linkUrl.trim()) {
+      editor.chain().focus().setLink({ href: linkUrl }).run();
+    }
+    setIsLinkOpen(false);
+    setLinkUrl("");
   };
 
   return (
@@ -75,7 +99,6 @@ export function RichTextEditor({
         disabled && "opacity-50 cursor-not-allowed",
       )}
     >
-      {/* Barra de herramientas minimalista */}
       <div className="flex items-center gap-1 border-b border-input bg-muted/50 p-1 rounded-t-md">
         <button
           type="button"
@@ -98,16 +121,42 @@ export function RichTextEditor({
           <Italic className="h-4 w-4" />
         </button>
         <div className="w-px h-4 bg-border mx-1" />
-        <button
-          type="button"
-          onClick={toggleLink}
-          className={cn(
-            "p-1.5 rounded-sm hover:bg-muted",
-            editor.isActive("link") && "bg-muted text-blue-500",
-          )}
-        >
-          <LinkIcon className="h-4 w-4" />
-        </button>
+
+        <Popover open={isLinkOpen} onOpenChange={handleOpenLinkClick}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "p-1.5 rounded-sm hover:bg-muted focus:outline-none",
+                editor.isActive("link") && "bg-muted text-blue-500",
+              )}
+            >
+              <LinkIcon className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-80 p-3 shadow-md"
+            side="bottom"
+            align="start"
+          >
+            <form onSubmit={applyLink} className="flex gap-2 items-center">
+              <Input
+                id="link_url"
+                name="link_url"
+                type="url"
+                placeholder="https://ejemplo.com"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                className="h-8 flex-1"
+                autoFocus
+              />
+              <Button type="submit" size="sm" className="h-8">
+                Añadir
+              </Button>
+            </form>
+          </PopoverContent>
+        </Popover>
+
         <div className="w-px h-4 bg-border mx-1" />
         <button
           type="button"

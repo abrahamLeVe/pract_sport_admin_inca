@@ -104,3 +104,41 @@ export async function updateRegistrationStatusAction(
     };
   }
 }
+
+export async function bulkAssignBibsAction(eventId: number, startBib: number) {
+  try {
+    // Magia SQL: Numeramos las filas por orden de llegada y le sumamos el número inicial
+    const query = `
+      WITH numbered AS (
+        SELECT id, row_number() OVER (ORDER BY created_at ASC) - 1 as rn
+        FROM event_registrations
+        WHERE event_id = $1 
+          AND payment_status = 'paid' 
+          AND registration_status = 'approved'
+      )
+      UPDATE event_registrations er
+      SET bib_number = ($2::int + numbered.rn)::int
+      FROM numbered
+      WHERE er.id = numbered.id
+      RETURNING er.id;
+    `;
+
+    const res = await pool.query(query, [eventId, startBib]);
+
+    // Refrescamos las rutas para que la tabla se actualice sin recargar la página
+    revalidatePath(`/dashboard/events/edit/${eventId}`);
+    revalidatePath("/dashboard/registrations");
+
+    return {
+      success: true,
+      count: res.rowCount,
+      message: `¡Éxito! Se asignaron ${res.rowCount} dorsales secuenciales.`,
+    };
+  } catch (error) {
+    console.error("Error en asignación masiva de dorsales:", error);
+    return {
+      success: false,
+      message: "Ocurrió un error al asignar los dorsales.",
+    };
+  }
+}

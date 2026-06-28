@@ -7,10 +7,11 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { LoginInput } from "@/validations/auth";
+import { ActionState } from "@/validations/core";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { FormError } from "./form-error";
-import { ActionState } from "@/validations/core";
 
 const INITIAL_LOGIN_STATE: ActionState<LoginInput> = {
   success: false,
@@ -97,9 +98,9 @@ export function LoginForm({
 
           <div className="relative hidden bg-muted md:block">
             <img
-              src="/placeholder.png"
+              src="/logo_club.webp"
               alt="Inka Team"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2]"
+              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.9]"
             />
           </div>
         </CardContent>

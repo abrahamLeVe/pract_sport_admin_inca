@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
-import { getUserByIdAction } from "@/lib/data/users";
 import { EditUserForm } from "@/app/dashboard/users/_components/edit-user-form";
+import { getUserByIdAction } from "@/lib/data/users";
+import { notFound } from "next/navigation";
 
 interface PageProps {
   params: Promise<{

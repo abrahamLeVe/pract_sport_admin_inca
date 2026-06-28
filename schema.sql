@@ -60,6 +60,32 @@ CREATE TABLE verification_token (
   PRIMARY KEY (identifier, token)
 );
 
+-- 1.5. Tabla de Perfiles de Usuario (Autocompletado para E-commerce y Eventos)
+CREATE TABLE user_profiles (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER UNIQUE NOT NULL, -- La clave UNIQUE garantiza la relación 1:1
+
+  -- 🛒 Datos para E-commerce y Contacto
+  document_type VARCHAR(20) DEFAULT 'DNI',
+  document_number VARCHAR(50),
+  phone VARCHAR(50),
+  address TEXT,
+  city VARCHAR(100),       -- Ej: Huancayo, Lima
+  country VARCHAR(100) DEFAULT 'Perú',
+
+  -- 🏅 Datos Médicos y Deportivos (Vitales para las carreras)
+  birth_date DATE,
+  gender VARCHAR(20),
+  blood_type VARCHAR(10),
+  tshirt_size VARCHAR(10),
+  emergency_contact VARCHAR(255),
+  emergency_phone VARCHAR(50),
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT fk_profile_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- ------------------------------------------------------------------------------
 -- MÓDULO 2: SISTEMA DE MARKETING Y CMS

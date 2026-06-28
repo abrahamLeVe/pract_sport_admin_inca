@@ -106,7 +106,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: {
     name: string;
     email: string;
-    avatar?: string;
+    image?: string;
     role?: string;
   };
 }
@@ -127,7 +127,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 strokeWidth={2}
                 className="size-5!"
               />
-              <span className="text-base font-semibold">Inka Team Admin</span>
+              <span className="text-base font-semibold">Huancaray Admin</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

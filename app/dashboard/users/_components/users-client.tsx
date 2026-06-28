@@ -21,10 +21,10 @@ import Link from "next/link";
 
 export const columns: ColumnDef<UserTableItem>[] = [
   {
-    accessorKey: "image_url",
+    accessorKey: "image",
     header: "Avatar",
     cell: ({ row }) => {
-      const imageUrl = row.original.image_url;
+      const imageUrl = row.original.image;
       return imageUrl ? (
         <ImageModal
           imageUrl={imageUrl}
@@ -57,7 +57,7 @@ export const columns: ColumnDef<UserTableItem>[] = [
     header: "Rol",
     cell: ({ row }) => {
       const role = row.original.role;
-      const isAdmin = role === "admin";
+      const isAdmin = role === "ADMIN";
 
       return (
         <Badge

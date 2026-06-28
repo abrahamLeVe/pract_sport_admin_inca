@@ -1,5 +1,5 @@
 import { SectionCards } from "@/app/dashboard/_components/section-cards";
-import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { ChartAreaInteractive } from "@/app/dashboard/_components/chart-area-interactive";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getDashboardData,

@@ -36,10 +36,10 @@ export const columns: ColumnDef<EventTableItem>[] = [
         <ImageModal
           imageUrl={imageUrl}
           altText={row.original.title}
-          thumbnailClassName="h-16 w-12"
+          thumbnailClassName="h-16 w-16"
         />
       ) : (
-        <div className="flex h-16 w-12 items-center justify-center rounded-md border bg-muted">
+        <div className="flex h-16 w-16 items-center justify-center rounded-md border bg-muted">
           <ImageIcon className="h-5 w-5 text-muted-foreground" />
         </div>
       );

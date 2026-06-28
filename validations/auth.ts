@@ -50,12 +50,13 @@ export interface EditUserFormProps {
 // ============================================================================
 export interface UserTableItem {
   id: number; // Usamos string o number dependiendo de si usas UUIDs o IDs seriales
-  name: string | null;
+  name: string;
   email: string;
-  image_url: string | null; // Aquí vendrá el avatar del usuario
-  role: string;
-  status: string;
+  image: string; // Aquí vendrá el avatar del usuario
+  role: "SUPERADMIN" | "ADMIN" | "CLIENT";
+  status: "activo" | "inactivo";
   created_at: Date;
+  password: string;
 
   // 🔥 Campo virtual para la DataTable
   is_active?: boolean;

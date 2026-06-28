@@ -2,15 +2,15 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ClubSettings } from "@/validations/settings";
-import { ImagePlus, Trash } from "lucide-react";
+import { Trash } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
-import { toast } from "sonner";
 
 interface ClubSettingsFormProps {
   initialData: ClubSettings;
@@ -47,9 +47,6 @@ export function ClubSettingsForm({ initialData }: ClubSettingsFormProps) {
     initialState,
   );
 
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    initialData.logo_url,
-  );
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
   const [socialLinks, setSocialLinks] =
@@ -73,30 +70,6 @@ export function ClubSettingsForm({ initialData }: ClubSettingsFormProps) {
     setSocialLinks(newLinks);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(file.type)) {
-        toast.error("Formato no válido. Solo JPG, PNG o WEBP.");
-        e.target.value = "";
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("La imagen supera el límite de 5MB.");
-        e.target.value = "";
-        return;
-      }
-
-      setSavedFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setSavedFile(null);
-      setImagePreview(initialData.logo_url);
-    }
-  };
-
   const handleAction = (formData: FormData) => {
     const currentFile = formData.get("logo") as File;
     if (savedFile && (!currentFile || currentFile.size === 0)) {
@@ -107,7 +80,7 @@ export function ClubSettingsForm({ initialData }: ClubSettingsFormProps) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-2 md:p-4">
+    <div className="max-w-2xl mx-auto">
       <Card>
         <CardContent>
           <form action={handleAction} className="p-6 md:p-8">
@@ -125,34 +98,22 @@ export function ClubSettingsForm({ initialData }: ClubSettingsFormProps) {
               <div className="flex flex-col gap-6">
                 <Field>
                   <FieldLabel htmlFor="logo">Logo Oficial del Club</FieldLabel>
-                  <label
-                    htmlFor="logo"
-                    className="mt-2 mb-4 relative mx-auto flex w-48 aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
-                  >
-                    {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
-                        <ImagePlus className="h-8 w-8 mb-2 opacity-50" />
-                        <span className="text-xs font-medium text-center px-4">
-                          Cambiar logo
-                        </span>
-                      </div>
-                    )}
-                  </label>
-                  <input
-                    id="logo"
-                    type="file"
-                    name="logo"
-                    className="sr-only"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleImageChange}
-                    disabled={isPending}
-                  />
+                  <p className="text-[13px] text-muted-foreground mb-2">
+                    Tamaño mínimo recomendado: <b>800 x 800 px</b> (formato
+                    cuadrado 1:1).
+                  </p>
+
+                  {/* 🔥 4. USAS EL COMPONENTE ASÍ DE FÁCIL 🔥 */}
+                  <div className="w-48 mx-auto mt-2 mb-4">
+                    <SingleImageUploader
+                      id="logo"
+                      initialImage={initialData.logo_url}
+                      onFileSelect={setSavedFile}
+                      aspectClass="aspect-square rounded-xl"
+                      placeholderText="Cambiar logo"
+                    />
+                  </div>
+
                   <FormError error={formState.zodErrors?.logo} />
                 </Field>
 

@@ -19,19 +19,20 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  CreditCardIcon,
   Logout01Icon,
   MoreVerticalCircle01Icon,
-  Notification03Icon,
+  Settings01Icon,
+  Store02Icon,
   UserCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link";
 
 interface NavUserProps {
   user: {
     name: string;
     email: string;
-    avatar?: string;
+    image?: string;
     role?: string;
   };
 }
@@ -47,7 +48,6 @@ export function NavUser({ user }: NavUserProps) {
         .toUpperCase()
         .slice(0, 2)
     : "US";
-
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -58,7 +58,7 @@ export function NavUser({ user }: NavUserProps) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={user.image} alt={user.name} />
                 <AvatarFallback className="rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
                   {iniciales}
                 </AvatarFallback>
@@ -85,7 +85,7 @@ export function NavUser({ user }: NavUserProps) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={user.image} alt={user.name} />
                   <AvatarFallback className="rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
                     {iniciales}
                   </AvatarFallback>
@@ -100,17 +100,28 @@ export function NavUser({ user }: NavUserProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
-                Mi Cuenta
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/account" className="cursor-pointer">
+                  <HugeiconsIcon icon={UserCircle02Icon} strokeWidth={2} />
+                  Mi Cuenta
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} />
-                Suscripción
+
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/dashboard/store-settings"
+                  className="cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Store02Icon} strokeWidth={2} /> Ajustes
+                  de Tienda
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HugeiconsIcon icon={Notification03Icon} strokeWidth={2} />
-                Notificaciones
+
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings" className="cursor-pointer">
+                  <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
+                  Configuración General
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import React from "react";
 import { GlobalSearch } from "./global-search";
 import { ModeToggle } from "./mode-toggle";
-import { NotificationBell } from "./notification-bell";
+import { Notification, NotificationBell } from "./notification-bell";
 
 // 1. Quitamos "new" del diccionario estático general
 const routeTranslations: Record<string, string> = {
@@ -31,6 +31,7 @@ const routeTranslations: Record<string, string> = {
   registrations: "Registros",
   "race-settings": "Configuración de Competencias",
   "store-settings": "Configuración de variantes de producto",
+  account: "Configuración de mi cuenta",
 };
 
 // 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre
@@ -43,7 +44,11 @@ const newTranslations: Record<string, string> = {
   events: "Nuevo Evento",
 };
 
-export function SiteHeader({ initialAlerts }: { initialAlerts: any[] }) {
+export function SiteHeader({
+  initialAlerts,
+}: {
+  initialAlerts: Notification[];
+}) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 

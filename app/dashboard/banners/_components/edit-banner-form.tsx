@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -111,39 +112,18 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
               <Field>
                 <FieldLabel htmlFor="image">Nueva Imagen (Opcional)</FieldLabel>
                 <p className="text-[13px] text-muted-foreground">
-                  Tamaño recomendado: <b>1920 x 1080 px</b> (formato 16:9). Peso
-                  máximo 5MB.
+                  Tamaño mínimo recomendado: <b>1920 x 1080 px</b> (formato
+                  16:9). Peso máximo 5MB. Formato preferido: <b>.webp</b>.
                 </p>
-                <label
-                  htmlFor="image"
-                  className="mt-2 mb-4 relative flex aspect-video cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/40 overflow-hidden hover:bg-muted/60 transition-colors"
-                >
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-muted-foreground">
-                      <ImagePlus className="h-10 w-10 mb-3 opacity-50" />
-                      <span className="text-sm font-medium">
-                        Haz clic aquí para cambiar la imagen
-                      </span>
-                    </div>
-                  )}
-                </label>
-
-                <input
-                  id="image"
-                  type="file"
-                  name="image"
-                  className="sr-only"
-                  accept="image/png, image/jpeg, image/webp"
-                  onChange={handleImageChange}
-                  disabled={isPending}
-                />
-                {/* <FormError error={formState.zodErrors?.image as any} /> */}
+                <div className="w-48 mx-auto mt-2 mb-4">
+                  <SingleImageUploader
+                    id="image"
+                    initialImage={initialData.image_url}
+                    onFileSelect={setSavedFile}
+                    aspectClass="aspect-video rounded-xl"
+                    placeholderText="Cambiar imagen"
+                  />
+                </div>
               </Field>
 
               <Field>

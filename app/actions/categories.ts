@@ -56,7 +56,11 @@ export async function createCategoryAction(
       };
     }
 
-    const imageResult = await handleImageUpload(formData, "image", "banners");
+    const imageResult = await handleImageUpload(
+      formData,
+      "image",
+      "categories",
+    );
     if (!imageResult.success) {
       return {
         success: false,

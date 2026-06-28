@@ -1,7 +1,8 @@
+import { auth } from "@/auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/auth";
+import { getUserByIdAction } from "@/lib/data/users";
 import { getNotificationList } from "../actions/notifications";
 
 interface DashboardLayoutProps {
@@ -13,7 +14,11 @@ export default async function DashboardLayout({
 }: DashboardLayoutProps) {
   const session = await auth();
   const alerts = await getNotificationList();
-
+  let freshUser = null;
+  if (session?.user?.id) {
+    const userRes = await getUserByIdAction(Number(session?.user?.id));
+    freshUser = userRes;
+  }
   return (
     <SidebarProvider
       style={
@@ -26,9 +31,9 @@ export default async function DashboardLayout({
       <AppSidebar
         variant="inset"
         user={{
-          name: session?.user?.name || "Usuario",
+          name: freshUser?.name || session?.user?.name || "",
           email: session?.user?.email || "",
-          avatar: "",
+          image: freshUser?.image || session?.user?.image || "",
           role: session?.user?.role,
         }}
       />
