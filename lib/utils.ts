@@ -18,3 +18,10 @@ export const generateSlug = (text: string) => {
     .replace(/^-+/, "") // Quita guiones al principio
     .replace(/-+$/, ""); // Quita guiones al final
 };
+
+export function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: "PEN",
+  }).format(amount);
+}

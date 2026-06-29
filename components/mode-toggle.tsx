@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, Monitor } from "lucide-react"; // Importamos Monitor para el tema del sistema
+import { Monitor, Moon, Sun } from "lucide-react"; // Importamos Monitor para el tema del sistema
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";

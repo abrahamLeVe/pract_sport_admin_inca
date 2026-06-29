@@ -14,7 +14,8 @@ import { usePathname } from "next/navigation";
 import React from "react";
 import { GlobalSearch } from "./global-search";
 import { ModeToggle } from "./mode-toggle";
-import { Notification, NotificationBell } from "./notification-bell";
+import { Notification } from "@/lib/data/notifications";
+import { NotificationBell } from "./notification-bell";
 
 // 1. Quitamos "new" del diccionario estático general
 const routeTranslations: Record<string, string> = {

@@ -3,17 +3,18 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getUserByIdAction } from "@/lib/data/users";
-import { getNotificationList } from "../actions/notifications";
-
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
+import { getNotificationList } from "@/lib/data/notifications"; // 🔥 Importación correcta
 
 export default async function DashboardLayout({
   children,
-}: DashboardLayoutProps) {
+}: {
+  children: React.ReactNode;
+}) {
   const session = await auth();
+
+  // 🔥 Next.js ejecutará esto en el servidor, consultando la caché que configuramos
   const alerts = await getNotificationList();
+
   let freshUser = null;
   if (session?.user?.id) {
     const userRes = await getUserByIdAction(Number(session?.user?.id));

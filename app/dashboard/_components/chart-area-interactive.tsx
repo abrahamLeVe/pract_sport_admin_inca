@@ -1,7 +1,6 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
 import {
   Card,
   CardContent,
@@ -15,12 +14,12 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import useSWR from "swr";
+import { fetchDashboardDataAction } from "@/app/actions/dashboard"; // Ajusta según tu estructura
 
 interface ChartAreaInteractiveProps {
-  chartData: {
-    date: string;
-    ingresos: number;
-  }[];
+  initialChartData: { date: string; ingresos: number }[];
+  days?: number;
 }
 
 const chartConfig = {
@@ -30,9 +29,27 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ChartAreaInteractive({ chartData }: ChartAreaInteractiveProps) {
-  // Si no hay datos (la base de datos está recién creada), mostramos un mensaje bonito
-  if (!chartData || chartData.length === 0) {
+export function ChartAreaInteractive({
+  initialChartData,
+  days = 30,
+}: ChartAreaInteractiveProps) {
+  // 🔥 SWR: Actualiza el gráfico cada 30 segundos
+  const { data: chartData } = useSWR(
+    `dashboard-chart-${days}`,
+    async () => {
+      const response = await fetchDashboardDataAction(days);
+      return response.initialChartData;
+    },
+    {
+      refreshInterval: 30000,
+      fallbackData: initialChartData,
+    },
+  );
+
+  // Verificamos si hay datos después de que SWR los cargue
+  const hasData = chartData && chartData.length > 0;
+
+  if (!hasData) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -59,9 +76,10 @@ export function ChartAreaInteractive({ chartData }: ChartAreaInteractiveProps) {
           className="aspect-auto h-[300px] w-full"
         >
           <AreaChart
-            data={chartData}
+            data={chartData} // 🔥 Usamos los datos del estado de SWR
             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
           >
+            {/* ... resto de tu código de Recharts se mantiene igual ... */}
             <defs>
               <linearGradient id="fillIngresos" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -84,7 +102,6 @@ export function ChartAreaInteractive({ chartData }: ChartAreaInteractiveProps) {
               tickMargin={8}
               tickFormatter={(value) => {
                 const date = new Date(value);
-                // Evitamos el desfase de zona horaria al formatear
                 date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
                 return date.toLocaleDateString("es-PE", {
                   month: "short",

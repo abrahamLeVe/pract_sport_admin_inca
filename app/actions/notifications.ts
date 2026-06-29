@@ -1,26 +1,17 @@
 "use server";
-
-import { Notification } from "@/components/notification-bell";
+import { getNotificationList } from "@/lib/data/notifications";
 import pool from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 
-export async function getNotificationList(): Promise<Notification[]> {
-  const res = await pool.query(`
-    SELECT * FROM notifications WHERE is_read = FALSE ORDER BY created_at DESC
-  `);
-  return res.rows;
+// Esta función será llamada por SWR
+export async function getNotificationsAction() {
+  return await getNotificationList();
 }
 
-export async function markAsRead(notificationId: string) {
-  await pool.query(
-    `
-    UPDATE notifications 
-    SET is_read = TRUE 
-    WHERE id = $1
-  `,
-    [notificationId],
-  );
-
-  // Esto ayuda a SWR a saber que algo cambió
-  revalidatePath("/dashboard");
+export async function markAsRead(id: string) {
+  await pool.query("UPDATE notifications SET is_read = TRUE WHERE id = $1", [
+    id,
+  ]);
+  revalidateTag("notifications", { expire: 0 }); // Esto limpia la caché
+  return { success: true };
 }

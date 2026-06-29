@@ -8,7 +8,7 @@ import {
 import { Suspense } from "react";
 import { DashboardFilter } from "./_components/dashboard-filter";
 import { EventsTab } from "./_components/events-tab";
-import { DashboardTabSkeleton } from "./_components/events-tab-skeleton";
+import { DashboardTabSkeleton } from "./_components/dashboard-tab-skeleton";
 import { ExportInventoryButton } from "./_components/export-inventory-button";
 import { ExportReportButton } from "./_components/export-report-button";
 
@@ -25,13 +25,17 @@ interface PageProps {
 // ============================================================================
 
 async function StoreWrapper({ currentDays }: { currentDays: number }) {
-  const data = await getDashboardData(currentDays);
+  const data = await getDashboardData();
+
   return (
     <>
-      <SectionCards kpis={data.kpis} />
+      <SectionCards initialKpis={data.initialKpis} days={currentDays} />
       <div className="mt-4">
-        {data.chartData.length > 0 ? (
-          <ChartAreaInteractive chartData={data.chartData} />
+        {data.initialChartData.length > 0 ? (
+          <ChartAreaInteractive
+            initialChartData={data.initialChartData}
+            days={currentDays}
+          />
         ) : (
           <div className="flex h-[300px] w-full items-center justify-center rounded-xl border border-dashed bg-muted/20">
             <p className="text-muted-foreground text-sm">

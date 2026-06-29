@@ -3,7 +3,6 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Search, User, ShoppingBag, Loader2 } from "lucide-react";
-// 🔥 1. Importamos tu paquete de debounce
 import { useDebouncedCallback } from "use-debounce";
 
 import { globalSearchAction, GlobalSearchResult } from "@/lib/data/search";

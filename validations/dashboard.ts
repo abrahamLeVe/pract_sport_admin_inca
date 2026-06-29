@@ -1,11 +1,11 @@
 export interface DashboardData {
-  kpis: {
+  initialKpis: {
     revenue: number;
     orders: number;
     customers: number;
     products: number;
   };
-  chartData: { date: string; ingresos: number }[];
+  initialChartData: { date: string; ingresos: number }[];
 }
 
 export interface RecentRegistration {

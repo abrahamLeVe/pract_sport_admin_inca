@@ -1,12 +1,16 @@
 "use client";
 
-import { getNotificationList, markAsRead } from "@/app/actions/notifications";
+import {
+  getNotificationsAction,
+  markAsRead,
+} from "@/app/actions/notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Notification } from "@/lib/data/notifications";
 import {
   AlertCircle,
   AlertTriangle,
@@ -21,24 +25,13 @@ import {
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 
-export interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string | null;
-  reference_id: string;
-  is_read: boolean;
-  created_at: Date;
-}
-
-const fetcher = () => getNotificationList();
+const fetcher = () => getNotificationsAction();
 
 export function NotificationBell({
   initialAlerts,
 }: {
   initialAlerts: Notification[];
 }) {
-  // 🔥 Extraemos "mutate" de SWR
   const { data: alerts = initialAlerts, mutate } = useSWR(
     "notifications",
     fetcher,
@@ -74,17 +67,16 @@ export function NotificationBell({
               key={alert.id}
               className="flex items-start gap-3 p-3 cursor-pointer"
               onClick={async () => {
-                // 🔥 1. ACTUALIZACIÓN OPTIMISTA (Desaparece al instante)
-                // Filtramos la alerta clickeada y actualizamos el estado local sin esperar al servidor
-                const updatedAlerts = alerts.filter(
-                  (a: { id: string }) => a.id !== alert.id,
+                // 1. Actualización optimista (ya lo haces bien)
+                const updatedAlerts = alerts.filter((a) => a.id !== alert.id);
+                mutate(updatedAlerts, false);
+
+                // 2. 🔥 EL CAMBIO: Quitamos el 'await' para que la navegación no espere
+                markAsRead(alert.id).catch((err) =>
+                  console.error("Error al marcar como leído:", err),
                 );
-                mutate(updatedAlerts, false); // "false" evita que SWR haga un re-fetch automático en este instante
 
-                // 2. Marcamos como leída en la BD de fondo (el usuario ya no tiene que esperar esto)
-                await markAsRead(alert.id);
-
-                // 3. Calculamos la ruta y redirigimos
+                // 3. Navegación inmediata
                 const route = getRouteForType(alert.type, alert.reference_id);
                 if (route) {
                   router.push(route);
@@ -92,7 +84,6 @@ export function NotificationBell({
               }}
             >
               <div className="mt-0.5">{getIconForType(alert.type)}</div>
-
               <div className="flex flex-col gap-0.5">
                 <span className="font-bold text-sm">{alert.title}</span>
                 <span className="text-xs text-muted-foreground">
@@ -107,7 +98,6 @@ export function NotificationBell({
   );
 }
 
-// 1. Añade los nuevos iconos al Switch (Importa Mail, AlertTriangle, Trophy de lucide-react)
 function getIconForType(type: string) {
   switch (type) {
     case "LOW_STOCK":
@@ -118,38 +108,34 @@ function getIconForType(type: string) {
       return <UserPlus className="size-4 text-green-500" />;
     case "EVENT_UPDATE":
       return <Calendar className="size-4 text-purple-500" />;
-    // 🔥 NUEVOS:
     case "PAYMENT_FAILED":
-      return <AlertTriangle className="size-4 text-red-600" />; // Rojo fuerte para alertas de pago
+      return <AlertTriangle className="size-4 text-red-600" />;
     case "NEW_MESSAGE":
-      return <Mail className="size-4 text-teal-500" />; // Teal para mensajes de soporte
+      return <Mail className="size-4 text-teal-500" />;
     case "RACE_RESULTS":
-      return <Trophy className="size-4 text-yellow-500" />; // Amarillo/Dorado para resultados
+      return <Trophy className="size-4 text-yellow-500" />;
     default:
       return <AlertCircle className="size-4 text-red-500" />;
   }
 }
 
-// 2. Añade las nuevas rutas de redirección
 function getRouteForType(type: string, referenceId: string) {
   if (!referenceId) return null;
-
   switch (type) {
     case "LOW_STOCK":
       return `/dashboard/products/edit/${referenceId}`;
     case "PENDING_ORDER":
-      return `/dashboard/orders/${referenceId}`;
+      return `/dashboard/orders/edit/${referenceId}`;
     case "NEW_REGISTRATION":
-      return `/dashboard/registrations`;
+      return `/dashboard/registrations/edit/${referenceId}`;
     case "EVENT_UPDATE":
       return `/dashboard/events/edit/${referenceId}`;
-    // 🔥 NUEVOS:
     case "PAYMENT_FAILED":
-      return `/dashboard/orders/${referenceId}`; // Llevas al pedido para ver por qué falló
+      return `/dashboard/orders/edit/${referenceId}`;
     case "NEW_MESSAGE":
-      return `/dashboard/support/${referenceId}`; // Asumiendo que tendrás una bandeja de entrada
+      return `/dashboard/support/${referenceId}`;
     case "RACE_RESULTS":
-      return `/dashboard/events/${referenceId}/results`; // Llevas a la vista de resultados del evento
+      return `/dashboard/events/${referenceId}/results`;
     default:
       return null;
   }

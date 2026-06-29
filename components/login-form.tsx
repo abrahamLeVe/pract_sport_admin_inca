@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { LoginInput } from "@/validations/auth";
 import { ActionState } from "@/validations/core";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 import { FormError } from "./form-error";

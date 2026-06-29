@@ -7,23 +7,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Package, ShoppingCart, Users, Wallet } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import useSWR from "swr";
+import { fetchDashboardDataAction } from "@/app/actions/dashboard"; // Ajusta la ruta
 
+// Recibimos los datos iniciales para que cargue instantáneamente
 interface SectionCardsProps {
-  kpis: {
+  initialKpis: {
     revenue: number;
     orders: number;
     customers: number;
     products: number;
   };
+  days?: number;
 }
 
-export function SectionCards({ kpis }: SectionCardsProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(amount);
-  };
+export function SectionCards({ initialKpis, days = 30 }: SectionCardsProps) {
+  // 🔥 AQUÍ ESTÁ LA MAGIA AUTOMÁTICA
+  const { data: kpis } = useSWR(
+    `dashboard-kpis-${days}`,
+    async () => {
+      const response = await fetchDashboardDataAction(days);
+      return response.initialKpis;
+    },
+    {
+      refreshInterval: 30000, // Actualiza automáticamente cada 30 segundos
+      fallbackData: initialKpis, // Usa los datos del servidor para la primera carga rápida
+    },
+  );
 
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
