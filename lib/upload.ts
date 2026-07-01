@@ -7,83 +7,96 @@ interface UploadMediaResult {
   key: string | null;
 }
 
+// 🔥 Definimos la constante aquí para mantenimiento fácil
+const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB uniformes
+
+// ... imports
 export async function handleMediaUpload(
   formData: FormData,
   fieldName: string,
   folder: string,
-  type: "image" | "video" | "merch", // 🔥 Definimos el tipo aquí
+  type: "image" | "video" | "merch" | "document", // Asegúrate que este tipo coincida
   isRequired: boolean = false,
 ): Promise<UploadMediaResult> {
   const file = formData.get(fieldName) as File;
 
-  // 1. Validar si existe
   if (!file || file.size === 0) {
-    if (isRequired) {
+    if (isRequired)
       return {
         success: false,
-        message: `El archivo (${type}) es obligatorio.`,
+        message: `El archivo es obligatorio.`,
         url: null,
         key: null,
       };
-    }
     return { success: true, url: null, key: null };
   }
 
-  // 2. Definir reglas según el tipo
+  // 10MB Uniforme para todos
+  const MAX_SIZE = 10 * 1024 * 1024;
+
   const rules = {
     image: {
       types: ["image/jpeg", "image/png", "image/webp"],
-      maxSize: 5 * 1024 * 1024, // 5MB
-      errorSize: "La imagen supera los 5MB.",
+      maxSize: MAX_SIZE,
     },
     video: {
-      types: ["video/mp4", "video/webm", "video/quicktime"], // .mp4, .webm, .mov
-      maxSize: 50 * 1024 * 1024, // 50MB (Ajusta según necesites)
-      errorSize: "El video supera los 50MB.",
+      types: ["video/mp4", "video/webm", "video/quicktime"],
+      maxSize: MAX_SIZE,
     },
     merch: {
-      types: ["video/mp4", "video/webm", "video/quicktime"], // .mp4, .webm, .mov
-      maxSize: 50 * 1024 * 1024, // 50MB (Ajusta según necesites)
-      errorSize: "El video supera los 50MB.",
+      types: ["video/mp4", "video/webm", "video/quicktime"],
+      maxSize: MAX_SIZE,
+    },
+    document: {
+      types: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+      ],
+      maxSize: MAX_SIZE,
     },
   };
 
-  const currentRules = rules[type];
+  const currentRules = rules[type as keyof typeof rules];
 
-  // 3. Validar tipo
+  if (!currentRules) {
+    return {
+      success: false,
+      message: `Tipo de medio no configurado: ${type}`,
+      url: null,
+      key: null,
+    };
+  }
+
+  // Validación de tipo
   if (!currentRules.types.includes(file.type)) {
     return {
       success: false,
-      message: `Formato no permitido. Tipos válidos: ${currentRules.types.join(", ")}`,
+      message: `Formato no permitido. Recibido: ${file.type}`,
       url: null,
       key: null,
     };
   }
 
-  // 4. Validar tamaño
+  // Validación de tamaño
   if (file.size > currentRules.maxSize) {
     return {
       success: false,
-      message: currentRules.errorSize,
+      message: "El archivo supera los 10MB.",
       url: null,
       key: null,
     };
   }
 
-  // 5. Subir a S3
   const s3Result = await uploadFileToS3Action(file, folder);
-  if (!s3Result.success || !s3Result.key || !s3Result.url) {
-    return {
-      success: false,
-      message: s3Result.message || "Error al subir a S3.",
-      url: null,
-      key: null,
-    };
-  }
-
-  return { success: true, url: s3Result.url, key: s3Result.key };
+  return {
+    success: s3Result.success,
+    url: s3Result.url,
+    key: s3Result.key,
+    message: s3Result.message,
+  };
 }
-
 export async function handleMultipleImagesUpload(
   formData: FormData,
   fieldName: string,
@@ -110,12 +123,13 @@ export async function handleMultipleImagesUpload(
     if (!validTypes.includes(file.type)) {
       return { success: false, message: "Solo JPG, PNG o WEBP permitidos." };
     }
-    if (file.size > 5 * 1024 * 1024) {
-      return { success: false, message: "Una imagen supera los 5MB." };
+    // 🔥 También actualizado a 10MB aquí
+    if (file.size > MAX_SIZE_BYTES) {
+      return { success: false, message: "Una imagen supera los 10MB." };
     }
   }
 
-  // 3. Subimos en paralelo
+  // Subimos en paralelo
   const imageUploads = await Promise.all(
     validFiles.map((file) => uploadFileToS3Action(file, folder)),
   );

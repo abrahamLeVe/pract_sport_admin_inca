@@ -299,21 +299,68 @@ CREATE TABLE events (
 
 -- Ahora sí agregamos la FK a banners (Evitamos dependencias circulares)
 ALTER TABLE banners ADD CONSTRAINT fk_banners_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL;
+-- ==========================================
+-- Media 
+-- ==========================================
 
-CREATE TABLE event_media (
+CREATE TABLE media (
     id SERIAL PRIMARY KEY,
-    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
-    media_type VARCHAR(20) NOT NULL, -- 'image', 'video', 'merch'
-    media_url TEXT NOT NULL,         -- URL de la imagen o link del video (YouTube/Vimeo)
-    media_key TEXT,                  -- El key de S3 (si es archivo subido)
-    alt_text VARCHAR(255),           -- Texto para accesibilidad
-    display_order INTEGER DEFAULT 0, -- Para ordenar las fotos en el frontend
+    
+    -- 1. Datos Core
+    media_type VARCHAR(20) NOT NULL, -- 'image', 'video', 'document', 'merch'
+    media_url TEXT NOT NULL,         
+    media_key TEXT,                  
+    
+    -- 2. Metadata Técnica
+    file_name VARCHAR(255),          
+    file_format VARCHAR(50),         
+    size_bytes BIGINT,               
+    width INTEGER,                   
+    height INTEGER,                  
+    alt_text VARCHAR(255),           -- Alt text global por defecto
+    
+    -- 3. Organización UI (Galería interna)
+    folder_name VARCHAR(100) DEFAULT 'general', 
+    
+    -- 4. Timestamps
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    deleted_at TIMESTAMP WITH TIME ZONE;
+);
+
+-- Índices para el panel de administración
+CREATE INDEX idx_media_folder ON media(folder_name);
+CREATE INDEX idx_media_type ON media(media_type);
+CREATE TABLE media_links (
+    id SERIAL PRIMARY KEY,
+    
+    -- 1. Referencia al archivo físico (Si se borra el archivo, se borra este link)
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    
+    -- 2. Identificadores Polimórficos del "Dueño"
+    model_type VARCHAR(50) NOT NULL, -- Ej: 'event', 'product', 'banner'
+    model_id INTEGER NOT NULL,       -- Ej: 11 (El ID del evento)
+    
+    -- 3. Contexto de la relación
+    collection_name VARCHAR(50) DEFAULT 'gallery', -- Ej: 'thumbnail', 'gallery', 'sponsor_logo'
+    display_order INTEGER DEFAULT 0,               -- El orden en este contexto específico
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índice para búsquedas rápidas
-CREATE INDEX idx_event_media_event_id ON event_media(event_id);
+-- ==========================================
+-- ÍNDICES CRÍTICOS PARA EL RENDIMIENTO
+-- ==========================================
 
+-- 1. Para cargar la galería de un evento/producto rapidísimo
+CREATE INDEX idx_media_links_model ON media_links(model_type, model_id);
+
+-- 2. Para saber en cuántos lugares se está usando una imagen específica
+CREATE INDEX idx_media_links_media_id ON media_links(media_id);
+
+-- 3. Para evitar que insertes la misma imagen dos veces en la misma colección del mismo evento
+CREATE UNIQUE INDEX idx_media_links_unique 
+ON media_links(media_id, model_type, model_id, collection_name);
 -- ------------------------------------------------------------------------------
 -- 3. CATEGORÍAS DEL EVENTO (Las reglas congeladas para ESTE evento)
 -- ------------------------------------------------------------------------------

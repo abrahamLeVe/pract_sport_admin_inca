@@ -11,17 +11,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ActionState } from "@/validations/core";
+import { Button } from "./ui/button";
 
 interface DeleteActionItemProps {
   id: number;
   itemName: string;
   itemType: string;
-  action: (id: number) => Promise<{ success: boolean; message: string }>;
+  // 🔥 La firma debe ser flexible para aceptar los argumentos opcionales
+  action: (
+    id: number,
+    modelType?: string,
+    modelId?: number,
+  ) => Promise<ActionState<any>>;
   warningText?: string;
+  modelType?: string;
+  modelId?: number;
 }
 
 export function DeleteActionItem({
@@ -30,18 +38,22 @@ export function DeleteActionItem({
   itemType,
   action,
   warningText = "Esta acción no se puede deshacer.",
+  modelId,
+  modelType,
 }: DeleteActionItemProps) {
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleDelete = () => {
     startTransition(async () => {
-      const response = await action(id);
+      // Pasamos los parámetros de forma dinámica
+      const response = await action(id, modelType, modelId);
+
       if (response.success) {
         toast.success(response.message);
         setIsOpen(false);
       } else {
-        toast.error(response.message);
+        toast.error(response.message || "Error al eliminar");
       }
     });
   };
@@ -49,20 +61,27 @@ export function DeleteActionItem({
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <DropdownMenuItem
-          onSelect={(e) => e.preventDefault()}
+        <Button
+          variant={"ghost"}
+          className="hover:bg-destructive/10 dark:hover:bg-destructive/10 text-destructive transition-colors"
           disabled={isPending}
-          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg gap-2 mt-1"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>{isPending ? "Eliminando..." : `Eliminar ${itemType}`}</span>
-        </DropdownMenuItem>
+          {isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4" />
+              {/* Esto valida que modelType exista; si existe, muestra el texto */}
+              {modelType ? <span>Eliminar</span> : <span>Papelera</span>}
+            </>
+          )}
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
           <AlertDialogDescription>
-            Estás a punto de eliminar la {itemType}{" "}
+            Estás a punto de eliminar {itemType}{" "}
             <strong className="text-foreground font-medium">{itemName}</strong>.{" "}
             {warningText}
           </AlertDialogDescription>
@@ -77,7 +96,7 @@ export function DeleteActionItem({
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isPending ? "Procesando..." : `Sí, eliminar ${itemType}`}
+            {isPending ? "Procesando..." : `Sí, eliminar`}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

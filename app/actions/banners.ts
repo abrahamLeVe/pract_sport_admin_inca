@@ -23,9 +23,6 @@ export async function createBannerAction(
 ): Promise<ActionState<BannerInput>> {
   const session = await requireAdminSession();
 
-  const rawEventId = formData.get("event_id")?.toString();
-  const eventIdNum =
-    rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
   const fields: BannerInput = {
     title: formData.get("title")?.toString() || "",
     subtitle: formData.get("subtitle")?.toString() || "",
@@ -36,7 +33,7 @@ export async function createBannerAction(
     status: formData.get("status") as "activo" | "inactivo",
     start_date: formData.get("start_date")?.toString() || undefined,
     end_date: formData.get("end_date")?.toString() || undefined,
-    event_id: eventIdNum,
+    event_id: Number(formData.get("event_id")),
     sort_order: 0,
   };
 
@@ -122,26 +119,20 @@ export async function updateBannerAction(
   formData: FormData,
 ): Promise<ActionState<EditBannerInput>> {
   const session = await requireAdminSession();
-  const rawId = formData.get("id")?.toString();
-  const numericId = rawId ? parseInt(rawId, 10) : 0;
-  const rawEventId = formData.get("event_id")?.toString();
-  const eventIdNum =
-    rawEventId && rawEventId !== "none" ? parseInt(rawEventId, 10) : null;
-  const rawSortOrder = formData.get("sort_order")?.toString();
-  const sortOrderNum = rawSortOrder ? parseInt(rawSortOrder, 10) : 0;
+
   const fields: EditBannerInput = {
-    id: numericId,
-    title: formData.get("title")?.toString() || "",
-    subtitle: formData.get("subtitle")?.toString() || "",
-    link_url: formData.get("link_url")?.toString() || "",
+    id: Number(formData.get("id")) || 0,
+    title: (formData.get("title") as string) || "",
+    subtitle: (formData.get("subtitle") as string) || "",
+    link_url: (formData.get("link_url") as string) || "",
     type:
       (formData.get("type") as "general" | "oferta" | "evento" | "novedad") ||
       "general",
-    sort_order: sortOrderNum,
+    sort_order: Number(formData.get("sort_order")) || 0,
     status: formData.get("status") as "activo" | "inactivo",
-    start_date: formData.get("start_date")?.toString() || "",
-    end_date: formData.get("end_date")?.toString() || "",
-    event_id: eventIdNum,
+    start_date: (formData.get("start_date") as string) || "",
+    end_date: (formData.get("end_date") as string) || "",
+    event_id: Number(formData.get("event_id")),
   };
   try {
     const validatedFields = editBannerSchema.safeParse(fields);

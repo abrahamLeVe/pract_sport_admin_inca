@@ -70,30 +70,12 @@ export const editEventSchema = eventSchema.omit({ categories: true }).extend({
 });
 
 // ============================================================================
-// 2.1 ESQUEMAS DE GALERÍA MULTIMEDIA (Event Media)
-// ============================================================================
-export const eventMediaSchema = z.object({
-  event_id: z.coerce.number().int(),
-  media_type: z.enum(["image", "video", "merch"]),
-  media_url: z.string().min(1, "La URL o enlace del medio es obligatorio."),
-  media_key: z.string().optional().nullable(),
-  alt_text: z.string().optional().nullable(),
-  display_order: z.coerce.number().int().default(0),
-});
-
-export const editEventMediaSchema = eventMediaSchema.extend({
-  id: z.coerce.number(),
-});
-
-// ============================================================================
 // 3. TIPOS INFERIDOS (Para usar en Server Actions y UI)
 // ============================================================================
 export type EventCategoryInput = z.infer<typeof eventCategorySchema>;
 export type EditEventCategoryInput = z.infer<typeof editEventCategorySchema>;
 export type EventInput = z.infer<typeof eventSchema>;
 export type EditEventInput = z.infer<typeof editEventSchema>;
-export type EventMediaInput = z.infer<typeof eventMediaSchema>;
-export type EditEventMediaInput = z.infer<typeof editEventMediaSchema>;
 
 // ============================================================================
 // 4. ESTRUCTURAS DE BASE DE DATOS (Master Data & JOINS)
@@ -126,62 +108,35 @@ export interface EventCategoryRow {
   registered_count: number;
 }
 
-export interface EventMediaRow {
-  id: number;
-  event_id: number;
-  media_type: "image" | "video" | "merch";
-  media_url: string;
-  media_key: string | null;
-  alt_text: string | null;
-  display_order: number;
-  created_at: Date;
-}
-
 // ============================================================================
-// 1. BLOQUES BASE DE CATÁLOGOS (Piezas de Lego)
+// 5. PROPS DE LOS COMPONENTES (Armando las piezas)
 // ============================================================================
-
-// Catálogos exclusivos para el Evento (Información general)
 export interface EventMasterData {
   eventTypes: MasterDataGrid[];
 }
 
-// Catálogos exclusivos para las Categorías (Lógica de negocio)
 export interface CategoryMasterData {
   distances: MasterDataGrid[];
   genders: MasterDataGrid[];
   ageCategories: MasterAgeCategoryGrid[];
 }
 
-// ============================================================================
-// 2. PROPS DE LOS COMPONENTES (Armando las piezas)
-// ============================================================================
-
-// El registro usa TODO porque se hace en una sola pantalla
 export interface RegisterEventFormProps
   extends EventMasterData, CategoryMasterData {}
 
-// La edición del evento SOLO necesita los tipos de evento
 export interface EditEventFormProps extends EventMasterData {
   initialData: EditEventInput & {
     image_url?: string | null;
   };
 }
 
-// La tabla de categorías SOLO necesita los catálogos de categorías
 export interface EventCategoriesTableProps extends CategoryMasterData {
   eventId: number;
   categories: EventCategoryRow[];
 }
 
-// Props para la gestión de la galería multimedia
-export interface EventMediaTableProps {
-  eventId: number;
-  mediaItems: EventMediaRow[];
-}
-
 // ============================================================================
-// 3. INTERFAZ PARA LA TABLA
+// 6. INTERFAZ PARA LA TABLA DE EVENTOS
 // ============================================================================
 export interface EventTableItem {
   id: number;
@@ -194,7 +149,5 @@ export interface EventTableItem {
   image_key: string | null;
   created_at: Date;
   updated_at: Date;
-
-  // 🔥 Campo virtual para la DataTable
   is_active?: boolean;
 }

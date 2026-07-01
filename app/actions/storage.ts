@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client } from "@/lib/s3";
+import crypto from "crypto";
 
 export async function uploadFileToS3Action(
   file: File,
@@ -94,6 +95,39 @@ export async function deleteFileFromS3Action(fileKey: string) {
     return {
       success: false,
       message: "No se pudo eliminar el archivo de AWS.",
+    };
+  }
+}
+
+export async function getPresignedUrlAction(fileType: string) {
+  try {
+    // Generamos el key (esto es lo que guardas en la BD)
+    const key = `events/media/${crypto.randomUUID()}.${fileType.split("/")[1]}`;
+    const publicUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: key,
+      ContentType: fileType,
+    });
+
+    // URL para que el frontend suba el archivo
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 3600,
+    });
+
+    // Devolvemos el objeto tal cual tu base de datos lo necesita
+    return {
+      success: true,
+      uploadUrl, // Para el fetch PUT del cliente
+      key, // Para tu INSERT
+      url: publicUrl, // Para tu INSERT
+    };
+  } catch (error: any) {
+    console.error("❌ Error al subir imagen de S3:", error.message);
+    return {
+      success: false,
+      message: "No se pudo subir la imagen de AWS.",
     };
   }
 }

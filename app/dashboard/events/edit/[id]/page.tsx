@@ -1,7 +1,9 @@
+import MediaManager from "@/components/media-manager";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { getEventByIdAction } from "@/lib/data/events";
 import { getAllMasterEventTypesAction } from "@/lib/data/master-data";
+import { getMediaByModelAction } from "@/lib/data/media";
 import { ListPlus, QrCode } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,14 +22,17 @@ export default async function EditEventPage({
   const resolvedParams = await params;
   const eventId = Number(resolvedParams.id);
 
-  const [eventData, eventTypes] = await Promise.all([
+  const [eventData, eventTypes, mediaItems] = await Promise.all([
     getEventByIdAction(eventId),
     getAllMasterEventTypesAction(),
+    getMediaByModelAction("event", eventId),
   ]);
 
   if (!eventData) {
     notFound();
   }
+
+  // 🔥 Obtenemos la galería
 
   return (
     <div className="p-4 md:p-6 w-full max-w-4xl mx-auto space-y-6">
@@ -73,6 +78,15 @@ export default async function EditEventPage({
 
       {/* TU FORMULARIO PRINCIPAL */}
       <EditEventForm initialData={eventData} eventTypes={eventTypes} />
+
+      <hr className="my-8" />
+
+      {/* 🔥 Nueva sección de Galería integrada */}
+      <MediaManager
+        modelType="event"
+        modelId={eventId}
+        initialMedia={mediaItems}
+      />
     </div>
   );
 }
