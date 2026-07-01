@@ -1,8 +1,9 @@
 "use server";
 
 import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
-import { handleImageUpload } from "@/lib/upload";
+import { handleMediaUpload } from "@/lib/upload";
 import { ActionState } from "@/validations/core";
 import {
   EditEventInput,
@@ -13,8 +14,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action } from "./storage";
-
+import { deleteFileFromS3Action } from "../storage";
+const REVALIDATE_ROUTE = "/dashboard/events";
 // ============================================================================
 // 1. CREATE EVENT
 // ============================================================================
@@ -84,10 +85,11 @@ export async function createEventAction(
     };
   }
 
-  const imageResult = await handleImageUpload(
+  const imageResult = await handleMediaUpload(
     formData,
     "image",
     "events",
+    "image",
     true,
   );
   if (!imageResult.success) {
@@ -164,7 +166,7 @@ export async function createEventAction(
     if (client) client.release();
   }
 
-  revalidatePath("/dashboard/events");
+  revalidatePath(REVALIDATE_ROUTE);
   redirect("/dashboard/events");
 }
 
@@ -234,7 +236,12 @@ export async function updateEventAction(
 
   let newImageUrl = null;
   let newImageKey = null;
-  const imageResult = await handleImageUpload(formData, "image", "events");
+  const imageResult = await handleMediaUpload(
+    formData,
+    "image",
+    "events",
+    "image",
+  );
 
   if (!imageResult.success) {
     return {
@@ -311,7 +318,7 @@ export async function updateEventAction(
         id,
       ]);
     }
-    revalidatePath("/dashboard/events");
+    revalidatePath(REVALIDATE_ROUTE);
   } catch (error: any) {
     console.error("❌ Error en updateEventAction:", error.message);
     return {
@@ -324,35 +331,6 @@ export async function updateEventAction(
   redirect("/dashboard/events");
 }
 
-export async function deleteEventAction(id: number) {
-  await requireAdminSession();
-  try {
-    const getQuery = "SELECT image_key FROM events WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const eventRecord = result.rows[0];
-
-    if (!eventRecord)
-      return { success: false, message: "El evento no existe." };
-
-    if (eventRecord.image_key) {
-      await deleteFileFromS3Action(eventRecord.image_key);
-    }
-
-    const deleteQuery = "DELETE FROM events WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    revalidatePath("/dashboard/events");
-    return { success: true, message: "Evento eliminado correctamente." };
-  } catch (error: any) {
-    console.error("❌ Error en deleteEventAction:", error.message);
-    return {
-      success: false,
-      message:
-        "No se pudo eliminar el evento (quizás tiene inscripciones asociadas).",
-    };
-  }
-}
-
 export async function toggleEventStatusAction(
   id: number,
   currentStatus: string,
@@ -363,7 +341,7 @@ export async function toggleEventStatusAction(
     const query = `UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`;
     await pool.query(query, [nextStatus, id]);
 
-    revalidatePath("/dashboard/events");
+    revalidatePath(REVALIDATE_ROUTE);
     return {
       success: true,
       message: `Evento ${nextStatus === "published" ? "publicado" : "ocultado"}.`,
@@ -371,5 +349,173 @@ export async function toggleEventStatusAction(
   } catch (error) {
     console.error("❌ Error en toggleEventStatusAction:", error);
     return { success: false, message: "No se pudo cambiar el estado." };
+  }
+}
+
+// ============================================================================
+// 1. ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete)
+// ============================================================================
+export async function deleteEventAction(id: number) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    // Marcamos el evento como eliminado
+    const softDeleteEventQuery =
+      "UPDATE events SET deleted_at = NOW() WHERE id = $1";
+    await pool.query(softDeleteEventQuery, [id]);
+
+    // Marcamos todos los media asociados como eliminados también
+    const softDeleteMediaQuery =
+      "UPDATE event_media SET deleted_at = NOW() WHERE event_id = $1";
+    await pool.query(softDeleteMediaQuery, [id]);
+
+    await logAudit(adminId, "SOFT_DELETE", "events", id);
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: "Evento y sus archivos movidos a la papelera.",
+    };
+  } catch (error: any) {
+    console.error("❌ Error en deleteEventAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudo eliminar el evento.",
+    };
+  }
+}
+
+// ============================================================================
+// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
+// ============================================================================
+export async function permanentlyDeleteEventAction(id: number) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    // 1. Recuperamos TODOS los keys (imagen principal + galería)
+    const getQuery = `
+      SELECT image_key as key FROM events WHERE id = $1 AND image_key IS NOT NULL
+      UNION ALL
+      SELECT media_key as key FROM event_media WHERE event_id = $1 AND media_key IS NOT NULL
+    `;
+    const result = await pool.query(getQuery, [id]);
+
+    // 2. Borrado físico de todos los archivos en AWS S3
+    for (const row of result.rows) {
+      await deleteFileFromS3Action(row.key);
+    }
+
+    // 3. Borrado físico real de la base de datos (CASCADE borra event_media automáticamente)
+    const deleteQuery = "DELETE FROM events WHERE id = $1";
+    await pool.query(deleteQuery, [id]);
+
+    await logAudit(adminId, "HARD_DELETE", "events", id);
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: "Evento y sus archivos eliminados definitivamente.",
+    };
+  } catch (error: any) {
+    console.error("❌ Error en permanentlyDeleteEventAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudo purgar el evento.",
+    };
+  }
+}
+
+// ============================================================================
+// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
+// ============================================================================
+export async function bulkDeleteEventsAction(ids: number[]) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    if (!ids || ids.length === 0)
+      return { success: false, message: "No hay eventos seleccionados." };
+
+    // Actualizamos eventos
+    const queryEvents =
+      "UPDATE events SET deleted_at = NOW() WHERE id = ANY($1)";
+    await pool.query(queryEvents, [ids]);
+
+    // Actualizamos media de esos eventos
+    const queryMedia =
+      "UPDATE event_media SET deleted_at = NOW() WHERE event_id = ANY($1)";
+    await pool.query(queryMedia, [ids]);
+
+    await logAudit(adminId, "BULK_SOFT_DELETE", "events", ids.join(","));
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: `${ids.length} eventos y sus archivos movidos a la papelera.`,
+    };
+  } catch (error: any) {
+    console.error("❌ Error en bulkDeleteEventsAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "Error al eliminar los eventos seleccionados.",
+    };
+  }
+}
+
+// ============================================================================
+// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
+// ============================================================================
+export async function bulkPermanentlyDeleteEventsAction(ids: number[]) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    if (!ids || ids.length === 0)
+      return { success: false, message: "No hay eventos seleccionados." };
+
+    // 1. Buscamos todas las llaves (imagen principal + galería) del lote
+    const getQuery = `
+      SELECT image_key as key FROM events WHERE id = ANY($1) AND image_key IS NOT NULL
+      UNION ALL
+      SELECT media_key as key FROM event_media WHERE event_id = ANY($1) AND media_key IS NOT NULL
+    `;
+    const result = await pool.query(getQuery, [ids]);
+
+    // 2. Barremos limpiando todos los archivos en S3
+    for (const row of result.rows) {
+      await deleteFileFromS3Action(row.key);
+    }
+
+    // 3. Remoción física de los registros (CASCADE limpia event_media)
+    const deleteQuery = "DELETE FROM events WHERE id = ANY($1)";
+    await pool.query(deleteQuery, [ids]);
+
+    await logAudit(adminId, "BULK_HARD_DELETE", "events", ids.join(","));
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message:
+        "Los eventos seleccionados y sus archivos se eliminaron permanentemente.",
+    };
+  } catch (error: any) {
+    console.error(
+      "❌ Error en bulkPermanentlyDeleteEventsAction:",
+      error.message,
+    );
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudieron purgar los eventos seleccionados.",
+    };
   }
 }

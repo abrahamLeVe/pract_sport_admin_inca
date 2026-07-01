@@ -14,11 +14,11 @@ export async function getVariantsByProductIdAction(productId: number) {
         pv.sku, 
         pv.stock, 
         pv.status,
-        pv.track_stock -- 🔥 1. Agregamos el campo aquí
+        pv.track_stock
       FROM product_variants pv
       LEFT JOIN master_sizes ms ON pv.size_id = ms.id
       LEFT JOIN master_colors mc ON pv.color_id = mc.id
-      WHERE pv.product_id = $1
+      WHERE pv.product_id = $1 AND pv.deleted_at IS NULL
       ORDER BY pv.created_at ASC
     `;
     const result = await pool.query(query, [productId]);
@@ -44,11 +44,11 @@ export async function getVariantByIdAction(id: number) {
         pv.sku, 
         pv.stock, 
         pv.status,
-        pv.track_stock -- 🔥 2. Y también aquí
+        pv.track_stock
       FROM product_variants pv
       LEFT JOIN master_sizes ms ON pv.size_id = ms.id
       LEFT JOIN master_colors mc ON pv.color_id = mc.id
-      WHERE pv.id = $1
+      WHERE pv.id = $1 AND pv.deleted_at IS NULL
     `;
     const result = await pool.query(query, [id]);
 

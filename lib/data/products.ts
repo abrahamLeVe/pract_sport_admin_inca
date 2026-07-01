@@ -11,6 +11,7 @@ export async function getProducts(): Promise<ProductTableItem[]> {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN brands b ON p.brand_id = b.id
+      WHERE p.deleted_at IS NULL 
       ORDER BY p.created_at DESC
     `;
     const { rows } = await pool.query(query);
@@ -46,7 +47,7 @@ export async function getProductByIdAction(id: number) {
         p.stock, p.category_id, p.brand_id, p.images, p.status, p.track_stock,
         EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id) as has_variants
       FROM products p
-      WHERE p.id = $1
+      WHERE p.id = $1 AND p.deleted_at IS NULL
     `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;

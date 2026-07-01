@@ -22,7 +22,7 @@ import {
   deleteEventAction,
   toggleEventStatusAction,
   updateEventAction,
-} from "./events";
+} from "./events/crud";
 import { updateOrderStatusAction } from "./orders";
 import {
   createProductAction,

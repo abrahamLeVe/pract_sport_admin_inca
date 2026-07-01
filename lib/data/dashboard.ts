@@ -11,10 +11,10 @@ export const getDashboardData = unstable_cache(
     try {
       const kpiQuery = `
         SELECT 
-          (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE payment_status = 'pagado' AND created_at >= NOW() - INTERVAL '${days} days') as total_revenue,
-          (SELECT COUNT(*) FROM orders WHERE created_at >= NOW() - INTERVAL '${days} days') as total_orders,
-          (SELECT COUNT(DISTINCT customer_email) FROM orders WHERE created_at >= NOW() - INTERVAL '${days} days') as total_customers,
-          (SELECT COUNT(*) FROM products) as total_products
+          (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE payment_status = 'pagado' AND deleted_at IS NULL AND created_at >= NOW() - INTERVAL '${days} days') as total_revenue,
+          (SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '${days} days') as total_orders,
+          (SELECT COUNT(DISTINCT customer_email) FROM orders WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '${days} days') as total_customers,
+          (SELECT COUNT(*) FROM products WHERE deleted_at IS NULL) as total_products
       `;
       const kpiResult = await pool.query(kpiQuery);
       const initialKpis = kpiResult.rows[0];
@@ -24,7 +24,7 @@ export const getDashboardData = unstable_cache(
           TO_CHAR(DATE(created_at), 'YYYY-MM-DD') as date,
           SUM(total_amount) as ingresos
         FROM orders
-        WHERE payment_status = 'pagado' AND created_at >= NOW() - INTERVAL '${days} days'
+        WHERE payment_status = 'pagado' AND deleted_at IS NULL AND created_at >= NOW() - INTERVAL '${days} days'
         GROUP BY DATE(created_at)
         ORDER BY DATE(created_at) ASC
       `;
@@ -50,7 +50,7 @@ export const getDashboardData = unstable_cache(
       };
     }
   },
-  ["dashboard-ecommerce-data"], // Clave base de caché
+  ["dashboard-ecommerce-data"],
   {
     tags: ["dashboard", "orders", "products"],
     revalidate: 30,
@@ -61,22 +61,22 @@ export const getDashboardData = unstable_cache(
 export const getEventsDashboardStats = unstable_cache(
   async (): Promise<EventsDashboardStats> => {
     try {
-      // 🔥 OPTIMIZACIÓN: Disparamos las 4 consultas al mismo tiempo
+      // 🔥 OPTIMIZACIÓN: Disparamos las 4 consultas al mismo tiempo con el filtro deleted_at
       const [eventsRes, participantsRes, revenueRes, recentRes] =
         await Promise.all([
           pool.query(
-            `SELECT COUNT(*) as total FROM events WHERE status != 'draft'`,
+            `SELECT COUNT(*) as total FROM events WHERE status != 'draft' AND deleted_at IS NULL`,
           ),
           pool.query(
-            `SELECT COUNT(*) as total FROM event_registrations WHERE registration_status != 'cancelled'`,
+            `SELECT COUNT(*) as total FROM event_registrations WHERE registration_status != 'cancelled' AND deleted_at IS NULL`,
           ),
           pool.query(
-            `SELECT COALESCE(SUM(payment_amount), 0) as total_revenue FROM event_registrations WHERE payment_status = 'paid'`,
+            `SELECT COALESCE(SUM(payment_amount), 0) as total_revenue FROM event_registrations WHERE payment_status = 'paid' AND deleted_at IS NULL`,
           ),
           pool.query<RecentRegistration>(`
             SELECT 
               er.id, 
-              er.created_at::text as created_at, -- Evita errores de hidratación con Dates
+              er.created_at::text as created_at,
               er.payment_status, 
               er.registration_status,
               e.title as event_title,
@@ -86,6 +86,7 @@ export const getEventsDashboardStats = unstable_cache(
               ) as participant_name
             FROM event_registrations er
             JOIN events e ON er.event_id = e.id
+            WHERE er.deleted_at IS NULL AND e.deleted_at IS NULL -- Filtra si borraron la inscripción o el evento entero
             ORDER BY er.created_at DESC
             LIMIT 5
           `),
@@ -107,7 +108,7 @@ export const getEventsDashboardStats = unstable_cache(
       };
     }
   },
-  ["dashboard-events-data"], // Clave de caché
+  ["dashboard-events-data"],
   {
     tags: ["dashboard", "events", "registrations"],
     revalidate: 30,

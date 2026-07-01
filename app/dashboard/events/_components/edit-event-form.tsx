@@ -1,6 +1,6 @@
 "use client";
 
-import { updateEventAction } from "@/app/actions/events";
+import { updateEventAction } from "@/app/actions/events/crud";
 import { FormError } from "@/components/form-error";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { SingleImageUploader } from "@/components/single-image-uploader";

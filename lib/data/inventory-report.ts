@@ -45,16 +45,19 @@ export async function getInventoryReportData(): Promise<InventoryData> {
       LEFT JOIN product_variants pv ON p.id = pv.product_id
       LEFT JOIN master_sizes ms ON pv.size_id = ms.id
       LEFT JOIN master_colors mc ON pv.color_id = mc.id
+      WHERE p.deleted_at IS NULL -- 🔥 1. Ocultamos productos borrados del Excel
       ORDER BY p.name ASC, mc.name ASC, ms.name ASC
     `);
 
     // 2. Datos Maestros (Marcas, Categorías, Colores, Tallas)
     const brandsQuery = pool.query(
-      `SELECT name, status FROM brands ORDER BY name ASC`,
+      `SELECT name, status FROM brands WHERE deleted_at IS NULL ORDER BY name ASC`,
     );
     const categoriesQuery = pool.query(
-      `SELECT name, status FROM categories ORDER BY name ASC`,
+      `SELECT name, status FROM categories WHERE deleted_at IS NULL ORDER BY name ASC`,
     );
+
+    // Tallas y Colores no les pusimos deleted_at, así que se quedan igual
     const colorsQuery = pool.query(
       `SELECT name, COALESCE(hex_code, 'N/A') as hex FROM master_colors ORDER BY name ASC`,
     );

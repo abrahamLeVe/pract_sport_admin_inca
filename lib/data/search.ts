@@ -20,23 +20,28 @@ export async function globalSearchAction(query: string) {
         participant_details->>'lastName' as last_name, 
         participant_details->>'documentNumber' as document
       FROM event_registrations
-      WHERE participant_details->>'firstName' ILIKE $1
+      WHERE (
+            participant_details->>'firstName' ILIKE $1
          OR participant_details->>'lastName' ILIKE $1
          OR participant_details->>'documentNumber' ILIKE $1
+      ) 
+      AND deleted_at IS NULL -- 🔥 Evita los resultados fantasmas
       LIMIT 5
     `,
       [searchTerm],
     );
 
     // 2. Buscar órdenes de la tienda (por ID de pedido, nombre o email)
-    // Asumo que tu tabla se llama 'orders' y tiene customer_name/email
     const ordersPromise = pool.query(
       `
       SELECT id, customer_name, customer_email, total_amount
       FROM orders
-      WHERE customer_name ILIKE $1 
+      WHERE (
+            customer_name ILIKE $1 
          OR customer_email ILIKE $1 
          OR id::text = $1
+      )
+      AND deleted_at IS NULL -- 🔥 Evita los resultados fantasmas
       LIMIT 5
     `,
       [searchTerm],
@@ -70,7 +75,7 @@ export interface OrderSearchResult {
   id: number;
   customer_name: string;
   customer_email: string;
-  total_amount?: number | string; // Opcional, por si lo traes en el SQL
+  total_amount?: number | string;
 }
 
 // 3. El objeto global que agrupa ambos resultados

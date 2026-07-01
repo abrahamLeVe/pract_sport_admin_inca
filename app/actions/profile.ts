@@ -4,7 +4,7 @@ import pool from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { handleImageUpload } from "@/lib/upload";
+import { handleMediaUpload } from "@/lib/upload";
 import { ActionState } from "@/validations/core";
 import { ProfileFormValues, profileSchema } from "@/validations/profile";
 import { z } from "zod";
@@ -50,10 +50,11 @@ export async function updateProfileAction(
     let newImageUrl = null;
 
     // Asumimos que los guardas en una carpeta llamada "profiles" o "avatars" en tu S3
-    const imageResult = await handleImageUpload(
+    const imageResult = await handleMediaUpload(
       formData,
       "image",
       "avatars",
+      "image",
       false,
     );
 

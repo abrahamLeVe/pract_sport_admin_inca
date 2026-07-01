@@ -1,67 +1,87 @@
 import { uploadFileToS3Action } from "@/app/actions/storage";
 
-interface UploadImageResult {
+interface UploadMediaResult {
   success: boolean;
   message?: string;
   url: string | null;
   key: string | null;
 }
 
-export async function handleImageUpload(
+export async function handleMediaUpload(
   formData: FormData,
-  fieldName: string = "image",
+  fieldName: string,
   folder: string,
+  type: "image" | "video" | "merch", // 🔥 Definimos el tipo aquí
   isRequired: boolean = false,
-): Promise<UploadImageResult> {
-  const imageFile = formData.get(fieldName) as File;
+): Promise<UploadMediaResult> {
+  const file = formData.get(fieldName) as File;
 
-  if (!imageFile || imageFile.size === 0) {
+  // 1. Validar si existe
+  if (!file || file.size === 0) {
     if (isRequired) {
       return {
         success: false,
-        message: "La imagen es obligatoria. Por favor, sube una.",
+        message: `El archivo (${type}) es obligatorio.`,
         url: null,
         key: null,
       };
     }
-
     return { success: true, url: null, key: null };
   }
 
-  const validTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!validTypes.includes(imageFile.type)) {
+  // 2. Definir reglas según el tipo
+  const rules = {
+    image: {
+      types: ["image/jpeg", "image/png", "image/webp"],
+      maxSize: 5 * 1024 * 1024, // 5MB
+      errorSize: "La imagen supera los 5MB.",
+    },
+    video: {
+      types: ["video/mp4", "video/webm", "video/quicktime"], // .mp4, .webm, .mov
+      maxSize: 50 * 1024 * 1024, // 50MB (Ajusta según necesites)
+      errorSize: "El video supera los 50MB.",
+    },
+    merch: {
+      types: ["video/mp4", "video/webm", "video/quicktime"], // .mp4, .webm, .mov
+      maxSize: 50 * 1024 * 1024, // 50MB (Ajusta según necesites)
+      errorSize: "El video supera los 50MB.",
+    },
+  };
+
+  const currentRules = rules[type];
+
+  // 3. Validar tipo
+  if (!currentRules.types.includes(file.type)) {
     return {
       success: false,
-      message: "Formato no permitido. Solo JPG, PNG o WEBP.",
+      message: `Formato no permitido. Tipos válidos: ${currentRules.types.join(", ")}`,
       url: null,
       key: null,
     };
   }
 
-  if (imageFile.size > 5 * 1024 * 1024) {
+  // 4. Validar tamaño
+  if (file.size > currentRules.maxSize) {
     return {
       success: false,
-      message: "La imagen supera el límite de 5MB.",
+      message: currentRules.errorSize,
       url: null,
       key: null,
     };
   }
 
-  const s3Result = await uploadFileToS3Action(imageFile, folder);
+  // 5. Subir a S3
+  const s3Result = await uploadFileToS3Action(file, folder);
   if (!s3Result.success || !s3Result.key || !s3Result.url) {
     return {
       success: false,
-      message: s3Result.message || "Error al subir la imagen a S3.",
+      message: s3Result.message || "Error al subir a S3.",
       url: null,
       key: null,
     };
   }
 
-  return {
-    success: true,
-    url: s3Result.url,
-    key: s3Result.key,
-  };
+  return { success: true, url: s3Result.url, key: s3Result.key };
 }
 
 export async function handleMultipleImagesUpload(

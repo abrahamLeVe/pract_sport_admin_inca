@@ -33,6 +33,13 @@ export const editEventCategorySchema = eventCategorySchema.extend({
 // ============================================================================
 export const eventSchema = z.object({
   title: z.string().min(3, "El título debe tener al menos 3 caracteres."),
+  slug: z
+    .string()
+    .min(2, "El slug debe tener al menos 2 caracteres.")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Slug inválido. Usa solo minúsculas, números y guiones.",
+    ),
   description: z.string().optional(),
   event_date: z.string().min(1, "La fecha del evento es obligatoria"), // String para evitar conflictos de serialización Date->Client
   location_name: z.string().min(2, "La ubicación es obligatoria."),
@@ -63,12 +70,30 @@ export const editEventSchema = eventSchema.omit({ categories: true }).extend({
 });
 
 // ============================================================================
+// 2.1 ESQUEMAS DE GALERÍA MULTIMEDIA (Event Media)
+// ============================================================================
+export const eventMediaSchema = z.object({
+  event_id: z.coerce.number().int(),
+  media_type: z.enum(["image", "video", "merch"]),
+  media_url: z.string().min(1, "La URL o enlace del medio es obligatorio."),
+  media_key: z.string().optional().nullable(),
+  alt_text: z.string().optional().nullable(),
+  display_order: z.coerce.number().int().default(0),
+});
+
+export const editEventMediaSchema = eventMediaSchema.extend({
+  id: z.coerce.number(),
+});
+
+// ============================================================================
 // 3. TIPOS INFERIDOS (Para usar en Server Actions y UI)
 // ============================================================================
 export type EventCategoryInput = z.infer<typeof eventCategorySchema>;
 export type EditEventCategoryInput = z.infer<typeof editEventCategorySchema>;
 export type EventInput = z.infer<typeof eventSchema>;
 export type EditEventInput = z.infer<typeof editEventSchema>;
+export type EventMediaInput = z.infer<typeof eventMediaSchema>;
+export type EditEventMediaInput = z.infer<typeof editEventMediaSchema>;
 
 // ============================================================================
 // 4. ESTRUCTURAS DE BASE DE DATOS (Master Data & JOINS)
@@ -99,6 +124,17 @@ export interface EventCategoryRow {
   price: number;
   cupos: number;
   registered_count: number;
+}
+
+export interface EventMediaRow {
+  id: number;
+  event_id: number;
+  media_type: "image" | "video" | "merch";
+  media_url: string;
+  media_key: string | null;
+  alt_text: string | null;
+  display_order: number;
+  created_at: Date;
 }
 
 // ============================================================================
@@ -136,6 +172,12 @@ export interface EditEventFormProps extends EventMasterData {
 export interface EventCategoriesTableProps extends CategoryMasterData {
   eventId: number;
   categories: EventCategoryRow[];
+}
+
+// Props para la gestión de la galería multimedia
+export interface EventMediaTableProps {
+  eventId: number;
+  mediaItems: EventMediaRow[];
 }
 
 // ============================================================================

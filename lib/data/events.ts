@@ -1,4 +1,4 @@
-import { EventTableItem } from "@/validations/events";
+import { EventTableItem, EventMediaRow } from "@/validations/events"; // 🔥 Asegúrate de tener la ruta correcta
 import pool from "../db";
 
 export async function getEvents(): Promise<EventTableItem[]> {
@@ -6,6 +6,7 @@ export async function getEvents(): Promise<EventTableItem[]> {
     const query = `
       SELECT *
       FROM events
+      WHERE deleted_at IS NULL 
       ORDER BY event_date DESC
     `;
     const { rows } = await pool.query(query);
@@ -28,6 +29,7 @@ export async function getEventByIdAction(id: number) {
       SELECT 
         id, 
         title, 
+        slug, -- 🔥 Agregado para que viaje al formulario de edición
         description, 
         event_date, 
         location_name, 
@@ -38,7 +40,7 @@ export async function getEventByIdAction(id: number) {
         status, 
         image_url
       FROM events 
-      WHERE id = $1
+      WHERE id = $1 AND deleted_at IS NULL
     `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
@@ -51,12 +53,42 @@ export async function getEventByIdAction(id: number) {
 export async function getIdsTitlesEventsAction() {
   try {
     const query = `
-    select id, title
-    FROM events`;
+    SELECT id, title, slug -- 🔥 Agregado el slug: muy útil para armar enlaces rápidos en el frontend
+    FROM events
+    WHERE deleted_at IS NULL`;
     const result = await pool.query(query);
     return result.rows;
   } catch (error) {
     console.error(`❌ Error al obtener los eventos:`, error);
+    return [];
+  }
+}
+
+// ============================================================================
+// 🔥 NUEVO: OBTENER GALERÍA MULTIMEDIA DEL EVENTO
+// ============================================================================
+export async function getEventMediaAction(
+  eventId: number,
+): Promise<EventMediaRow[]> {
+  try {
+    const query = `
+      SELECT 
+        id, 
+        event_id, 
+        media_type, 
+        media_url, 
+        media_key, 
+        alt_text, 
+        display_order, 
+        created_at
+      FROM event_media
+      WHERE event_id = $1
+      ORDER BY display_order ASC, created_at ASC
+    `;
+    const result = await pool.query(query, [eventId]);
+    return result.rows as EventMediaRow[];
+  } catch (error) {
+    console.error("❌ Error al obtener los medios del evento:", error);
     return [];
   }
 }

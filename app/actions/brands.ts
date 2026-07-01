@@ -2,24 +2,27 @@
 
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
+import { handleMediaUpload } from "@/lib/upload";
 import {
   BrandInput,
   brandSchema,
   EditBrandInput,
   editBrandSchema,
 } from "@/validations/brands";
+import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action, uploadFileToS3Action } from "./storage";
-import { handleImageUpload } from "@/lib/upload";
-import { ActionState } from "@/validations/core";
+import { deleteFileFromS3Action } from "./storage";
+import { logAudit } from "@/lib/data/audit";
+
+const REVALIDATE_ROUTE = "/dashboard/brands";
 
 export async function createBrandAction(
   prevState: ActionState<BrandInput>,
   formData: FormData,
 ): Promise<ActionState<BrandInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = {
     name: formData.get("name")?.toString() || "",
     slug: formData.get("slug")?.toString() || "",
@@ -32,12 +35,11 @@ export async function createBrandAction(
 
   try {
     const validatedFields = brandSchema.safeParse(fields);
-
     if (!validatedFields.success) {
       const flattenedErrors = z.flattenError(validatedFields.error);
       return {
         success: false,
-        message: "Por favor, corrige los errores del formulario.",
+        message: "Por favor, corrige los errores.",
         zodErrors: flattenedErrors.fieldErrors,
         data: fields,
       };
@@ -50,14 +52,18 @@ export async function createBrandAction(
     if ((slugCheck.rowCount ?? 0) > 0) {
       return {
         success: false,
-        message: "Este Slug ya está en uso. Por favor, elige otro.",
+        message: "Este Slug ya está en uso.",
         zodErrors: { slug: ["El slug ya existe."] },
         data: fields,
       };
     }
 
-    const imageResult = await handleImageUpload(formData, "image", "brands");
-
+    const imageResult = await handleMediaUpload(
+      formData,
+      "image",
+      "brands",
+      "image",
+    );
     if (!imageResult.success) {
       return {
         success: false,
@@ -66,34 +72,37 @@ export async function createBrandAction(
       };
     }
 
-    const imageUrl = imageResult.url;
-    const imageKey = imageResult.key;
-
     const { name, slug, description, status } = validatedFields.data;
 
+    // 🔥 RETURNING id para poder auditar
     const query = `
-      INSERT INTO brands (
-        name, slug, description, image_url, image_key, status
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO brands (name, slug, description, image_url, image_key, status) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING id
     `;
-
-    await pool.query(query, [
+    const result = await pool.query(query, [
       name,
       slug,
       description || null,
-      imageUrl,
-      imageKey,
+      imageResult.url,
+      imageResult.key,
       status,
     ]);
 
-    revalidatePath("/dashboard/brands");
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "brands",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
   } catch (error: any) {
     console.error("❌ Error en createBrandAction:", error.message);
-    return {
-      success: false,
-      message: error.message || "Ocurrió un error inesperado en el servidor.",
-      data: fields,
-    };
+    return { success: false, message: "Error inesperado.", data: fields };
   }
 
   redirect("/dashboard/brands");
@@ -103,7 +112,7 @@ export async function updateBrandAction(
   prevState: ActionState<EditBrandInput>,
   formData: FormData,
 ): Promise<ActionState<EditBrandInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = {
     id: Number(formData.get("id")),
     name: formData.get("name")?.toString() || "",
@@ -130,8 +139,9 @@ export async function updateBrandAction(
 
     const { id, name, slug, description, status } = validatedFields.data;
 
+    // 0. Comprobar Slug (Permite reutilizar slugs de marcas en la papelera)
     const slugCheck = await pool.query(
-      "SELECT id FROM brands WHERE slug = $1 AND id != $2",
+      "SELECT id FROM brands WHERE slug = $1 AND id != $2 AND deleted_at IS NULL",
       [slug, id],
     );
     if ((slugCheck.rowCount ?? 0) > 0) {
@@ -143,9 +153,39 @@ export async function updateBrandAction(
       };
     }
 
+    // ========================================================================
+    // 🔥 PASO 1: LA BARRERA DE SEGURIDAD (Mirar antes de saltar)
+    // ========================================================================
+    const checkQuery =
+      "SELECT image_key FROM brands WHERE id = $1 AND deleted_at IS NULL";
+    const checkResult = await pool.query(checkQuery, [id]);
+
+    if (checkResult.rowCount === 0) {
+      return {
+        success: false,
+        message:
+          "❌ La marca no se pudo actualizar porque no existe o está en la papelera.",
+        data: fields,
+      };
+    }
+
+    const oldImageKey = checkResult.rows[0].image_key;
+
+    // ========================================================================
+    // PASO 2: PROCESAR LA IMAGEN EN S3
+    // ========================================================================
     let newImageUrl = null;
     let newImageKey = null;
-    const imageResult = await handleImageUpload(formData, "image", "brands");
+
+    // Asumo que tu handleMediaUpload requiere el 4to parámetro booleano como en banners, si no, quítaselo.
+    const imageResult = await handleMediaUpload(
+      formData,
+      "image",
+      "brands",
+      "image",
+      false,
+    );
+
     if (!imageResult.success) {
       return {
         success: false,
@@ -153,41 +193,43 @@ export async function updateBrandAction(
         data: fields,
       };
     }
+
     if (imageResult.url && imageResult.key) {
       newImageUrl = imageResult.url;
       newImageKey = imageResult.key;
-      const oldBannerQuery = "SELECT image_key FROM brands WHERE id = $1";
-      const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
-      const oldImageKey = oldBannerResult.rows[0]?.image_key;
+
+      // Borramos la imagen antigua usando la llave de la barrera de seguridad
       if (oldImageKey) {
         await deleteFileFromS3Action(oldImageKey);
       }
     }
+
+    // ========================================================================
+    // PASO 3: ACTUALIZAR LA BASE DE DATOS
+    // ========================================================================
     if (newImageUrl && newImageKey) {
-      const query = `
-        UPDATE brands SET 
-          name = $1, slug = $2, description = $3, status = $4, image_url = $5, image_key = $6, updated_at = NOW()
-        WHERE id = $7
-      `;
-      await pool.query(query, [
-        name,
-        slug,
-        description || null,
-        status,
-        newImageUrl,
-        newImageKey,
-        id,
-      ]);
+      await pool.query(
+        `UPDATE brands SET name=$1, slug=$2, description=$3, status=$4, image_url=$5, image_key=$6, updated_at=NOW() WHERE id=$7 AND deleted_at IS NULL`,
+        [name, slug, description || null, status, newImageUrl, newImageKey, id],
+      );
     } else {
-      const query = `
-        UPDATE brands SET 
-          name = $1, slug = $2, description = $3, status = $4, updated_at = NOW()
-        WHERE id = $5
-      `;
-      await pool.query(query, [name, slug, description || null, status, id]);
+      await pool.query(
+        `UPDATE brands SET name=$1, slug=$2, description=$3, status=$4, updated_at=NOW() WHERE id=$5 AND deleted_at IS NULL`,
+        [name, slug, description || null, status, id],
+      );
     }
 
-    revalidatePath("/dashboard/brands");
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "brands",
+      id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
   } catch (error: any) {
     console.error("❌ Error en updateBrandAction:", error.message);
     return {
@@ -197,56 +239,198 @@ export async function updateBrandAction(
     };
   }
 
+  // Next.js: redirect debe ir SIEMPRE fuera del try/catch si queremos que funcione bien
   redirect("/dashboard/brands");
-}
-
-export async function deleteBrandAction(id: number) {
-  await requireAdminSession();
-  try {
-    const getQuery = "SELECT image_key FROM brands WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const brand = result.rows[0];
-
-    if (!brand) return { success: false, message: "La marca no existe." };
-
-    if (brand.image_key) {
-      await deleteFileFromS3Action(brand.image_key);
-    }
-
-    const deleteQuery = "DELETE FROM brands WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    revalidatePath("/dashboard/brands");
-    return { success: true, message: "Marca eliminada correctamente." };
-  } catch (error: any) {
-    console.error("❌ Error en deleteBrandAction:", error.message);
-    return {
-      success: false,
-      message:
-        "No se pudo eliminar la marca (quizás tiene productos asociados).",
-    };
-  }
 }
 
 export async function toggleBrandStatusAction(
   id: number,
   currentStatus: string,
 ) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   try {
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 
-    const query = `UPDATE brands SET status = $1, updated_at = NOW() WHERE id = $2`;
-    await pool.query(query, [nextStatus, id]);
+    const query = `UPDATE brands SET status = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`;
+    const result = await pool.query(query, [nextStatus, id]);
 
-    revalidatePath("/dashboard/brands");
+    if (result.rowCount === 0) {
+      return {
+        success: false,
+        message: "No se pudo actualizar (no existe o está eliminada).",
+      };
+    }
+
+    // 📋 AUDITORÍA
+    await logAudit(session.user.id, "UPDATE", "brands", id, null, {
+      status: nextStatus,
+    });
+
+    revalidatePath(REVALIDATE_ROUTE);
     return {
       success: true,
       message: `Marca ${nextStatus === "activo" ? "activada" : "desactivada"}.`,
     };
-  } catch (error) {
-    console.error("❌ Error en toggleBrandStatusAction:", error);
-    return { success: false, message: "No se pudo cambiar el estado." };
+  } catch (error: any) {
+    console.error("❌ Error en toggleBrandStatusAction:", error.message);
+    return { success: false, message: "Error en el servidor." };
+  }
+}
+
+// ============================================================================
+// 1. ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete)
+// ============================================================================
+export async function deleteBrandAction(id: number) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    // Marcamos la fecha de eliminación de la marca sin alterar S3
+    const softDeleteQuery =
+      "UPDATE brands SET deleted_at = NOW() WHERE id = $1";
+    await pool.query(softDeleteQuery, [id]);
+
+    await logAudit(adminId, "SOFT_DELETE", "brands", id);
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: "Marca movida a la papelera correctamente.",
+    };
+  } catch (error: any) {
+    console.error("❌ Error en deleteBrandAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudo eliminar la marca.",
+    };
+  }
+}
+
+// ============================================================================
+// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
+// ============================================================================
+export async function permanentlyDeleteBrandAction(id: number) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    // 1. Recuperamos el image_key del logo antes de destruir el registro
+    const getQuery = "SELECT image_key FROM brands WHERE id = $1";
+    const result = await pool.query(getQuery, [id]);
+    const brandRecord = result.rows[0];
+
+    if (!brandRecord) {
+      return { success: false, message: "La marca no existe." };
+    }
+
+    // 2. Borrado físico del logotipo en AWS S3 para liberar almacenamiento
+    if (brandRecord.image_key) {
+      await deleteFileFromS3Action(brandRecord.image_key);
+    }
+
+    // 3. Borrado destructivo real de la base de datos
+    const deleteQuery = "DELETE FROM brands WHERE id = $1";
+    await pool.query(deleteQuery, [id]);
+
+    await logAudit(adminId, "HARD_DELETE", "brands", id);
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: "Marca eliminada definitivamente del sistema y de S3.",
+    };
+  } catch (error: any) {
+    console.error("❌ Error en permanentlyDeleteBrandAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudo purgar la marca.",
+    };
+  }
+}
+
+// ============================================================================
+// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
+// ============================================================================
+export async function bulkDeleteBrandsAction(ids: number[]) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    if (!ids || ids.length === 0) {
+      return { success: false, message: "No hay marcas seleccionadas." };
+    }
+
+    // Mandamos el lote completo a la papelera con la directiva ANY
+    const query = "UPDATE brands SET deleted_at = NOW() WHERE id = ANY($1)";
+    await pool.query(query, [ids]);
+
+    await logAudit(adminId, "BULK_SOFT_DELETE", "brands", ids.join(","));
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: `${ids.length} marcas movidas a la papelera.`,
+    };
+  } catch (error: any) {
+    console.error("❌ Error en bulkDeleteBrandsAction:", error.message);
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "Error al eliminar las marcas seleccionadas.",
+    };
+  }
+}
+
+// ============================================================================
+// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
+// ============================================================================
+export async function bulkPermanentlyDeleteBrandsAction(ids: number[]) {
+  try {
+    const session = await requireAdminSession();
+    const adminId = session.user.id;
+
+    if (!ids || ids.length === 0) {
+      return { success: false, message: "No hay marcas seleccionadas." };
+    }
+
+    // 1. Buscamos todas las imágenes del lote en un solo query
+    const getQuery = "SELECT image_key FROM brands WHERE id = ANY($1)";
+    const result = await pool.query(getQuery, [ids]);
+
+    // 2. Limpiamos AWS S3 iterando los keys devueltos
+    for (const row of result.rows) {
+      if (row.image_key) {
+        await deleteFileFromS3Action(row.image_key);
+      }
+    }
+
+    // 3. Remoción final de los registros físicos
+    const deleteQuery = "DELETE FROM brands WHERE id = ANY($1)";
+    await pool.query(deleteQuery, [ids]);
+
+    await logAudit(adminId, "BULK_HARD_DELETE", "brands", ids.join(","));
+
+    revalidatePath(REVALIDATE_ROUTE);
+    return {
+      success: true,
+      message: "Las marcas seleccionadas se eliminaron permanentemente.",
+    };
+  } catch (error: any) {
+    console.error(
+      "❌ Error en bulkPermanentlyDeleteBrandsAction:",
+      error.message,
+    );
+    return {
+      success: false,
+      message: error.message.includes("No autorizado")
+        ? error.message
+        : "No se pudieron purgar las marcas seleccionadas.",
+    };
   }
 }

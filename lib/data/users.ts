@@ -7,6 +7,7 @@ export async function getUsers(): Promise<UserTableItem[]> {
     const query = `
       SELECT *
       FROM users
+      WHERE deleted_at IS NULL 
       ORDER BY created_at DESC
     `;
     const { rows } = await pool.query(query);
@@ -27,7 +28,7 @@ export async function getUserByIdAction(id: number) {
     const query = `
       SELECT id, name, image, email, role, status 
       FROM users 
-      WHERE id = $1
+      WHERE id = $1 AND deleted_at IS NULL
     `;
     const result = await pool.query(query, [id]);
 

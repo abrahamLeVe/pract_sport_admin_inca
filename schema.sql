@@ -281,6 +281,7 @@ CREATE TABLE master_event_types (
 CREATE TABLE events (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL, -- Ej: "Desafío Arwaturo 2026"
+    slug VARCHAR(255) UNIQUE NOT NULL, -- 🔥 1. VITAL para SEO y URLs amigables (ej: /eventos/desafio-arwaturo-2026)
     description TEXT,
     event_date TIMESTAMP WITH TIME ZONE NOT NULL,
     location_name VARCHAR(255) NOT NULL,
@@ -288,15 +289,30 @@ CREATE TABLE events (
     longitude DECIMAL(11, 8),
     route_geojson JSONB,
     event_type_id INTEGER REFERENCES master_event_types(id) ON DELETE RESTRICT,
-    image_url TEXT,
+    image_url TEXT, -- Se mantiene: Será la "Portada" o "Thumbnail" del evento
     image_key TEXT,
     status VARCHAR(50) DEFAULT 'draft',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ DEFAULT NULL -- 🔥 2. UNIFORMIDAD: Para que funcione tu sistema de papelera (Soft Delete)
 );
 
 -- Ahora sí agregamos la FK a banners (Evitamos dependencias circulares)
 ALTER TABLE banners ADD CONSTRAINT fk_banners_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL;
+
+CREATE TABLE event_media (
+    id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+    media_type VARCHAR(20) NOT NULL, -- 'image', 'video', 'merch'
+    media_url TEXT NOT NULL,         -- URL de la imagen o link del video (YouTube/Vimeo)
+    media_key TEXT,                  -- El key de S3 (si es archivo subido)
+    alt_text VARCHAR(255),           -- Texto para accesibilidad
+    display_order INTEGER DEFAULT 0, -- Para ordenar las fotos en el frontend
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índice para búsquedas rápidas
+CREATE INDEX idx_event_media_event_id ON event_media(event_id);
 
 -- ------------------------------------------------------------------------------
 -- 3. CATEGORÍAS DEL EVENTO (Las reglas congeladas para ESTE evento)
@@ -465,3 +481,39 @@ CREATE INDEX IF NOT EXISTS idx_registrations_event_id ON event_registrations(eve
 
 -- Acelera el buscador de Inscripciones buscando dentro del JSON
 CREATE INDEX IF NOT EXISTS idx_registrations_participant ON event_registrations USING GIN (participant_details);
+
+-- ==============================================================================
+-- 1. CREACIÓN DE LA TABLA DE AUDITORÍA (AUDIT LOGS)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Quién hizo el cambio
+    action VARCHAR(50) NOT NULL,                             -- 'CREATE', 'UPDATE', 'DELETE' (Soft)
+    table_name VARCHAR(100) NOT NULL,                        -- Ej: 'products', 'orders'
+    record_id VARCHAR(50),                                   -- El ID de la fila afectada
+    old_data JSONB,                                          -- Foto de cómo estaban los datos antes
+    new_data JSONB,                                          -- Foto de cómo quedaron los datos
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices para que buscar en el historial sea ultra rápido
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+
+-- ==============================================================================
+-- 2. INYECCIÓN DE SOFT DELETES (Borrado Lógico)
+-- ==============================================================================
+-- Añadimos la columna "deleted_at" a las tablas más críticas y financieras.
+-- Por defecto es NULL (significa que NO están borrados).
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;

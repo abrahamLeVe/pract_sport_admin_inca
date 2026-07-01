@@ -4,7 +4,7 @@ import {
   createEventCategoryAction,
   deleteEventCategoryAction,
   updateEventCategoryAction,
-} from "@/app/actions/event-categories";
+} from "@/app/actions/events/categories";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteEventAction } from "@/app/actions/events";
+import { deleteEventAction } from "@/app/actions/events/crud";
 import { DataTable } from "@/components/data-table";
 import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";

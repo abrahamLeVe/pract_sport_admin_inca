@@ -6,6 +6,7 @@ export async function getBrands(): Promise<Brand[]> {
     const query = `
       SELECT *
       FROM brands
+      WHERE deleted_at IS NULL 
       ORDER BY created_at DESC
     `;
     const { rows } = await pool.query(query);
@@ -25,7 +26,7 @@ export async function getBrandByIdAction(id: number) {
     const query = `
       SELECT id, name, slug, description, image_url, status
       FROM brands 
-      WHERE id = $1
+      WHERE id = $1 AND deleted_at IS NULL
     `;
     const result = await pool.query(query, [id]);
 

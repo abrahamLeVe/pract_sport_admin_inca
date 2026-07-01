@@ -19,7 +19,7 @@ export async function getEventCategoriesAction(event_id: number) {
       LEFT JOIN master_distances md ON ec.distance_id = md.id
       LEFT JOIN master_genders mg ON ec.gender_id = mg.id
       LEFT JOIN master_age_categories mac ON ec.age_category_id = mac.id
-      WHERE ec.event_id = $1
+      WHERE ec.event_id = $1 AND ec.deleted_at IS NULL 
       ORDER BY md.name ASC, mg.name ASC, ec.applied_min_age ASC
     `;
     const result = await pool.query(query, [event_id]);
@@ -44,7 +44,7 @@ export async function getEventCategoryByIdAction(id: number) {
         price, 
         cupos
       FROM event_categories
-      WHERE id = $1
+      WHERE id = $1 AND deleted_at IS NULL 
     `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;

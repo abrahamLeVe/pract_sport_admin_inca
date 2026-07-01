@@ -16,14 +16,14 @@ export async function getRegistrations(
       LEFT JOIN master_distances md ON ec.distance_id = md.id
       LEFT JOIN master_age_categories mac ON ec.age_category_id = mac.id
       LEFT JOIN master_genders mg ON ec.gender_id = mg.id
+      WHERE r.deleted_at IS NULL  -- 🔥 1. Ocultamos las inscripciones borradas
     `;
 
-    // Valores dinámicos para proteger de inyección SQL
     const values: any[] = [];
 
-    // Si nos pasan un ID de evento, filtramos la consulta
+    // 🔥 2. Cambiamos WHERE por AND porque ya pusimos un WHERE arriba
     if (eventId) {
-      query += ` WHERE r.event_id = $1`;
+      query += ` AND r.event_id = $1`;
       values.push(eventId);
     }
 
@@ -37,7 +37,7 @@ export async function getRegistrations(
   }
 }
 
-// Obtener una inscripción específica para evaluarla (Para la vista de Detalles)
+// Obtener una inscripción específica para evaluarla
 export async function getRegistrationById(
   id: number,
 ): Promise<EventRegistration | null> {
@@ -53,7 +53,7 @@ export async function getRegistrationById(
       LEFT JOIN master_distances md ON ec.distance_id = md.id
       LEFT JOIN master_age_categories mac ON ec.age_category_id = mac.id
       LEFT JOIN master_genders mg ON ec.gender_id = mg.id
-      WHERE r.id = $1
+      WHERE r.id = $1 AND r.deleted_at IS NULL -- 🔥 3. Si está borrada, devuelve null (404)
     `;
     const { rows } = await pool.query(query, [id]);
 
@@ -75,9 +75,11 @@ export async function getNextAvailableBib(eventId: number): Promise<number> {
           SELECT 1 FROM event_registrations t2 
           WHERE t2.bib_number = t1.bib_number + 1 
           AND t2.event_id = $1
+          AND t2.deleted_at IS NULL -- 🔥 4. Si el dorsal siguiente fue borrado, lo consideramos "libre"
       )
       AND t1.event_id = $1
       AND t1.bib_number IS NOT NULL
+      AND t1.deleted_at IS NULL -- 🔥 5. No calculamos a partir de dorsales borrados
       ORDER BY t1.bib_number ASC
       LIMIT 1
     `;

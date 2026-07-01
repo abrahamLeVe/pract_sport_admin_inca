@@ -16,36 +16,38 @@ export interface ReportData {
     customer: string;
     date: string;
     method: string;
-    status: string; // 🔥 Nuevo campo
+    status: string;
     total: number;
   }[];
 }
 
 export async function getAdvancedReportData(days: number): Promise<ReportData> {
   try {
-    // 1. Resumen General (Todos los pedidos, pero sumando solo los pagados)
+    // 1. Resumen General
     const summaryQuery = pool.query(`
       SELECT 
         COALESCE(SUM(CASE WHEN payment_status = 'pagado' THEN total_amount ELSE 0 END), 0) as total_revenue,
         COUNT(id) as total_orders,
         COUNT(CASE WHEN payment_status = 'pagado' THEN 1 END) as paid_orders
       FROM orders 
-      WHERE created_at >= NOW() - INTERVAL '${days} days'
+      WHERE deleted_at IS NULL -- 🔥 Oculta pedidos borrados
+        AND created_at >= NOW() - INTERVAL '${days} days'
     `);
 
-    // 2. Distribución de Estados (Pagados vs Pendientes vs Fallidos)
+    // 2. Distribución de Estados
     const statusDistQuery = pool.query(`
       SELECT 
         UPPER(payment_status) as status, 
         COUNT(id) as count, 
         COALESCE(SUM(total_amount), 0) as total
       FROM orders
-      WHERE created_at >= NOW() - INTERVAL '${days} days'
+      WHERE deleted_at IS NULL -- 🔥 Oculta pedidos borrados
+        AND created_at >= NOW() - INTERVAL '${days} days'
       GROUP BY payment_status
       ORDER BY total DESC
     `);
 
-    // 3. Productos Estrella (Solo contamos lo que sí se vendió y pagó)
+    // 3. Productos Estrella
     const topProductsQuery = pool.query(`
       SELECT 
         oi.product_name as name, 
@@ -53,28 +55,30 @@ export async function getAdvancedReportData(days: number): Promise<ReportData> {
         SUM(oi.subtotal) as revenue
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
-      WHERE o.payment_status = 'pagado' 
+      WHERE o.deleted_at IS NULL -- 🔥 Usamos el alias "o." para los pedidos borrados
+        AND o.payment_status = 'pagado' 
         AND o.created_at >= NOW() - INTERVAL '${days} days'
       GROUP BY oi.product_name
       ORDER BY sold DESC
       LIMIT 5
     `);
 
-    // 4. Mejores Clientes (Solo los que sí pagaron)
+    // 4. Mejores Clientes
     const topCustomersQuery = pool.query(`
       SELECT 
         customer_name as name, 
         COUNT(id) as orders, 
         SUM(total_amount) as spent
       FROM orders
-      WHERE payment_status = 'pagado' 
+      WHERE deleted_at IS NULL -- 🔥 Oculta clientes de pedidos borrados
+        AND payment_status = 'pagado' 
         AND created_at >= NOW() - INTERVAL '${days} days'
       GROUP BY customer_name, customer_email
       ORDER BY spent DESC
       LIMIT 5
     `);
 
-    // 5. Detalles de Órdenes (🔥 AQUÍ TRAEMOS TODOS, SIN IMPORTAR EL ESTADO)
+    // 5. Detalles de Órdenes
     const detailedOrdersQuery = pool.query(`
       SELECT 
         order_number as "orderNumber", 
@@ -84,7 +88,8 @@ export async function getAdvancedReportData(days: number): Promise<ReportData> {
         payment_status as status,
         total_amount as total
       FROM orders
-      WHERE created_at >= NOW() - INTERVAL '${days} days'
+      WHERE deleted_at IS NULL -- 🔥 Oculta del historial detallado
+        AND created_at >= NOW() - INTERVAL '${days} days'
       ORDER BY created_at DESC
     `);
 
