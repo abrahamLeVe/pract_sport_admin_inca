@@ -79,7 +79,7 @@ export interface ProductTableItem {
   stock: number;
   status: string;
   images: { url: string; key: string }[] | null;
-
+  track_stock: boolean;
   // Campos cruzados (JOINs)
   category_name: string | null;
   brand_name: string | null;
@@ -89,4 +89,5 @@ export interface ProductTableItem {
   // 🔥 Campos virtuales para la DataTable
   is_active?: boolean;
   main_image?: string | null;
+  has_variants?: string | null;
 }

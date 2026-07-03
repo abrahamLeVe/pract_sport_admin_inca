@@ -5,6 +5,8 @@ import {
   deleteMasterColorAction,
   updateMasterColorAction,
 } from "@/app/actions/store-masters";
+import { DataTable } from "@/components/data-table";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +20,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EditColorInput } from "@/validations/variants";
+import { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DeleteConfirmButton } from "./delete-confirm-button";
-import { DataTable } from "@/components/data-table"; // 🔥 Asegúrate de tener esta importación
-import { ColumnDef } from "@tanstack/react-table";
 
 export default function ColorsTab({ data }: { data: EditColorInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,11 +110,11 @@ export default function ColorsTab({ data }: { data: EditColorInput[] }) {
             >
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteConfirmButton
+            <DeleteActionItem
               id={item.id}
               action={deleteMasterColorAction}
               title="¿Eliminar Color?"
-              description={`¿Seguro que deseas eliminar el color "${item.name}"?`}
+              description={`¿Seguro que deseas eliminar el color "${item.name}" de forma permanente?`}
             />
           </div>
         );

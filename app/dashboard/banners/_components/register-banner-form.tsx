@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,6 +88,7 @@ export function BannerForm({ events }: BannerFormProps) {
                       placeholderText="Cambiar imagen"
                     />
                   </div>
+                  <FormError error={formState.zodErrors?.image} />
                 </Field>
 
                 <Field>
@@ -251,11 +253,7 @@ export function BannerForm({ events }: BannerFormProps) {
                       : "Subir y Crear Banner"}
                   </Button>
                 </div>
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-2 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

@@ -33,7 +33,7 @@ export async function createBannerAction(
     status: formData.get("status") as "activo" | "inactivo",
     start_date: formData.get("start_date")?.toString() || undefined,
     end_date: formData.get("end_date")?.toString() || undefined,
-    event_id: Number(formData.get("event_id")),
+    event_id: Number(formData.get("event_id")) || undefined,
     sort_order: 0,
   };
 
@@ -57,7 +57,12 @@ export async function createBannerAction(
       true,
     );
     if (!imageResult.success) {
-      return { success: false, message: imageResult.message, data: fields };
+      return {
+        success: false,
+        message: imageResult.message,
+        zodErrors: { image: [imageResult.message || "Se requiere imagen"] },
+        data: fields,
+      };
     }
 
     const {
@@ -132,7 +137,7 @@ export async function updateBannerAction(
     status: formData.get("status") as "activo" | "inactivo",
     start_date: (formData.get("start_date") as string) || "",
     end_date: (formData.get("end_date") as string) || "",
-    event_id: Number(formData.get("event_id")),
+    event_id: Number(formData.get("event_id")) || undefined,
   };
   try {
     const validatedFields = editBannerSchema.safeParse(fields);
@@ -190,7 +195,8 @@ export async function updateBannerAction(
     if (!imageResult.success) {
       return {
         success: false,
-        message: imageResult.message || "Error con la imagen",
+        message: imageResult.message,
+        zodErrors: { image: [imageResult.message || "Se requiere imagen"] },
         data: fields,
       };
     }
@@ -259,7 +265,11 @@ export async function updateBannerAction(
       validatedFields.data,
     );
     revalidatePath(REVALIDATE_ROUTE);
-    return { success: true, message: "Banner actualizado correctamente." }; // Asegúrate de retornar éxito
+    revalidatePath(`${REVALIDATE_ROUTE}/${id}`);
+    return {
+      success: true,
+      message: "Banner actualizado correctamente.",
+    };
   } catch (error: any) {
     console.error("❌ Error en updateBannerAction:", error.message);
     return {

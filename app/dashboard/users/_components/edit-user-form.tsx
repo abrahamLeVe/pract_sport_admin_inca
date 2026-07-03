@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -60,7 +61,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   name="name"
                   autoComplete="name"
                   placeholder="Ej. Juan Pérez"
-                  defaultValue={formState.data?.name ?? ""}
+                  defaultValue={initialData?.name ?? ""}
                   disabled={isPending}
                   required
                 />
@@ -75,7 +76,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   name="email"
                   autoComplete="email"
                   placeholder="juan@ejemplo.com"
-                  defaultValue={formState.data?.email ?? ""}
+                  defaultValue={initialData?.email ?? ""}
                   disabled={isPending}
                   required
                 />
@@ -95,6 +96,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   name="password"
                   placeholder="******"
                   disabled={isPending}
+                  autoComplete="off"
                 />
                 <FormError error={formState.zodErrors?.password} />
               </Field>
@@ -104,7 +106,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   <FieldLabel htmlFor="role">Rol de Usuario</FieldLabel>
                   <Select
                     name="role"
-                    defaultValue={formState.data?.role ?? "CLIENT"}
+                    defaultValue={initialData?.role ?? "CLIENT"}
                     disabled={isPending}
                   >
                     <SelectTrigger id="role">
@@ -125,7 +127,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                   <FieldLabel htmlFor="status">Estado de Cuenta</FieldLabel>
                   <Select
                     name="status"
-                    defaultValue={formState.data?.status ?? "activo"}
+                    defaultValue={initialData?.status ?? "activo"}
                     disabled={isPending}
                   >
                     <SelectTrigger id="status">
@@ -158,11 +160,7 @@ export function EditUserForm({ initialData }: EditUserFormProps) {
                     {isPending ? "Guardando cambios..." : "Guardar Cambios"}
                   </Button>
                 </div>
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-center mt-2 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

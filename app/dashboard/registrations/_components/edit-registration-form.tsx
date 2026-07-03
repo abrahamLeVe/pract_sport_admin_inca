@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { formatCurrency } from "@/lib/utils";
 import { ActionState } from "@/validations/core";
 import {
   EventRegistration,
@@ -55,14 +57,6 @@ export function EditRegistrationForm({
     actions.registrations.updateRegistrationStatusAction,
     initialState,
   );
-
-  const formatCurrency = (amount: number | null) => {
-    if (amount === null) return "S/ 0.00";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(amount);
-  };
 
   // Extraemos los detalles del JSONB para mayor comodidad
   const details = initialData.participant_details;
@@ -296,21 +290,12 @@ export function EditRegistrationForm({
                   {isPending ? "Guardando..." : "Guardar Inscripción"}
                 </Button>
 
-                {formState.success && (
-                  <p className="text-sm text-green-600 font-medium text-center mt-2">
-                    {formState.message}
-                  </p>
-                )}
-                {!formState.success && formState.message && (
-                  <p className="text-sm text-destructive font-medium text-center mt-2">
-                    {formState.message}
-                  </p>
-                )}
                 <Button variant="outline" className="w-full" asChild>
                   <Link href="/dashboard/registrations">
                     Volver a inscripciones
                   </Link>
                 </Button>
+                <FormFeedback formState={formState} />
               </div>
             </form>
           </CardContent>

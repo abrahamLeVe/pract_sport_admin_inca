@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -256,16 +257,7 @@ export function ClubSettingsForm({ initialData }: ClubSettingsFormProps) {
                   </Button>
                 </div>
 
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
-                    {formState.message}
-                  </p>
-                )}
-                {formState.success && formState.message && (
-                  <p className="text-green-600 text-sm text-right mt-3 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

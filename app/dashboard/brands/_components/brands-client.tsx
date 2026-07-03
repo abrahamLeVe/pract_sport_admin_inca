@@ -18,6 +18,51 @@ import { Brand } from "@/validations/brands";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+
+const ActionCell = ({ brand }: { brand: Brand }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Abrir menú</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem
+          asChild
+          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
+        >
+          <Link
+            href={`/dashboard/brands/edit/${brand.id}`}
+            className="cursor-pointer"
+          >
+            <Edit className="mr-2 h-4 w-4" /> Editar Marca
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
+        <DeleteActionItem
+          id={brand.id}
+          action={deleteBrandAction}
+          title="¿Enviar a papelera?"
+          description={`¿Seguro que deseas enviar la categoría "${brand.name}" a la papelera?`}
+          size="default"
+          showText={true}
+          buttonText="Enviar a papelera"
+          asMenuItem={true}
+          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 export const columns: ColumnDef<Brand>[] = [
   {
@@ -69,40 +114,8 @@ export const columns: ColumnDef<Brand>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const brand = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/brands/edit/${brand.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Editar Marca
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DeleteActionItem
-              id={brand.id}
-              itemName={brand.name}
-              itemType="marca"
-              action={deleteBrandAction}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionCell brand={row.original} />, // 🔥 Usamos el nuevo componente
   },
 ];
 

@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { generateSlug } from "@/lib/utils";
 import { ActionState } from "@/validations/core";
 import { EventInput, RegisterEventFormProps } from "@/validations/events";
 import { Plus, Trash2 } from "lucide-react";
@@ -50,6 +52,9 @@ export function RegisterEventForm({
   const [categories, setCategories] = useState<any[]>(
     formState.data?.categories || [],
   );
+
+  const [slug, setSlug] = useState(formState.data?.slug ?? "");
+  const [name, setName] = useState(formState.data?.title ?? "");
   const [newCat, setNewCat] = useState({
     distance_id: "",
     gender_id: "",
@@ -59,6 +64,12 @@ export function RegisterEventForm({
     price: "",
     cupos: "",
   });
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    setSlug(generateSlug(newName));
+  };
 
   const [geojsonInput, setGeojsonInput] = useState(
     formState.data?.route_geojson
@@ -196,6 +207,7 @@ export function RegisterEventForm({
                       placeholderText="Cambiar imagen"
                     />
                   </div>
+                  <FormError error={formState.zodErrors?.image} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -204,25 +216,27 @@ export function RegisterEventForm({
                     <Input
                       id="title"
                       name="title"
+                      value={name}
                       placeholder="Ej. Desafío Arwaturo 10K"
-                      defaultValue={formState.data?.title ?? ""}
+                      onChange={handleNameChange}
                       disabled={isPending}
+                      autoComplete="off"
                       required
                     />
                     <FormError error={formState.zodErrors?.title} />
                   </Field>
-
                   <Field>
-                    <FieldLabel htmlFor="event_date">Fecha y Hora</FieldLabel>
+                    <FieldLabel htmlFor="slug">Slug (URL Amigable)</FieldLabel>
                     <Input
-                      id="event_date"
-                      name="event_date"
-                      type="datetime-local"
-                      defaultValue={formState.data?.event_date ?? ""}
+                      id="slug"
+                      name="slug"
+                      placeholder="Ej. desafio-arwaturo-10k"
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
                       disabled={isPending}
                       required
                     />
-                    <FormError error={formState.zodErrors?.event_date} />
+                    <FormError error={formState.zodErrors?.slug} />
                   </Field>
                 </div>
 
@@ -264,6 +278,42 @@ export function RegisterEventForm({
                       required
                     />
                     <FormError error={formState.zodErrors?.location_name} />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="status">
+                      Estado Inicial del Evento
+                    </FieldLabel>
+                    <Select
+                      name="status"
+                      defaultValue={formState.data?.status ?? "draft"}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger id="status" className="w-full sm:w-64">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Borrador (Oculto)</SelectItem>
+                        <SelectItem value="published">
+                          Publicado (Visible)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormError error={formState.zodErrors?.status} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="event_date">Fecha y Hora</FieldLabel>
+                    <Input
+                      id="event_date"
+                      name="event_date"
+                      type="datetime-local"
+                      defaultValue={formState.data?.event_date ?? ""}
+                      disabled={isPending}
+                      required
+                    />
+                    <FormError error={formState.zodErrors?.event_date} />
                   </Field>
                 </div>
 
@@ -592,28 +642,6 @@ export function RegisterEventForm({
                 <FormError error={formState.zodErrors?.categories as any} />
               </div>
 
-              <Field className="border-t pt-6">
-                <FieldLabel htmlFor="status">
-                  Estado Inicial del Evento
-                </FieldLabel>
-                <Select
-                  name="status"
-                  defaultValue={formState.data?.status ?? "draft"}
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="status" className="w-full sm:w-64">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Borrador (Oculto)</SelectItem>
-                    <SelectItem value="published">
-                      Publicado (Visible)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormError error={formState.zodErrors?.status} />
-              </Field>
-
               <Field className="pt-4 border-t mt-4">
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full">
                   <Button
@@ -635,11 +663,7 @@ export function RegisterEventForm({
                   </Button>
                 </div>
 
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

@@ -20,6 +20,7 @@ import { ProductInput, RegisterProductFormProps } from "@/validations/products";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { ImageGalleryUploader } from "./image-gallery-uploader";
+import { FormFeedback } from "@/components/form-feedback";
 
 const INITIAL_STATE: ActionState<ProductInput> = {
   success: false,
@@ -291,11 +292,7 @@ export function RegisterProductForm({
                   </Button>
                 </div>
 
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-3 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

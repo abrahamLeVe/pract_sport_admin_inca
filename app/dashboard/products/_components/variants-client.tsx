@@ -93,11 +93,7 @@ export function VariantsClient({
         if (variant.track_stock !== false) {
           return <span>{variant.stock} un.</span>;
         } else {
-          return (
-            <span className="text-muted-foreground italic bg-muted/50 px-2 py-1 rounded text-xs font-medium">
-              ♾️ Ilimitado
-            </span>
-          );
+          return <Badge variant="outline">♾️ Ilimitado</Badge>;
         }
       },
     },
@@ -156,10 +152,13 @@ export function VariantsClient({
 
                 <DeleteActionItem
                   id={variant.id}
-                  itemName={`Talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"}`}
-                  itemType="variante"
                   action={deleteVariantAction}
-                  warningText="Se borrará el stock asociado a esta combinación."
+                  title="¿Eliminar permanentemente?"
+                  description={`¿Seguro que deseas enviar la talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"} de forma permanente?`}
+                  size="default"
+                  showText={true}
+                  buttonText="Eliminar"
+                  asMenuItem={true}
                 />
               </DropdownMenuContent>
             </DropdownMenu>

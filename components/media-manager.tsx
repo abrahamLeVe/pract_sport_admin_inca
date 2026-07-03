@@ -376,11 +376,14 @@ export default function MediaManager({
                     </span>
                     <DeleteActionItem
                       id={item.link_id}
-                      itemName={item.file_name || "Archivo"}
-                      itemType="este archivo"
                       action={permanentlyDeleteMediaAction}
-                      modelType={modelType}
-                      modelId={modelId}
+                      // Pasamos los argumentos extra que necesita la función en el mismo orden que los recibe
+                      actionArgs={[modelType, modelId]}
+                      title="¿Eliminar archivo?"
+                      description={`¿Seguro que deseas eliminar ${item.file_name || "este archivo"} permanentemente?`}
+                      // Mantener el estilo visual de solo icono transparente:
+                      variant="ghost"
+                      size="icon"
                     />
                   </div>
                 </CardFooter>

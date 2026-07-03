@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 import { Calendar, Users, Wallet } from "lucide-react";
 
 interface EventsSectionCardsProps {
@@ -17,13 +18,6 @@ interface EventsSectionCardsProps {
 }
 
 export function EventsSectionCards({ kpis }: EventsSectionCardsProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(amount);
-  };
-
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:grid-cols-2 xl:grid-cols-3 dark:*:data-[slot=card]:bg-card">
       {/* Ingresos */}

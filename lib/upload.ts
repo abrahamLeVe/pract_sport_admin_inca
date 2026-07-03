@@ -24,7 +24,7 @@ export async function handleMediaUpload(
     if (isRequired)
       return {
         success: false,
-        message: `El archivo es obligatorio.`,
+        message: `El archivo o la imagen de portada es obligatorio.`,
         url: null,
         key: null,
       };
@@ -97,6 +97,7 @@ export async function handleMediaUpload(
     message: s3Result.message,
   };
 }
+
 export async function handleMultipleImagesUpload(
   formData: FormData,
   fieldName: string,

@@ -31,7 +31,7 @@ export async function createMasterDistanceAction(
   formData: FormData,
 ): Promise<ActionState<DistanceInput>> {
   await requireAdminSession();
-  const fields = { name: formData.get("name")?.toString() || "" };
+  const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = distanceSchema.safeParse(fields);
 
@@ -81,7 +81,7 @@ export async function updateMasterDistanceAction(
   await requireAdminSession();
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
   };
   try {
     const validatedFields = editDistanceSchema.safeParse(fields);
@@ -144,7 +144,7 @@ export async function createMasterGenderAction(
   formData: FormData,
 ): Promise<ActionState<GenderInput>> {
   await requireAdminSession();
-  const fields = { name: formData.get("name")?.toString() || "" };
+  const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = genderSchema.safeParse(fields);
 
@@ -194,7 +194,7 @@ export async function updateMasterGenderAction(
 
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
   };
   try {
     const validatedFields = editGenderSchema.safeParse(fields);
@@ -261,7 +261,7 @@ export async function createMasterAgeCategoryAction(
 ): Promise<ActionState<AgeCategoryInput>> {
   await requireAdminSession();
   const fields = {
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     default_min_age: Number(formData.get("default_min_age") || 0),
     default_max_age: Number(formData.get("default_max_age") || 0),
   };
@@ -336,7 +336,7 @@ export async function updateMasterAgeCategoryAction(
 
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     default_min_age: Number(formData.get("default_min_age") || 0),
     default_max_age: Number(formData.get("default_max_age") || 0),
   };
@@ -423,7 +423,7 @@ export async function createMasterEventTypeAction(
   formData: FormData,
 ): Promise<ActionState<EventTypeInput>> {
   await requireAdminSession();
-  const fields = { name: formData.get("name")?.toString() || "" };
+  const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = eventTypeSchema.safeParse(fields);
 
@@ -475,7 +475,7 @@ export async function updateMasterEventTypeAction(
 
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
   };
   try {
     const validatedFields = editEventTypeSchema.safeParse(fields);

@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { formatCurrency } from "@/lib/utils";
 import { ActionState } from "@/validations/core";
 import { Order, UpdateOrderStatusInput } from "@/validations/orders";
 import { CreditCard, Package, Truck, User } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useActionState, useState } from "react";
 
 interface EditOrderFormProps {
   initialData: Order;
@@ -49,25 +50,6 @@ export function EditOrderForm({ initialData }: EditOrderFormProps) {
     initialState,
   );
   const [description, setDescription] = useState(initialData.notes || "");
-  // Muestra notificaciones al guardar
-  useEffect(() => {
-    if (!formState.message) return;
-    if (formState.success) {
-      toast.success(formState.message);
-    } else {
-      toast.error(formState.message);
-    }
-  }, [formState]);
-
-  // 🔥 Formateador seguro (soporta string de la BD o number)
-  const formatCurrency = (amount: number | string) => {
-    const numericAmount =
-      typeof amount === "string" ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-    }).format(numericAmount || 0);
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -318,22 +300,13 @@ export function EditOrderForm({ initialData }: EditOrderFormProps) {
 
               <div className="flex flex-col gap-2">
                 <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Guardando..." : "Guardar Inscripción"}
+                  {isPending ? "Guardando..." : "Guardar Cambios"}
                 </Button>
 
-                {formState.success && (
-                  <p className="text-sm text-green-600 font-medium text-center mt-2">
-                    {formState.message}
-                  </p>
-                )}
-                {!formState.success && formState.message && (
-                  <p className="text-sm text-destructive font-medium text-center mt-2">
-                    {formState.message}
-                  </p>
-                )}
                 <Button variant="outline" className="w-full" asChild>
                   <Link href="/dashboard/orders">Volver a pedidos</Link>
                 </Button>
+                <FormFeedback formState={formState} />
               </div>
             </form>
           </CardContent>

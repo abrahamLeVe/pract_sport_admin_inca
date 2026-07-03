@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,35 +15,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTimeLocal } from "@/lib/utils";
 import { EditBannerFormProps, EditBannerInput } from "@/validations/banners";
 import { ActionState } from "@/validations/core";
-import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
-import { toast } from "sonner";
-
-const formatDateForInput = (dateString: string | null | undefined) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-};
 
 export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
+  console.log("initial data ", initialData);
   const initialState: ActionState<EditBannerInput> = {
     success: false,
     message: "",
     zodErrors: null,
     data: {
-      id: initialData.id, // ✅ Quitamos el String(), ahora es number
+      id: initialData.id,
       title: initialData.title || "",
       subtitle: initialData.subtitle || "",
       link_url: initialData.link_url || "",
       type: initialData.type,
       status: initialData.status,
       sort_order: initialData.sort_order,
-      start_date: formatDateForInput(initialData.start_date),
-      end_date: formatDateForInput(initialData.end_date),
+      start_date: formatDateTimeLocal(initialData.start_date),
+      end_date: formatDateTimeLocal(initialData.end_date),
       event_id: initialData.event_id,
     },
   };
@@ -52,34 +46,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
     initialState,
   );
 
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    initialData.image_url,
-  );
   const [savedFile, setSavedFile] = useState<File | null>(null);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = ["image/jpeg", "image/png", "image/webp"];
-      if (!validTypes.includes(file.type)) {
-        toast.error("Formato no válido. Solo JPG, PNG o WEBP.");
-        e.target.value = "";
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("La imagen supera el límite de 5MB.");
-        e.target.value = "";
-        return;
-      }
-
-      setSavedFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setSavedFile(null);
-      setImagePreview(initialData.image_url);
-    }
-  };
 
   const handleAction = (formData: FormData) => {
     const currentFile = formData.get("image") as File;
@@ -124,6 +91,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                     placeholderText="Cambiar imagen"
                   />
                 </div>
+                <FormError error={formState.zodErrors?.image} />
               </Field>
 
               <Field>
@@ -133,7 +101,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   type="text"
                   name="title"
                   placeholder="Ej. Gran Maratón Inka 2026"
-                  defaultValue={String(formState.data?.title ?? "")}
+                  defaultValue={String(initialData.title ?? "")}
                   disabled={isPending}
                   required
                 />
@@ -147,7 +115,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   type="text"
                   name="subtitle"
                   placeholder="Ej. Participa y gana grandes premios"
-                  defaultValue={String(formState.data?.subtitle ?? "")}
+                  defaultValue={String(initialData.subtitle ?? "")}
                   disabled={isPending}
                 />
                 <FormError error={formState.zodErrors?.subtitle} />
@@ -162,7 +130,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   type="text"
                   name="link_url"
                   placeholder="Ej. /eventos/maraton-2026 o https://..."
-                  defaultValue={String(formState.data?.link_url ?? "")}
+                  defaultValue={String(initialData.link_url ?? "")}
                   disabled={isPending}
                 />
                 <FormError error={formState.zodErrors?.link_url} />
@@ -173,7 +141,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   <FieldLabel htmlFor="type">Categoría</FieldLabel>
                   <Select
                     name="type"
-                    defaultValue={String(formState.data?.type ?? "general")}
+                    defaultValue={String(initialData.type ?? "general")}
                     disabled={isPending}
                   >
                     <SelectTrigger id="type">
@@ -193,7 +161,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                   <FieldLabel htmlFor="status">Estado Operativo</FieldLabel>
                   <Select
                     name="status"
-                    defaultValue={String(formState.data?.status ?? "activo")}
+                    defaultValue={String(initialData.status ?? "activo")}
                     disabled={isPending}
                   >
                     <SelectTrigger id="status">
@@ -217,7 +185,8 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                     id="start_date"
                     type="datetime-local"
                     name="start_date"
-                    defaultValue={String(formState.data?.start_date ?? "")}
+                    // ✅ USA EL FORMATO CORRECTO AQUÍ
+                    defaultValue={formatDateTimeLocal(initialData.start_date)}
                     disabled={isPending}
                   />
                   <FormError error={formState.zodErrors?.start_date} />
@@ -231,7 +200,8 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                     id="end_date"
                     type="datetime-local"
                     name="end_date"
-                    defaultValue={String(formState.data?.end_date ?? "")}
+                    // ✅ USA EL FORMATO CORRECTO AQUÍ
+                    defaultValue={formatDateTimeLocal(initialData.end_date)}
                     disabled={isPending}
                   />
                   <FormError error={formState.zodErrors?.end_date} />
@@ -244,8 +214,8 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                 <Select
                   name="event_id"
                   defaultValue={
-                    formState.data?.event_id != null
-                      ? String(formState.data.event_id)
+                    initialData.event_id != null
+                      ? String(initialData.event_id)
                       : "none"
                   }
                   disabled={isPending}
@@ -284,11 +254,7 @@ export function EditBannerForm({ initialData, events }: EditBannerFormProps) {
                     {isPending ? "Actualizando banner..." : "Guardar Cambios"}
                   </Button>
                 </div>
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-2 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

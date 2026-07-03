@@ -2,6 +2,7 @@
 
 import { actions } from "@/app/actions";
 import { FormError } from "@/components/form-error";
+import { FormFeedback } from "@/components/form-feedback";
 import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,10 +21,8 @@ import {
   EditCategoryInput,
 } from "@/validations/categories";
 import { ActionState } from "@/validations/core";
-import { ImagePlus } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
-import { toast } from "sonner";
 
 export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
   const initialState: ActionState<EditCategoryInput> = {
@@ -44,9 +43,6 @@ export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
     initialState,
   );
 
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    initialData.image_url,
-  );
   const [savedFile, setSavedFile] = useState<File | null>(null);
 
   const [name, setName] = useState(initialData.name || "");
@@ -141,7 +137,7 @@ export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
                     id="description"
                     name="description"
                     placeholder="Breve detalle sobre la categoría..."
-                    defaultValue={formState.data?.description ?? ""}
+                    defaultValue={initialData.description ?? ""}
                     disabled={isPending}
                   />
                   <FormError error={formState.zodErrors?.description} />
@@ -185,11 +181,7 @@ export function EditCategoryForm({ initialData }: EditCategoryFormProps) {
                   </Button>
                 </div>
 
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-right mt-2 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

@@ -5,6 +5,8 @@ import {
   deleteMasterAgeCategoryAction,
   updateMasterAgeCategoryAction,
 } from "@/app/actions/master-data";
+import { DataTable } from "@/components/data-table"; // 🔥 Importación de la DataTable
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +20,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EditAgeCategoryInput } from "@/validations/master-data";
+import { ColumnDef } from "@tanstack/react-table"; // 🔥 Importación de ColumnDef
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DeleteConfirmButton } from "./delete-confirm-button";
-import { DataTable } from "@/components/data-table"; // 🔥 Importación de la DataTable
-import { ColumnDef } from "@tanstack/react-table"; // 🔥 Importación de ColumnDef
 
 export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -102,11 +102,11 @@ export default function AgesTab({ data }: { data: EditAgeCategoryInput[] }) {
             >
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteConfirmButton
+            <DeleteActionItem
               id={item.id}
               action={deleteMasterAgeCategoryAction}
               title="¿Eliminar Categoría de Edad?"
-              description={`¿Seguro que deseas eliminar "${item.name}"?`}
+              description={`¿Seguro que deseas eliminar "${item.name} de forma permanente"?`}
             />
           </div>
         );

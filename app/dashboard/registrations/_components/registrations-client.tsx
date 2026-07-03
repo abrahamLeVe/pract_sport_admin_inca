@@ -153,9 +153,9 @@ export const columns: ColumnDef<EventRegistration>[] = [
   },
   {
     id: "actions",
+    header: () => <div className="text-center">Acciones</div>,
     cell: ({ row }) => {
       const registration = row.original;
-
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

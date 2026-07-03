@@ -22,6 +22,7 @@ import { ImageGalleryUploader } from "./image-gallery-uploader";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangleIcon } from "lucide-react";
+import { FormFeedback } from "@/components/form-feedback";
 
 export function EditProductForm({
   initialData,
@@ -83,12 +84,6 @@ export function EditProductForm({
 
     startTransition(() => formAction(formData));
   };
-
-  useEffect(() => {
-    if (formState.success) {
-      toast.success(formState.message);
-    }
-  }, [formState]);
 
   return (
     <Card>
@@ -363,11 +358,7 @@ export function EditProductForm({
                 </Button>
               </div>
 
-              {!formState.success && formState.message && (
-                <p className="text-destructive text-sm text-right mt-3 font-medium">
-                  {formState.message}
-                </p>
-              )}
+              <FormFeedback formState={formState} />
             </Field>
           </FieldGroup>
         </form>

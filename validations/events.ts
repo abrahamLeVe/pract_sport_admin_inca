@@ -63,6 +63,7 @@ export const eventSchema = z.object({
   categories: z
     .array(eventCategorySchema)
     .min(1, "Debes agregar al menos una categoría al evento."),
+  image: z.any().optional().nullable(),
 });
 
 export const editEventSchema = eventSchema.omit({ categories: true }).extend({

@@ -23,7 +23,7 @@ export async function createCategoryAction(
 ): Promise<ActionState<CategoryInput>> {
   const session = await requireAdminSession(); // 🔥 Obtener sesión
   const fields = {
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     status: formData.get("status")?.toString() as
@@ -44,15 +44,27 @@ export async function createCategoryAction(
       };
     }
 
-    const slugCheck = await pool.query(
-      "SELECT id FROM categories WHERE slug = $1",
-      [validatedFields.data.slug],
+    const collisionCheck = await pool.query(
+      "SELECT name, slug FROM categories WHERE name ILIKE $1 OR slug = $2",
+      [fields.name, fields.slug],
     );
-    if ((slugCheck.rowCount ?? 0) > 0) {
+
+    if ((collisionCheck.rowCount ?? 0) > 0) {
+      const zodErrors: Record<string, string[]> = {};
+
+      for (const row of collisionCheck.rows) {
+        if (row.name.toLowerCase() === fields.name.toLowerCase()) {
+          zodErrors.name = ["El nombre ya está registrado."];
+        }
+        if (row.slug === fields.slug) {
+          zodErrors.slug = ["El slug ya está en uso."];
+        }
+      }
+
       return {
         success: false,
-        message: "Este Slug ya está en uso.",
-        zodErrors: { slug: ["El slug ya existe."] },
+        message: "Corrige los errores de duplicidad.",
+        zodErrors, // Esto mostrará el error justo debajo de cada input
         data: fields,
       };
     }
@@ -117,7 +129,7 @@ export async function updateCategoryAction(
   const session = await requireAdminSession();
   const fields = {
     id: Number(formData.get("id")),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     status: formData.get("status")?.toString() as
@@ -140,15 +152,27 @@ export async function updateCategoryAction(
 
     const { id, name, slug, description, status } = validatedFields.data;
 
-    const slugCheck = await pool.query(
-      "SELECT id FROM categories WHERE slug = $1 AND id != $2",
-      [slug, id],
+    const collisionCheck = await pool.query(
+      "SELECT id, name, slug FROM categories WHERE (name ILIKE $1 OR slug = $2) AND id != $3",
+      [name, slug, id],
     );
-    if ((slugCheck.rowCount ?? 0) > 0) {
+
+    if ((collisionCheck.rowCount ?? 0) > 0) {
+      const zodErrors: Record<string, string[]> = {};
+
+      for (const row of collisionCheck.rows) {
+        if (row.name.toLowerCase() === name.toLowerCase()) {
+          zodErrors.name = ["Ya existe otra categoría con este nombre."];
+        }
+        if (row.slug === slug) {
+          zodErrors.slug = ["Ya existe otra categoría con este slug."];
+        }
+      }
+
       return {
         success: false,
-        message: "Este Slug ya está siendo usado por otra categoría.",
-        zodErrors: { slug: ["El slug ya existe."] },
+        message: "No se puede guardar: hay conflictos con otras categorías.",
+        zodErrors,
         data: fields,
       };
     }
@@ -214,12 +238,15 @@ export async function updateCategoryAction(
     );
 
     revalidatePath(REVALIDATE_ROUTE);
+    revalidatePath(`${REVALIDATE_ROUTE}/${id}`);
+    return {
+      success: true,
+      message: "Categoría actualizada correctamente.",
+    };
   } catch (error: any) {
     console.error("❌ Error en updateCategoryAction:", error.message);
     return { success: false, message: error.message || "Error al actualizar." };
   }
-
-  redirect("/dashboard/categories");
 }
 
 export async function toggleCategoryStatusAction(

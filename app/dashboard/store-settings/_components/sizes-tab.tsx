@@ -5,7 +5,10 @@ import {
   deleteMasterSizeAction,
   updateMasterSizeAction,
 } from "@/app/actions/store-masters";
+import { DataTable } from "@/components/data-table";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,13 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EditSizeInput } from "@/validations/variants";
+import { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DeleteConfirmButton } from "./delete-confirm-button";
-import { Badge } from "@/components/ui/badge";
-import { DataTable } from "@/components/data-table"; // 🔥 Asegúrate de tener esta importación
-import { ColumnDef } from "@tanstack/react-table";
 
 export default function SizesTab({ data }: { data: EditSizeInput[] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -114,11 +114,11 @@ export default function SizesTab({ data }: { data: EditSizeInput[] }) {
             >
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteConfirmButton
+            <DeleteActionItem
               id={item.id}
               action={deleteMasterSizeAction}
               title="¿Eliminar Talla?"
-              description={`¿Seguro que deseas eliminar la talla "${item.name}"?`}
+              description={`¿Seguro que deseas eliminar la talla "${item.name}" de forma permanente?`}
             />
           </div>
         );

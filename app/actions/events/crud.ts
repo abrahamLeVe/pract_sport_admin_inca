@@ -25,6 +25,7 @@ export async function createEventAction(
 ): Promise<ActionState<EventInput>> {
   await requireAdminSession();
   let client;
+
   const categoriesRaw = formData.get("categories")?.toString() || "[]";
   let categoriesParsed = [];
   try {
@@ -37,6 +38,7 @@ export async function createEventAction(
 
   const fields = {
     title: formData.get("title")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     event_date: formData.get("event_date")?.toString() || "",
     location_name: formData.get("location_name")?.toString() || "",
@@ -46,9 +48,7 @@ export async function createEventAction(
     longitude: formData.get("longitude")
       ? Number(formData.get("longitude"))
       : null,
-
-    route_geojson: routeGeojsonRaw, // ✅ Se queda como string para React
-
+    route_geojson: routeGeojsonRaw,
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
       : 0,
@@ -61,6 +61,34 @@ export async function createEventAction(
     categories: categoriesParsed,
   };
 
+  // 1. VALIDACIÓN ZOD (Primero para evitar consultas basura)
+  const validatedFields = eventSchema.safeParse(fields);
+  if (!validatedFields.success) {
+    const flattenedErrors = z.flattenError(validatedFields.error);
+    return {
+      success: false,
+      message: "Por favor, corrige los errores del formulario.",
+      zodErrors: flattenedErrors.fieldErrors,
+      data: fields,
+    };
+  }
+
+  // 2. CHEQUEO DE SLUG (Solo si Zod es válido)
+  const slugCheck = await pool.query(
+    "SELECT id FROM events WHERE slug = $1 AND deleted_at IS NULL",
+    [validatedFields.data.slug],
+  );
+
+  if ((slugCheck.rowCount ?? 0) > 0) {
+    return {
+      success: false,
+      message: "Este Slug ya está en uso.",
+      zodErrors: { slug: ["El slug ya existe."] },
+      data: fields,
+    };
+  }
+
+  // 3. PARSEO DE GEOJSON
   let routeGeojsonParsed = null;
   if (routeGeojsonRaw.trim() !== "") {
     try {
@@ -74,17 +102,7 @@ export async function createEventAction(
     }
   }
 
-  const validatedFields = eventSchema.safeParse(fields);
-  if (!validatedFields.success) {
-    const flattenedErrors = z.flattenError(validatedFields.error);
-    return {
-      success: false,
-      message: "Por favor, corrige los errores del formulario.",
-      zodErrors: flattenedErrors.fieldErrors,
-      data: fields,
-    };
-  }
-
+  // 4. SUBIDA DE IMAGEN
   const imageResult = await handleMediaUpload(
     formData,
     "image",
@@ -95,13 +113,16 @@ export async function createEventAction(
   if (!imageResult.success) {
     return {
       success: false,
-      message: imageResult.message || "Error con la imagen",
+      message: imageResult.message,
+      zodErrors: { image: [imageResult.message || "Se requiere imagen"] },
       data: fields,
     };
   }
 
+  // 5. DESTRUCTURACIÓN
   const {
     title,
+    slug,
     description,
     event_date,
     location_name,
@@ -117,11 +138,12 @@ export async function createEventAction(
     await client.query("BEGIN");
 
     const eventQuery = `
-      INSERT INTO events (title, description, event_date, location_name, latitude, longitude, route_geojson, event_type_id, status, image_url, image_key) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
+      INSERT INTO events (title,slug, description, event_date, location_name, latitude, longitude, route_geojson, event_type_id, status, image_url, image_key) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id
     `;
     const eventResult = await client.query(eventQuery, [
       title,
+      slug,
       description || null,
       event_date,
       location_name,
@@ -167,7 +189,7 @@ export async function createEventAction(
   }
 
   revalidatePath(REVALIDATE_ROUTE);
-  redirect("/dashboard/events");
+  redirect(REVALIDATE_ROUTE);
 }
 
 export async function updateEventAction(
@@ -184,6 +206,7 @@ export async function updateEventAction(
   const fields = {
     id: numericId,
     title: formData.get("title")?.toString() || "",
+    slug: formData.get("slug")?.toString() || "", // ✅ Slug agregado
     description: formData.get("description")?.toString() || "",
     event_date: formData.get("event_date")?.toString() || "",
     location_name: formData.get("location_name")?.toString() || "",
@@ -194,7 +217,7 @@ export async function updateEventAction(
       ? Number(formData.get("longitude"))
       : null,
 
-    route_geojson: routeGeojsonRaw, // ✅ Se queda como string
+    route_geojson: routeGeojsonRaw,
 
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
@@ -207,7 +230,7 @@ export async function updateEventAction(
       | undefined,
   };
 
-  // 3. Validamos JSON
+  // 1. Validamos JSON
   let routeGeojsonParsed = null;
   if (routeGeojsonRaw.trim() !== "") {
     try {
@@ -221,11 +244,10 @@ export async function updateEventAction(
     }
   }
 
+  // 2. Validación Zod (Antes de consultar BD)
   const validatedFields = editEventSchema.safeParse(fields);
-
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
-
     return {
       success: false,
       message: "Por favor, corrige los errores del formulario.",
@@ -234,6 +256,22 @@ export async function updateEventAction(
     };
   }
 
+  // 3. Verificación de Slug duplicado (Excluyendo el ID actual)
+  const slugCheck = await pool.query(
+    "SELECT id FROM events WHERE slug = $1 AND id != $2 AND deleted_at IS NULL",
+    [validatedFields.data.slug, validatedFields.data.id],
+  );
+
+  if ((slugCheck.rowCount ?? 0) > 0) {
+    return {
+      success: false,
+      message: "Este Slug ya está en uso por otro evento.",
+      zodErrors: { slug: ["El slug ya existe."] },
+      data: fields,
+    };
+  }
+
+  // 4. Lógica de Imagen
   let newImageUrl = null;
   let newImageKey = null;
   const imageResult = await handleMediaUpload(
@@ -246,7 +284,8 @@ export async function updateEventAction(
   if (!imageResult.success) {
     return {
       success: false,
-      message: imageResult.message || "Error con la imagen",
+      message: imageResult.message,
+      zodErrors: { image: [imageResult.message || "Se requiere imagen"] },
       data: fields,
     };
   }
@@ -267,6 +306,7 @@ export async function updateEventAction(
   const {
     id,
     title,
+    slug,
     description,
     event_date,
     location_name,
@@ -280,12 +320,13 @@ export async function updateEventAction(
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE events SET 
-          title = $1, description = $2, event_date = $3, location_name = $4, 
-          latitude = $5, longitude = $6, route_geojson = $7, event_type_id = $8, status = $9, image_url = $10, image_key = $11, updated_at = NOW()
-        WHERE id = $12
+          title = $1, slug = $2, description = $3, event_date = $4, location_name = $5, 
+          latitude = $6, longitude = $7, route_geojson = $8, event_type_id = $9, status = $10, image_url = $11, image_key = $12, updated_at = NOW()
+        WHERE id = $13
       `;
       await pool.query(query, [
         title,
+        slug,
         description || null,
         event_date,
         location_name,
@@ -301,12 +342,13 @@ export async function updateEventAction(
     } else {
       const query = `
         UPDATE events SET 
-          title = $1, description = $2, event_date = $3, location_name = $4, 
-          latitude = $5, longitude = $6, route_geojson = $7, event_type_id = $8, status = $9, updated_at = NOW()
-        WHERE id = $10
+          title = $1, slug = $2, description = $3, event_date = $4, location_name = $5, 
+          latitude = $6, longitude = $7, route_geojson = $8, event_type_id = $9, status = $10, updated_at = NOW()
+        WHERE id = $11
       `;
       await pool.query(query, [
         title,
+        slug,
         description || null,
         event_date,
         location_name,
@@ -336,18 +378,24 @@ export async function toggleEventStatusAction(
   currentStatus: string,
 ): Promise<ActionState> {
   try {
+    const session = await requireAdminSession();
     const nextStatus = currentStatus === "published" ? "draft" : "published";
 
     const query = `UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`;
     await pool.query(query, [nextStatus, id]);
+
+    // Auditoría estándar (tu estándar en otras funciones)
+    await logAudit(session.user.id, "UPDATE", "events", id, {
+      status: nextStatus,
+    });
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
       success: true,
       message: `Evento ${nextStatus === "published" ? "publicado" : "ocultado"}.`,
     };
-  } catch (error) {
-    console.error("❌ Error en toggleEventStatusAction:", error);
+  } catch (error: any) {
+    console.error("❌ Error en toggleEventStatusAction:", error.message);
     return { success: false, message: "No se pudo cambiar el estado." };
   }
 }
@@ -360,31 +408,29 @@ export async function deleteEventAction(id: number) {
     const session = await requireAdminSession();
     const adminId = session.user.id;
 
-    // Marcamos el evento como eliminado
-    const softDeleteEventQuery =
-      "UPDATE events SET deleted_at = NOW() WHERE id = $1";
-    await pool.query(softDeleteEventQuery, [id]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    // Marcamos todos los media asociados como eliminados también
-    const softDeleteMediaQuery =
-      "UPDATE event_media SET deleted_at = NOW() WHERE event_id = $1";
-    await pool.query(softDeleteMediaQuery, [id]);
+      // 1. Soft delete del evento
+      await client.query("UPDATE events SET deleted_at = NOW() WHERE id = $1", [
+        id,
+      ]);
 
-    await logAudit(adminId, "SOFT_DELETE", "events", id);
+      await client.query("COMMIT");
+      await logAudit(adminId, "SOFT_DELETE", "events", id);
+      revalidatePath(REVALIDATE_ROUTE);
 
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Evento y sus archivos movidos a la papelera.",
-    };
+      return { success: true, message: "Evento movido a la papelera." };
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (error: any) {
     console.error("❌ Error en deleteEventAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudo eliminar el evento.",
-    };
+    return { success: false, message: "No se pudo eliminar el evento." };
   }
 }
 
@@ -394,40 +440,63 @@ export async function deleteEventAction(id: number) {
 export async function permanentlyDeleteEventAction(id: number) {
   try {
     const session = await requireAdminSession();
-    const adminId = session.user.id;
+    const client = await pool.connect();
 
-    // 1. Recuperamos TODOS los keys (imagen principal + galería)
-    const getQuery = `
-      SELECT image_key as key FROM events WHERE id = $1 AND image_key IS NOT NULL
-      UNION ALL
-      SELECT media_key as key FROM event_media WHERE event_id = $1 AND media_key IS NOT NULL
-    `;
-    const result = await pool.query(getQuery, [id]);
+    try {
+      await client.query("BEGIN");
 
-    // 2. Borrado físico de todos los archivos en AWS S3
-    for (const row of result.rows) {
-      await deleteFileFromS3Action(row.key);
+      // 1. Identificar qué archivos están vinculados a este evento
+      const mediaList = await client.query(
+        "SELECT media_id FROM media_links WHERE model_type = 'event' AND model_id = $1",
+        [id],
+      );
+
+      // 2. Eliminar los vínculos
+      await client.query(
+        "DELETE FROM media_links WHERE model_type = 'event' AND model_id = $1",
+        [id],
+      );
+
+      // 3. Para cada archivo, verificar si todavía se usa en otro lado
+      for (const row of mediaList.rows) {
+        const checkLinks = await client.query(
+          "SELECT COUNT(*) FROM media_links WHERE media_id = $1",
+          [row.media_id],
+        );
+
+        // Si nadie más lo usa, borramos el registro y el archivo de S3
+        if (parseInt(checkLinks.rows[0].count) === 0) {
+          const mediaFile = await client.query(
+            "SELECT media_key FROM media WHERE id = $1",
+            [row.media_id],
+          );
+          if (mediaFile.rows[0]?.media_key) {
+            await deleteFileFromS3Action(mediaFile.rows[0].media_key);
+          }
+          await client.query("DELETE FROM media WHERE id = $1", [row.media_id]);
+        }
+      }
+
+      // 4. Borrar el evento
+      await client.query("DELETE FROM events WHERE id = $1", [id]);
+
+      await client.query("COMMIT");
+      await logAudit(session.user.id, "HARD_DELETE", "events", id);
+      revalidatePath(REVALIDATE_ROUTE);
+
+      return {
+        success: true,
+        message: "Evento y archivos no compartidos eliminados.",
+      };
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
     }
-
-    // 3. Borrado físico real de la base de datos (CASCADE borra event_media automáticamente)
-    const deleteQuery = "DELETE FROM events WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    await logAudit(adminId, "HARD_DELETE", "events", id);
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Evento y sus archivos eliminados definitivamente.",
-    };
   } catch (error: any) {
-    console.error("❌ Error en permanentlyDeleteEventAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudo purgar el evento.",
-    };
+    console.error("❌ Error en hardDelete:", error.message);
+    return { success: false, message: "No se pudo purgar el evento." };
   }
 }
 
@@ -442,31 +511,39 @@ export async function bulkDeleteEventsAction(ids: number[]) {
     if (!ids || ids.length === 0)
       return { success: false, message: "No hay eventos seleccionados." };
 
-    // Actualizamos eventos
-    const queryEvents =
-      "UPDATE events SET deleted_at = NOW() WHERE id = ANY($1)";
-    await pool.query(queryEvents, [ids]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    // Actualizamos media de esos eventos
-    const queryMedia =
-      "UPDATE event_media SET deleted_at = NOW() WHERE event_id = ANY($1)";
-    await pool.query(queryMedia, [ids]);
+      // 1. Actualizamos eventos
+      await client.query(
+        "UPDATE events SET deleted_at = NOW() WHERE id = ANY($1)",
+        [ids],
+      );
 
-    await logAudit(adminId, "BULK_SOFT_DELETE", "events", ids.join(","));
+      // 2. Actualizamos media_links (El nuevo estándar)
+      await client.query(
+        "UPDATE media_links SET deleted_at = NOW() WHERE model_type = 'event' AND model_id = ANY($1)",
+        [ids],
+      );
 
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: `${ids.length} eventos y sus archivos movidos a la papelera.`,
-    };
+      await client.query("COMMIT");
+      await logAudit(adminId, "BULK_SOFT_DELETE", "events", ids.join(","));
+      revalidatePath(REVALIDATE_ROUTE);
+
+      return {
+        success: true,
+        message: `${ids.length} eventos y sus archivos movidos a la papelera.`,
+      };
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (error: any) {
     console.error("❌ Error en bulkDeleteEventsAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "Error al eliminar los eventos seleccionados.",
-    };
+    return { success: false, message: "Error al eliminar los eventos." };
   }
 }
 
@@ -476,46 +553,68 @@ export async function bulkDeleteEventsAction(ids: number[]) {
 export async function bulkPermanentlyDeleteEventsAction(ids: number[]) {
   try {
     const session = await requireAdminSession();
-    const adminId = session.user.id;
+    const client = await pool.connect();
 
-    if (!ids || ids.length === 0)
-      return { success: false, message: "No hay eventos seleccionados." };
+    try {
+      await client.query("BEGIN");
 
-    // 1. Buscamos todas las llaves (imagen principal + galería) del lote
-    const getQuery = `
-      SELECT image_key as key FROM events WHERE id = ANY($1) AND image_key IS NOT NULL
-      UNION ALL
-      SELECT media_key as key FROM event_media WHERE event_id = ANY($1) AND media_key IS NOT NULL
-    `;
-    const result = await pool.query(getQuery, [ids]);
+      // 1. Obtener los media_ids de los archivos asociados a estos eventos
+      const mediaList = await client.query(
+        "SELECT DISTINCT media_id FROM media_links WHERE model_type = 'event' AND model_id = ANY($1)",
+        [ids],
+      );
 
-    // 2. Barremos limpiando todos los archivos en S3
-    for (const row of result.rows) {
-      await deleteFileFromS3Action(row.key);
+      // 2. Borrar primero los vínculos
+      await client.query(
+        "DELETE FROM media_links WHERE model_type = 'event' AND model_id = ANY($1)",
+        [ids],
+      );
+
+      // 3. Garbage Collector: Limpieza de archivos S3 y tabla 'media'
+      for (const row of mediaList.rows) {
+        // Verificar si el archivo tiene otros links activos
+        const check = await client.query(
+          "SELECT COUNT(*) FROM media_links WHERE media_id = $1",
+          [row.media_id],
+        );
+
+        if (parseInt(check.rows[0].count) === 0) {
+          // Nadie más lo usa, procedemos a borrar archivo físico y registro
+          const mediaFile = await client.query(
+            "SELECT media_key FROM media WHERE id = $1",
+            [row.media_id],
+          );
+          if (mediaFile.rows[0]?.media_key) {
+            await deleteFileFromS3Action(mediaFile.rows[0].media_key);
+          }
+          await client.query("DELETE FROM media WHERE id = $1", [row.media_id]);
+        }
+      }
+
+      // 4. Borrar los eventos
+      await client.query("DELETE FROM events WHERE id = ANY($1)", [ids]);
+
+      await client.query("COMMIT");
+      await logAudit(
+        session.user.id,
+        "BULK_HARD_DELETE",
+        "events",
+        ids.join(","),
+      );
+      revalidatePath(REVALIDATE_ROUTE);
+
+      return { success: true, message: "Eventos y archivos eliminados." };
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
     }
-
-    // 3. Remoción física de los registros (CASCADE limpia event_media)
-    const deleteQuery = "DELETE FROM events WHERE id = ANY($1)";
-    await pool.query(deleteQuery, [ids]);
-
-    await logAudit(adminId, "BULK_HARD_DELETE", "events", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message:
-        "Los eventos seleccionados y sus archivos se eliminaron permanentemente.",
-    };
   } catch (error: any) {
     console.error(
       "❌ Error en bulkPermanentlyDeleteEventsAction:",
       error.message,
     );
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudieron purgar los eventos seleccionados.",
-    };
+    return { success: false, message: "Error al purgar." };
   }
 }

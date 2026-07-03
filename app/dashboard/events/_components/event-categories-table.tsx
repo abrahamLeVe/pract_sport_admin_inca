@@ -5,6 +5,8 @@ import {
   deleteEventCategoryAction,
   updateEventCategoryAction,
 } from "@/app/actions/events/categories";
+import { DataTable } from "@/components/data-table";
+import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,19 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { EventCategoriesTableProps } from "@/validations/events";
+import { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Plus } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DeleteConfirmButton } from "../../race-settings/_components/delete-confirm-button";
 
 export function EventCategoriesTable({
   eventId,
@@ -110,6 +104,79 @@ export function EventCategoriesTable({
 
   const handleDeleteWrapper = async (id: number) =>
     deleteEventCategoryAction(id, eventId);
+
+  // 🔥 DEFINICIÓN DE COLUMNAS PARA EL DATATABLE
+  const columns: ColumnDef<any>[] = [
+    {
+      id: "categoria", // ID para el buscador
+      accessorFn: (row) =>
+        `${row.distance_name} ${row.gender_name} ${row.age_category_name}`,
+      header: "Categoría / Edades",
+      cell: ({ row }) => {
+        const cat = row.original;
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{`${cat.distance_name} - ${cat.gender_name} - ${cat.age_category_name}`}</span>
+            <span className="text-xs text-muted-foreground">
+              Edades: {cat.applied_min_age} a {cat.applied_max_age} años
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "price",
+      header: () => <div className="text-center">Precio</div>,
+      cell: ({ row }) => (
+        <div className="text-center font-semibold">S/ {row.original.price}</div>
+      ),
+    },
+    {
+      id: "cupos",
+      header: () => <div className="text-center">Cupos</div>,
+      cell: ({ row }) => {
+        const cat = row.original;
+        return (
+          <div className="flex flex-col items-center">
+            <span className="font-medium">
+              {cat.registered_count} /{" "}
+              {Number(cat.cupos) === 0 ? "∞" : cat.cupos}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {Number(cat.cupos) === 0 ? "Inscritos" : "Cupos usados"}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Acciones</div>,
+      cell: ({ row }) => {
+        const cat = row.original;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="icon" onClick={() => openDialog(cat)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <DeleteActionItem
+              id={cat.id}
+              action={handleDeleteWrapper}
+              disabled={cat.registered_count > 0}
+              title="¿Eliminar Categoría?"
+              description={
+                cat.registered_count > 0
+                  ? "No puedes eliminar esta categoría porque ya tiene atletas inscritos."
+                  : "Se enviará a la papelera este evento."
+              }
+              variant="ghost"
+              size="icon"
+            />
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-4 bg-card p-6 rounded-lg border shadow-sm">
@@ -320,75 +387,8 @@ export function EventCategoriesTable({
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Categoría / Edades</TableHead>
-              <TableHead className="text-center">Precio</TableHead>
-              <TableHead className="text-center">Cupos</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center h-24">
-                  No hay categorías registradas.
-                </TableCell>
-              </TableRow>
-            ) : (
-              categories.map((cat) => (
-                <TableRow key={cat.id}>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{`${cat.distance_name} - ${cat.gender_name} - ${cat.age_category_name}`}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Edades: {cat.applied_min_age} a {cat.applied_max_age}{" "}
-                        años
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center font-semibold">
-                    S/ {cat.price}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex flex-col items-center">
-                      <span className="font-medium">
-                        {cat.registered_count} /{" "}
-                        {Number(cat.cupos) === 0 ? "∞" : cat.cupos}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {Number(cat.cupos) === 0 ? "Inscritos" : "Cupos usados"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openDialog(cat)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <DeleteConfirmButton
-                      id={cat.id}
-                      action={handleDeleteWrapper}
-                      disabled={cat.registered_count > 0}
-                      title="¿Eliminar Categoría?"
-                      description={
-                        cat.registered_count > 0
-                          ? "No puedes eliminar esta categoría porque ya tiene atletas inscritos."
-                          : "Se borrará permanentemente de este evento."
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* 🔥 REEMPLAZO DE LA TABLA NATIVA POR DATATABLE */}
+      <DataTable columns={columns} data={categories} searchKey="categoria" />
     </div>
   );
 }

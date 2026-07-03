@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "../../../../components/form-error";
 import { ActionState } from "@/validations/core";
+import { FormFeedback } from "@/components/form-feedback";
 
 const INITIAL_STATE: ActionState<SignupInput> = {
   success: false,
@@ -134,11 +135,7 @@ export function RegisterUserForm() {
                   </Button>
                 </div>
 
-                {!formState.success && formState.message && (
-                  <p className="text-destructive text-sm text-center mt-3 font-medium">
-                    {formState.message}
-                  </p>
-                )}
+                <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>
           </form>

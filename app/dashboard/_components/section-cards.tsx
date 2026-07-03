@@ -1,17 +1,16 @@
 "use client";
 
+import { fetchDashboardDataAction } from "@/app/actions/dashboard";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Package, ShoppingCart, Users, Wallet } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Package, ShoppingCart, Users, Wallet } from "lucide-react";
 import useSWR from "swr";
-import { fetchDashboardDataAction } from "@/app/actions/dashboard"; // Ajusta la ruta
 
-// Recibimos los datos iniciales para que cargue instantáneamente
 interface SectionCardsProps {
   initialKpis: {
     revenue: number;

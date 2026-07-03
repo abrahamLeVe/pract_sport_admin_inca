@@ -18,6 +18,51 @@ import { Category } from "@/validations/categories";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+
+const ActionCell = ({ category }: { category: Category }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Abrir menú</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem
+          asChild
+          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
+        >
+          <Link
+            href={`/dashboard/categories/edit/${category.id}`}
+            className="cursor-pointer"
+          >
+            <Edit className="mr-2 h-4 w-4" /> Editar Categoría
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
+        <DeleteActionItem
+          id={category.id}
+          action={deleteCategoryAction}
+          title="¿Enviar a papelera?"
+          description={`¿Seguro que deseas enviar la categoría "${category.name}" a la papelera?`}
+          size="default"
+          showText={true}
+          buttonText="Enviar a papelera"
+          asMenuItem={true}
+          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 export const columns: ColumnDef<Category>[] = [
   {
@@ -29,7 +74,7 @@ export const columns: ColumnDef<Category>[] = [
         <ImageModal
           imageUrl={imageUrl}
           altText={row.original.name}
-          thumbnailClassName="h-12 w-12" // Más cuadrado para categorías
+          thumbnailClassName="h-12 w-12"
         />
       ) : (
         <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted">
@@ -69,40 +114,8 @@ export const columns: ColumnDef<Category>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const category = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/categories/edit/${category.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Editar Categoría
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DeleteActionItem
-              id={category.id}
-              itemName={category.name}
-              itemType="categoría"
-              action={deleteCategoryAction}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionCell category={row.original} />, // 🔥 Usamos el nuevo componente
   },
 ];
 

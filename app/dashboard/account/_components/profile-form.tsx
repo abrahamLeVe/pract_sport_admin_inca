@@ -22,6 +22,7 @@ import { SingleImageUploader } from "@/components/single-image-uploader";
 import { Lock } from "lucide-react";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
+import { FormFeedback } from "@/components/form-feedback";
 
 const formatDateForInput = (date: string | Date | null | undefined) => {
   if (!date) return "";
@@ -388,16 +389,7 @@ export function ProfileForm({
                       {isPending ? "Guardando..." : "Guardar Cambios"}
                     </Button>
                   </div>
-                  {!formState.success && formState.message && (
-                    <p className="text-destructive text-sm text-right mt-2 font-medium">
-                      {formState.message}
-                    </p>
-                  )}
-                  {formState.success && formState.message && (
-                    <p className="text-green-600 text-sm text-right mt-2 font-medium">
-                      {formState.message}
-                    </p>
-                  )}
+                  <FormFeedback formState={formState} />
                 </Field>
               </Tabs>
             </FieldGroup>

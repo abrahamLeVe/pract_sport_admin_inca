@@ -1,6 +1,6 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { fetchDashboardDataAction } from "@/app/actions/dashboard"; // Ajusta según tu estructura
 import {
   Card,
   CardContent,
@@ -14,8 +14,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { formatDateDisplay } from "@/lib/utils";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import useSWR from "swr";
-import { fetchDashboardDataAction } from "@/app/actions/dashboard"; // Ajusta según tu estructura
 
 interface ChartAreaInteractiveProps {
   initialChartData: { date: string; ingresos: number }[];
@@ -33,7 +34,6 @@ export function ChartAreaInteractive({
   initialChartData,
   days = 30,
 }: ChartAreaInteractiveProps) {
-  // 🔥 SWR: Actualiza el gráfico cada 30 segundos
   const { data: chartData } = useSWR(
     `dashboard-chart-${days}`,
     async () => {
@@ -46,7 +46,6 @@ export function ChartAreaInteractive({
     },
   );
 
-  // Verificamos si hay datos después de que SWR los cargue
   const hasData = chartData && chartData.length > 0;
 
   if (!hasData) {
@@ -79,7 +78,6 @@ export function ChartAreaInteractive({
             data={chartData} // 🔥 Usamos los datos del estado de SWR
             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
           >
-            {/* ... resto de tu código de Recharts se mantiene igual ... */}
             <defs>
               <linearGradient id="fillIngresos" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -100,14 +98,7 @@ export function ChartAreaInteractive({
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-                return date.toLocaleDateString("es-PE", {
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
+              tickFormatter={(value) => formatDateDisplay(value)}
             />
             <YAxis
               tickLine={false}
@@ -119,17 +110,13 @@ export function ChartAreaInteractive({
               cursor={false}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    const date = new Date(value);
-                    date.setMinutes(
-                      date.getMinutes() + date.getTimezoneOffset(),
-                    );
-                    return date.toLocaleDateString("es-PE", {
+                  labelFormatter={(value) =>
+                    formatDateDisplay(value, {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
-                    });
-                  }}
+                    })
+                  }
                   indicator="dot"
                 />
               }

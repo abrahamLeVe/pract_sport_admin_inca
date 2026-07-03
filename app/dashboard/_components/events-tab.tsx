@@ -22,7 +22,6 @@ import { Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EventsSectionCards } from "./events-section-cards";
 
-// Interface estricta para las propiedades del componente
 interface EventsTabProps {
   stats: {
     activeEvents: number;

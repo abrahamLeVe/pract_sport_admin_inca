@@ -116,7 +116,7 @@ CREATE TABLE banners (
 -- 3.1. Tabla de Categorías (Familias de Productos)
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,                -- Nombre visible (Ej. Zapatillas)
+    name VARCHAR(100) UNIQUE NOT NULL,                -- Nombre visible (Ej. Zapatillas)
     slug VARCHAR(100) UNIQUE NOT NULL,         -- URL amigable (Ej. zapatillas-running)
     description TEXT,                          -- Breve detalle de la categoría
     image_url TEXT,                            -- Logo o imagen representativa
@@ -131,7 +131,7 @@ CREATE TABLE categories (
 -- ------------------------------------------------------------------------------
 CREATE TABLE brands (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,                -- Nombre de la marca (Ej. Nike, Adidas)
+    name VARCHAR(100) UNIQUE NOT NULL,                -- Nombre de la marca (Ej. Nike, Adidas)
     slug VARCHAR(100) UNIQUE NOT NULL,         -- URL amigable (Ej. nike, under-armour)
     description TEXT,                          -- (Opcional) Historia o descripción de la marca
     image_url TEXT,                            -- Logo de la marca (URL de S3)

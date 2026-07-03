@@ -24,7 +24,7 @@ export async function createBrandAction(
 ): Promise<ActionState<BrandInput>> {
   const session = await requireAdminSession();
   const fields = {
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     status: formData.get("status")?.toString() as
@@ -45,15 +45,27 @@ export async function createBrandAction(
       };
     }
 
-    const slugCheck = await pool.query(
-      "SELECT id FROM brands WHERE slug = $1",
-      [validatedFields.data.slug],
+    const collisionCheck = await pool.query(
+      "SELECT name, slug FROM brands WHERE name ILIKE $1 OR slug = $2",
+      [fields.name, fields.slug],
     );
-    if ((slugCheck.rowCount ?? 0) > 0) {
+
+    if ((collisionCheck.rowCount ?? 0) > 0) {
+      const zodErrors: Record<string, string[]> = {};
+
+      for (const row of collisionCheck.rows) {
+        if (row.name.toLowerCase() === fields.name.toLowerCase()) {
+          zodErrors.name = ["El nombre ya está registrado."];
+        }
+        if (row.slug === fields.slug) {
+          zodErrors.slug = ["El slug ya está en uso."];
+        }
+      }
+
       return {
         success: false,
-        message: "Este Slug ya está en uso.",
-        zodErrors: { slug: ["El slug ya existe."] },
+        message: "Corrige los errores de duplicidad.",
+        zodErrors, // Esto mostrará el error justo debajo de cada input
         data: fields,
       };
     }
@@ -115,7 +127,7 @@ export async function updateBrandAction(
   const session = await requireAdminSession();
   const fields = {
     id: Number(formData.get("id")),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     status: formData.get("status")?.toString() as
@@ -139,16 +151,27 @@ export async function updateBrandAction(
 
     const { id, name, slug, description, status } = validatedFields.data;
 
-    // 0. Comprobar Slug (Permite reutilizar slugs de marcas en la papelera)
-    const slugCheck = await pool.query(
-      "SELECT id FROM brands WHERE slug = $1 AND id != $2 AND deleted_at IS NULL",
-      [slug, id],
+    const collisionCheck = await pool.query(
+      "SELECT id, name, slug FROM brands WHERE (name ILIKE $1 OR slug = $2) AND id != $3",
+      [name, slug, id],
     );
-    if ((slugCheck.rowCount ?? 0) > 0) {
+
+    if ((collisionCheck.rowCount ?? 0) > 0) {
+      const zodErrors: Record<string, string[]> = {};
+
+      for (const row of collisionCheck.rows) {
+        if (row.name.toLowerCase() === name.toLowerCase()) {
+          zodErrors.name = ["Ya existe otra marca con este nombre."];
+        }
+        if (row.slug === slug) {
+          zodErrors.slug = ["Ya existe otra marca con este slug."];
+        }
+      }
+
       return {
         success: false,
-        message: "Este Slug ya está siendo usado por otra marca.",
-        zodErrors: { slug: ["El slug ya existe."] },
+        message: "No se puede guardar: hay conflictos con otras marcas.",
+        zodErrors,
         data: fields,
       };
     }
@@ -230,6 +253,11 @@ export async function updateBrandAction(
     );
 
     revalidatePath(REVALIDATE_ROUTE);
+    revalidatePath(`${REVALIDATE_ROUTE}/${id}`);
+    return {
+      success: true,
+      message: "Marca actualizada correctamente.",
+    };
   } catch (error: any) {
     console.error("❌ Error en updateBrandAction:", error.message);
     return {
@@ -238,9 +266,6 @@ export async function updateBrandAction(
       data: fields,
     };
   }
-
-  // Next.js: redirect debe ir SIEMPRE fuera del try/catch si queremos que funcione bien
-  redirect("/dashboard/brands");
 }
 
 export async function toggleBrandStatusAction(

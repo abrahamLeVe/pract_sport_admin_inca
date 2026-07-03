@@ -22,10 +22,53 @@ import {
   Image as ImageIcon,
   MapPin,
   MoreHorizontal,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
+const ActionCell = ({ event }: { event: EventTableItem }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Abrir menú</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem
+          asChild
+          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
+        >
+          <Link
+            href={`/dashboard/events/edit/${event.id}`}
+            className="cursor-pointer"
+          >
+            <Edit className="mr-2 h-4 w-4" /> Editar evento
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
+        <DeleteActionItem
+          id={event.id}
+          action={deleteEventAction}
+          title="¿Enviar a papelera?"
+          description={`¿Seguro que deseas enviar la categoría "${event.title}" a la papelera?`}
+          size="default"
+          showText={true}
+          buttonText="Enviar a papelera"
+          asMenuItem={true}
+          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 export const columns: ColumnDef<EventTableItem>[] = [
   {
     accessorKey: "image_url",
@@ -110,50 +153,8 @@ export const columns: ColumnDef<EventTableItem>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const event = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/events/edit/${event.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Editar Evento
-              </Link>
-            </DropdownMenuItem>
-
-            {/* Atajo rápido para ver los inscritos de este evento */}
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/registrations?eventId=${event.id}`}
-                className="cursor-pointer"
-              >
-                <Users className="mr-2 h-4 w-4" /> Ver Inscritos
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DeleteActionItem
-              id={event.id}
-              itemName={event.title}
-              itemType="evento"
-              action={deleteEventAction}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionCell event={row.original} />, // 🔥 Usamos el nuevo componente
   },
 ];
 

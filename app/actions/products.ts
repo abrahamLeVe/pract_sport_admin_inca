@@ -271,7 +271,8 @@ export async function updateProductAction(
     let finalStock = stock;
     const variantStockCheck = await pool.query(
       `SELECT SUM(stock) as total FROM product_variants 
-       WHERE product_id = $1 AND track_stock = TRUE AND status = 'activo'`,
+       -- 🔥 AGREGAMOS "AND deleted_at IS NULL"
+       WHERE product_id = $1 AND track_stock = TRUE AND status = 'activo' AND deleted_at IS NULL`,
       [id],
     );
 

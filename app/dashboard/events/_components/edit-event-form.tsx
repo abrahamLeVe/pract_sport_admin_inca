@@ -16,19 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateTimeLocal, generateSlug } from "@/lib/utils";
 import { EditEventFormProps } from "@/validations/events";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { RoutePreviewMap } from "./route-preview-map";
 
 export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
-  const formatDateTimeLocal = (dateInput?: Date | string) => {
-    if (!dateInput) return "";
-    const date = new Date(dateInput);
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-  };
-
   const initialState = {
     success: false,
     message: "",
@@ -36,6 +30,7 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
     data: {
       id: String(initialData.id),
       title: initialData.title || "",
+      slug: initialData.slug || "",
       description: initialData.description || "",
       event_date: formatDateTimeLocal(initialData.event_date),
       location_name: initialData.location_name || "",
@@ -52,6 +47,9 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
     initialState,
   );
 
+  const [name, setName] = useState<string>(initialData.title || "");
+  const [slug, setSlug] = useState<string>(initialData.slug || "");
+
   const [geojsonInput, setGeojsonInput] = useState(
     initialData.route_geojson
       ? JSON.stringify(initialData.route_geojson, null, 2)
@@ -67,6 +65,11 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
       formData.set("image", savedFile);
     }
     startTransition(() => formAction(formData));
+  };
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    setSlug(generateSlug(newName));
   };
 
   return (
@@ -104,6 +107,7 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                       placeholderText="Cambiar imagen"
                     />
                   </div>
+                  <FormError error={formState.zodErrors?.image} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -112,25 +116,27 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                     <Input
                       id="title"
                       name="title"
+                      value={name}
                       placeholder="Ej. Desafío Arwaturo 10K"
-                      defaultValue={formState.data?.title ?? ""}
+                      onChange={handleNameChange}
                       disabled={isPending}
+                      autoComplete="off"
                       required
                     />
                     <FormError error={formState.zodErrors?.title} />
                   </Field>
-
                   <Field>
-                    <FieldLabel htmlFor="event_date">Fecha y Hora</FieldLabel>
+                    <FieldLabel htmlFor="slug">Slug (URL Amigable)</FieldLabel>
                     <Input
-                      id="event_date"
-                      name="event_date"
-                      type="datetime-local"
-                      defaultValue={formState.data?.event_date ?? ""}
+                      id="slug"
+                      name="slug"
+                      placeholder="Ej. desafio-arwaturo-10k"
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
                       disabled={isPending}
                       required
                     />
-                    <FormError error={formState.zodErrors?.event_date} />
+                    <FormError error={formState.zodErrors?.slug} />
                   </Field>
                 </div>
 
@@ -172,6 +178,41 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                       required
                     />
                     <FormError error={formState.zodErrors?.location_name} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel htmlFor="status">Estado del Evento</FieldLabel>
+                    <Select
+                      name="status"
+                      defaultValue={formState.data?.status ?? "draft"}
+                      disabled={isPending}
+                    >
+                      <SelectTrigger id="status" className="w-full sm:w-64">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Borrador (Oculto)</SelectItem>
+                        <SelectItem value="published">
+                          Publicado (Visible)
+                        </SelectItem>
+                        <SelectItem value="completed">Finalizado</SelectItem>
+                        <SelectItem value="cancelled">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormError error={formState.zodErrors?.status} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="event_date">Fecha y Hora</FieldLabel>
+                    <Input
+                      id="event_date"
+                      name="event_date"
+                      type="datetime-local"
+                      defaultValue={formState.data?.event_date ?? ""}
+                      disabled={isPending}
+                      required
+                    />
+                    <FormError error={formState.zodErrors?.event_date} />
                   </Field>
                 </div>
 
@@ -301,28 +342,6 @@ export function EditEventForm({ initialData, eventTypes }: EditEventFormProps) {
                   />
 
                   <FormError error={formState.zodErrors?.description} />
-                </Field>
-
-                <Field className="border-t pt-6">
-                  <FieldLabel htmlFor="status">Estado del Evento</FieldLabel>
-                  <Select
-                    name="status"
-                    defaultValue={formState.data?.status ?? "draft"}
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="status" className="w-full sm:w-64">
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Borrador (Oculto)</SelectItem>
-                      <SelectItem value="published">
-                        Publicado (Visible)
-                      </SelectItem>
-                      <SelectItem value="completed">Finalizado</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormError error={formState.zodErrors?.status} />
                 </Field>
               </div>
 

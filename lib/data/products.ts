@@ -7,7 +7,9 @@ export async function getProducts(): Promise<ProductTableItem[]> {
       SELECT 
         p.*,
         c.name as category_name,
-        b.name as brand_name
+        b.name as brand_name,
+        -- 🔥 AQUÍ TAMBIÉN AGREGAMOS "AND pv.deleted_at IS NULL"
+        EXISTS(SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as has_variants
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN brands b ON p.brand_id = b.id
@@ -45,7 +47,8 @@ export async function getProductByIdAction(id: number) {
       SELECT 
         p.id, p.name, p.slug, p.description, p.price, p.discount_price, 
         p.stock, p.category_id, p.brand_id, p.images, p.status, p.track_stock,
-        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id) as has_variants
+        -- 🔥 AQUÍ ESTÁ LA CORRECCIÓN: Agregamos "AND v.deleted_at IS NULL"
+        EXISTS(SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) as has_variants
       FROM products p
       WHERE p.id = $1 AND p.deleted_at IS NULL
     `;

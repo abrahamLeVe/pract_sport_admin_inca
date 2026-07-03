@@ -29,7 +29,7 @@ export async function createMasterColorAction(
   await requireAdminSession();
 
   const fields = {
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     hex_code: formData.get("hex_code")?.toString() || "",
   };
 
@@ -88,7 +88,7 @@ export async function updateMasterColorAction(
 
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     hex_code: formData.get("hex_code")?.toString() || "",
   };
 
@@ -162,7 +162,7 @@ export async function createMasterSizeAction(
   await requireAdminSession();
 
   const fields = {
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     category: formData.get("category")?.toString() || "",
   };
 
@@ -221,7 +221,7 @@ export async function updateMasterSizeAction(
 
   const fields = {
     id: Number(formData.get("id") || ""),
-    name: formData.get("name")?.toString() || "",
+    name: formData.get("name")?.toString().trim() || "",
     category: formData.get("category")?.toString() || "",
   };
 

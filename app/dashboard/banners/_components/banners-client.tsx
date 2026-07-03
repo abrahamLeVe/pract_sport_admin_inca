@@ -18,8 +18,52 @@ import { Banner } from "@/validations/banners";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
-// 1. Definimos las Columnas de la Tabla
+const ActionCell = ({ banner }: { banner: Banner }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Abrir menú</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+        <DropdownMenuItem
+          asChild
+          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
+        >
+          <Link
+            href={`/dashboard/banners/edit/${banner.id}`}
+            className="cursor-pointer"
+          >
+            <Edit className="mr-2 h-4 w-4" /> Editar Banner
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
+        <DeleteActionItem
+          id={banner.id}
+          action={deleteBannerAction}
+          title="¿Enviar a papelera?"
+          description={`¿Seguro que deseas enviar la categoría "${banner.title}" a la papelera?`}
+          size="default"
+          showText={true}
+          buttonText="Enviar a papelera"
+          asMenuItem={true}
+          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export const columns: ColumnDef<Banner>[] = [
   {
     accessorKey: "image_url",
@@ -65,40 +109,8 @@ export const columns: ColumnDef<Banner>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const banner = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/banners/edit/${banner.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Editar Banner
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DeleteActionItem
-              id={banner.id}
-              itemName={banner.title}
-              itemType="banner"
-              action={deleteBannerAction}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionCell banner={row.original} />, // 🔥 Usamos el nuevo componente
   },
 ];
 

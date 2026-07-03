@@ -14,10 +14,65 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatCurrency } from "@/lib/utils";
 import { ProductTableItem } from "@/validations/products";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Image as ImageIcon, MoreHorizontal, Tags } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react"; // 🔥 Asegúrate de importar useState
+
+// 🔥 1. CREAMOS EL COMPONENTE ACTION CELL PARA CONTROLAR EL ESTADO
+const ActionCell = ({ product }: { product: ProductTableItem }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Abrir menú</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/products/edit/${product.id}`}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4" /> Editar Producto
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/products/edit/${product.id}?tab=variants`}
+              className="cursor-pointer"
+            >
+              <Tags className="mr-2 h-4 w-4" /> Gestionar Variantes
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          {/* 🔥 2. PASAMOS LA PROPIEDAD onSuccess AL DELETE */}
+          <DeleteActionItem
+            id={product.id}
+            action={deleteProductAction}
+            title="¿Enviar a papelera?"
+            description={`¿Seguro que deseas enviar el producto "${product.name}" a la papelera?`}
+            size="default"
+            showText={true}
+            buttonText="Enviar a papelera"
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)} // ESTA ES LA MAGIA
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
 
 export const columns: ColumnDef<ProductTableItem>[] = [
   {
@@ -60,12 +115,6 @@ export const columns: ColumnDef<ProductTableItem>[] = [
       const price = row.original.price;
       const discount = row.original.discount_price;
 
-      const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat("es-PE", {
-          style: "currency",
-          currency: "PEN",
-        }).format(amount);
-
       return (
         <div className="flex flex-col">
           {discount ? (
@@ -89,7 +138,24 @@ export const columns: ColumnDef<ProductTableItem>[] = [
     header: "Stock",
     cell: ({ row }) => {
       const stock = row.original.stock;
-      // Badge rojo si hay menos de 5 unidades, gris si es normal
+      const trackStock = row.original.track_stock;
+      const hasVariants = row.original.has_variants;
+
+      if (hasVariants) {
+        return (
+          <Badge
+            variant="outline"
+            className="border-blue-500 text-blue-500 bg-blue-500/10 hover:bg-blue-500/20"
+          >
+            Variantes
+          </Badge>
+        );
+      }
+
+      if (trackStock === false) {
+        return <Badge variant="outline">♾️ Ilimitado</Badge>;
+      }
+
       return (
         <Badge variant={stock <= 5 ? "destructive" : "secondary"}>
           {stock} unds
@@ -116,49 +182,8 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const product = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/products/edit/${product.id}`}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Editar Producto
-              </Link>
-            </DropdownMenuItem>
-            {/* Opcional: Enlace directo para gestionar tallas/colores de este producto */}
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/dashboard/products/edit/${product.id}?tab=variants`}
-                className="cursor-pointer"
-              >
-                <Tags className="mr-2 h-4 w-4" /> Gestionar Variantes
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            <DeleteActionItem
-              id={product.id}
-              itemName={product.name}
-              itemType="producto"
-              action={deleteProductAction}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    header: () => <div className="text-center">Acciones</div>,
+    cell: ({ row }) => <ActionCell product={row.original} />, // 🔥 3. LLAMAMOS AL NUEVO COMPONENTE AQUÍ
   },
 ];
 
