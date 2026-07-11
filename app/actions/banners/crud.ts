@@ -13,7 +13,7 @@ import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action } from "./storage";
+import { deleteFileFromS3Action } from "../storage";
 import { logAudit } from "@/lib/data/audit";
 const REVALIDATE_ROUTE = "/dashboard/banners";
 
@@ -341,132 +341,6 @@ export async function deleteBannerAction(id: number) {
       message: error.message.includes("No autorizado")
         ? error.message
         : "No se pudo eliminar el banner.",
-    };
-  }
-}
-
-// ============================================================================
-// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
-// ============================================================================
-export async function permanentlyDeleteBannerAction(id: number) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    // 1. Recuperamos el image_key del banner antes de destruir el registro
-    const getQuery = "SELECT image_key FROM banners WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const bannerRecord = result.rows[0];
-
-    if (!bannerRecord) {
-      return { success: false, message: "El banner no existe." };
-    }
-
-    // 2. Borrado físico de la imagen en AWS S3 para liberar espacio
-    if (bannerRecord.image_key) {
-      await deleteFileFromS3Action(bannerRecord.image_key);
-    }
-
-    // 3. Borrado destructivo real de la base de datos
-    const deleteQuery = "DELETE FROM banners WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    await logAudit(adminId, "HARD_DELETE", "banners", id);
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Banner eliminado definitivamente del sistema y de S3.",
-    };
-  } catch (error: any) {
-    console.error("❌ Error en permanentlyDeleteBannerAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudo purgar el banner.",
-    };
-  }
-}
-
-// ============================================================================
-// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
-// ============================================================================
-export async function bulkDeleteBannersAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay banners seleccionados." };
-    }
-
-    // Actualizamos el lote completo hacia la papelera en un solo query rápido
-    const query = "UPDATE banners SET deleted_at = NOW() WHERE id = ANY($1)";
-    await pool.query(query, [ids]);
-
-    await logAudit(adminId, "BULK_SOFT_DELETE", "banners", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: `${ids.length} banners movidos a la papelera.`,
-    };
-  } catch (error: any) {
-    console.error("❌ Error en bulkDeleteBannersAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "Error al eliminar los banners seleccionados.",
-    };
-  }
-}
-
-// ============================================================================
-// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
-// ============================================================================
-export async function bulkPermanentlyDeleteBannersAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay banners seleccionados." };
-    }
-
-    // 1. Buscamos todas las imágenes del lote en un único query
-    const getQuery = "SELECT image_key FROM banners WHERE id = ANY($1)";
-    const result = await pool.query(getQuery, [ids]);
-
-    // 2. barremos los registros limpiando las imágenes almacenadas en S3
-    for (const row of result.rows) {
-      if (row.image_key) {
-        await deleteFileFromS3Action(row.image_key);
-      }
-    }
-
-    // 3. Remoción física de los registros correspondientes
-    const deleteQuery = "DELETE FROM banners WHERE id = ANY($1)";
-    await pool.query(deleteQuery, [ids]);
-
-    await logAudit(adminId, "BULK_HARD_DELETE", "banners", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Los banners seleccionados se eliminaron permanentemente.",
-    };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteBannersAction:",
-      error.message,
-    );
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudieron purgar los banners seleccionados.",
     };
   }
 }

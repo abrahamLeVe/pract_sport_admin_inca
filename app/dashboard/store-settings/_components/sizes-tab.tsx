@@ -6,8 +6,8 @@ import {
   updateMasterSizeAction,
 } from "@/app/actions/store-masters";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,7 +114,7 @@ export default function SizesTab({ data }: { data: EditSizeInput[] }) {
             >
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteActionItem
+            <TrashActionItem
               id={item.id}
               action={deleteMasterSizeAction}
               title="¿Eliminar Talla?"

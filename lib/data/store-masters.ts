@@ -21,7 +21,7 @@ export async function getMasterColorByIdAction(
 // 🔥 Alimenta la DataTable y los <select> de los formularios
 export async function getAllMasterColorsAction(): Promise<EditColorInput[]> {
   try {
-    const query = `SELECT id, name, hex_code FROM master_colors ORDER BY id DESC`;
+    const query = `SELECT id, name, hex_code FROM master_colors ORDER BY created_at DESC`;
     const result = await pool.query(query);
     return result.rows;
   } catch (error) {
@@ -53,7 +53,7 @@ export async function getAllMasterSizesAction(): Promise<EditSizeInput[]> {
     const query = `
       SELECT id, name, category 
       FROM master_sizes 
-      ORDER BY category ASC, name ASC
+      ORDER BY created_at DESC
     `;
     const result = await pool.query(query);
     return result.rows;

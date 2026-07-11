@@ -1,11 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { updateMediaOrderAction } from "@/app/actions/media/crud";
+import { permanentlyDeleteMediaAction } from "@/app/actions/media/trash";
 import { MediaWithLinkRow } from "@/validations/media";
-import {
-  permanentlyDeleteMediaAction,
-  updateMediaOrderAction,
-} from "@/app/actions/media/crud";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export function useMediaGallery(
   modelType: string,
@@ -39,8 +37,13 @@ export function useMediaGallery(
     e.preventDefault();
     if (!draggedId || draggedId === targetId) return;
 
-    const oldIndex = items.findIndex((i) => i.id === draggedId);
-    const newIndex = items.findIndex((i) => i.id === targetId);
+    // 🔥 CORRECCIÓN: Buscamos por link_id, no por id
+    const oldIndex = items.findIndex((i) => i.link_id === draggedId);
+    const newIndex = items.findIndex((i) => i.link_id === targetId);
+
+    // Candado de seguridad por si no los encuentra
+    if (oldIndex === -1 || newIndex === -1) return;
+
     const newItems = [...items];
     const [movedItem] = newItems.splice(oldIndex, 1);
     newItems.splice(newIndex, 0, movedItem);
@@ -56,21 +59,49 @@ export function useMediaGallery(
       id: i.link_id,
       display_order: i.display_order,
     }));
+
     const result = await updateMediaOrderAction(payload, modelType, modelId);
 
     if (!result.success) {
       toast.error(result.message);
-      setItems(initialMedia);
+      setItems(initialMedia); // Revertir si falla
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Eliminar este archivo permanentemente?")) return;
-    setIsDeleting(id);
-    const result = await permanentlyDeleteMediaAction(id, modelType, modelId);
-    if (result.success) toast.success(result.message);
-    else toast.error(result.message);
+  const handleDelete = async (linkId: number) => {
+    setIsDeleting(linkId);
+
+    // 1. Ejecutamos la eliminación
+    const result = await permanentlyDeleteMediaAction(
+      linkId,
+      modelType,
+      modelId,
+    );
+
+    if (result.success) {
+      // 2. Reordenamos visualmente
+      const remainingItems = items.filter((item) => item.link_id !== linkId);
+      const updatedItems = remainingItems.map((item, index) => ({
+        ...item,
+        display_order: index + 1,
+      }));
+
+      setItems(updatedItems);
+
+      // 3. Sincronizamos con el servidor
+      if (updatedItems.length > 0) {
+        const payload = updatedItems.map((i) => ({
+          id: i.link_id,
+          display_order: i.display_order,
+        }));
+        await updateMediaOrderAction(payload, modelType, modelId);
+      }
+    }
+
     setIsDeleting(null);
+
+    // 🔥 4. RETORNAMOS EL RESULTADO (TrashActionItem se encargará de mostrar el Toast)
+    return result;
   };
 
   return {

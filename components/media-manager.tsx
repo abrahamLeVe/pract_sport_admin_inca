@@ -1,30 +1,18 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
-import { toast } from "sonner";
-import {
-  Loader2,
-  Plus,
-  UploadCloud,
-  LinkIcon,
-  ImageIcon,
-  Grip,
-  Trash2,
-  Video,
-  FileVideo,
-  FileText,
-} from "lucide-react";
+import { addMediaAction } from "@/app/actions/media/crud";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -32,14 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import {
-  addMediaAction,
-  permanentlyDeleteMediaAction,
-} from "@/app/actions/media/crud";
 import { useMediaGallery, validateFile } from "@/hooks/use-media-gallery";
 import { MediaGalleryProps } from "@/validations/media";
-import { DeleteActionItem } from "./delete-action-item";
+import {
+  FileText,
+  Grip,
+  ImageIcon,
+  LinkIcon,
+  Loader2,
+  Plus,
+  UploadCloud,
+} from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { TrashActionItem } from "./trash-action-item";
 
 // Helper para videos de YouTube
 function getYouTubeEmbedUrl(url: string) {
@@ -71,6 +65,7 @@ export default function MediaManager({
     handleDrop,
     handleDelete,
   } = useMediaGallery(modelType, modelId, initialMedia);
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 B";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
@@ -367,6 +362,9 @@ export default function MediaManager({
                       <span className="uppercase">
                         {item.file_format?.split("/").pop()}
                       </span>
+                      <span className="uppercase">
+                        {item.alt_text || "Sin texto alternativo"}
+                      </span>
                     </div>
                   )}
 
@@ -374,14 +372,11 @@ export default function MediaManager({
                     <span className="text-[10px] text-muted-foreground">
                       #{item.display_order}
                     </span>
-                    <DeleteActionItem
+                    <TrashActionItem
                       id={item.link_id}
-                      action={permanentlyDeleteMediaAction}
-                      // Pasamos los argumentos extra que necesita la función en el mismo orden que los recibe
-                      actionArgs={[modelType, modelId]}
+                      action={handleDelete}
                       title="¿Eliminar archivo?"
                       description={`¿Seguro que deseas eliminar ${item.file_name || "este archivo"} permanentemente?`}
-                      // Mantener el estilo visual de solo icono transparente:
                       variant="ghost"
                       size="icon"
                     />

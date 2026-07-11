@@ -258,41 +258,6 @@ export async function deleteEventCategoryAction(id: number, event_id: number) {
 }
 
 // ============================================================================
-// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
-// ============================================================================
-export async function permanentlyDeleteEventCategoryAction(
-  id: number,
-  event_id: number,
-) {
-  const session = await requireAdminSession(); // 🔥 Capturamos la sesión
-  try {
-    const deleteQuery =
-      "DELETE FROM event_categories WHERE id = $1 AND event_id = $2";
-    await pool.query(deleteQuery, [id, event_id]);
-
-    // 🔥 Auditoría del borrado destructivo
-    await logAudit(session.user.id, "HARD_DELETE", "event_categories", id);
-
-    revalidatePath(`/dashboard/events/edit/${event_id}/categories`);
-    return { success: true, message: "Categoría eliminada definitivamente." };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en permanentlyDeleteEventCategoryAction:",
-      error.message,
-    );
-
-    if (error.code === "23503") {
-      return {
-        success: false,
-        message:
-          "No se puede eliminar. Ya existen atletas inscritos en esta categoría.",
-      };
-    }
-    return { success: false, message: "No se pudo purgar la categoría." };
-  }
-}
-
-// ============================================================================
 // 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
 // ============================================================================
 export async function bulkDeleteEventCategoriesAction(
@@ -335,51 +300,119 @@ export async function bulkDeleteEventCategoriesAction(
 }
 
 // ============================================================================
-// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
+// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete Protegido)
+// ============================================================================
+export async function permanentlyDeleteEventCategoryAction(
+  id: number,
+  event_id: number,
+) {
+  const session = await requireAdminSession();
+  const client = await pool.connect(); // 🔥 Usamos un cliente para la transacción
+
+  try {
+    await client.query("BEGIN");
+
+    // 🔥 CANDADO DE SEGURIDAD: Verificar si la categoría tiene atletas inscritos
+    const checkQuery =
+      "SELECT COUNT(*) FROM event_registrations WHERE category_id = $1";
+    const checkResult = await client.query(checkQuery, [id]);
+
+    if (parseInt(checkResult.rows[0].count) > 0) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message:
+          "No se puede eliminar. Ya existen atletas inscritos en esta categoría.",
+      };
+    }
+
+    // Procedemos a borrar si está vacía
+    const deleteQuery =
+      "DELETE FROM event_categories WHERE id = $1 AND event_id = $2";
+    await client.query(deleteQuery, [id, event_id]);
+
+    await client.query("COMMIT");
+
+    // Auditoría y revalidación (fuera de la transacción de BD)
+    await logAudit(session.user.id, "HARD_DELETE", "event_categories", id);
+    revalidatePath(`/dashboard/events/edit/${event_id}/categories`);
+
+    return { success: true, message: "Categoría eliminada definitivamente." };
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    console.error(
+      "❌ Error en permanentlyDeleteEventCategoryAction:",
+      error.message,
+    );
+    return { success: false, message: "No se pudo purgar la categoría." };
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================================
+// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete Protegido)
 // ============================================================================
 export async function bulkPermanentlyDeleteEventCategoriesAction(
   ids: number[],
   event_id: number,
 ) {
-  const session = await requireAdminSession(); // 🔥 Capturamos la sesión
+  const session = await requireAdminSession();
+
+  if (!ids || ids.length === 0) {
+    return { success: false, message: "No hay categorías seleccionadas." };
+  }
+
+  const client = await pool.connect();
+
   try {
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay categorías seleccionadas." };
-    }
+    await client.query("BEGIN");
 
-    const query =
-      "DELETE FROM event_categories WHERE id = ANY($1) AND event_id = $2";
-    await pool.query(query, [ids, event_id]);
+    // 🔥 CANDADO DE SEGURIDAD MASIVO: Verificar si ALGUNA categoría tiene atletas
+    const checkQuery =
+      "SELECT COUNT(*) FROM event_registrations WHERE category_id = ANY($1)";
+    const checkResult = await client.query(checkQuery, [ids]);
 
-    // 🔥 Auditoría del borrado masivo destructivo
-    await logAudit(
-      session.user.id,
-      "BULK_HARD_DELETE",
-      "event_categories",
-      ids.join(","),
-    );
-
-    revalidatePath(`/dashboard/events/edit/${event_id}/categories`);
-    return {
-      success: true,
-      message: "Las categorías seleccionadas se eliminaron permanentemente.",
-    };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteEventCategoriesAction:",
-      error.message,
-    );
-
-    if (error.code === "23503") {
+    if (parseInt(checkResult.rows[0].count) > 0) {
+      await client.query("ROLLBACK");
       return {
         success: false,
         message:
           "No se pueden eliminar. Algunas categorías seleccionadas tienen atletas inscritos.",
       };
     }
+
+    // Procedemos a borrar masivamente
+    const query =
+      "DELETE FROM event_categories WHERE id = ANY($1) AND event_id = $2";
+    await client.query(query, [ids, event_id]);
+
+    await client.query("COMMIT");
+
+    // Auditoría y revalidación
+    await logAudit(
+      session.user.id,
+      "BULK_HARD_DELETE",
+      "event_categories",
+      ids.join(","),
+    );
+    revalidatePath(`/dashboard/events/edit/${event_id}/categories`);
+
+    return {
+      success: true,
+      message: "Las categorías seleccionadas se eliminaron permanentemente.",
+    };
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    console.error(
+      "❌ Error en bulkPermanentlyDeleteEventCategoriesAction:",
+      error.message,
+    );
     return {
       success: false,
       message: "Error al purgar las categorías seleccionadas.",
     };
+  } finally {
+    client.release();
   }
 }

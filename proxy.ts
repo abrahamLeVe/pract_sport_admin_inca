@@ -6,11 +6,16 @@ export async function proxy(request: NextRequest) {
   const session = await auth();
   const { pathname } = request.nextUrl;
 
+  const isServerAction = request.headers.has("next-action");
+
   if (pathname.startsWith("/dashboard")) {
     if (!session) {
+      if (isServerAction) {
+        return NextResponse.next();
+      }
+
       const urlLogin = request.nextUrl.clone();
       urlLogin.pathname = "/";
-
       urlLogin.searchParams.set("error", "SessionExpired");
 
       return NextResponse.redirect(urlLogin);

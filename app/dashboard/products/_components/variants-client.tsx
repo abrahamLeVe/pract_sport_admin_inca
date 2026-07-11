@@ -5,8 +5,8 @@ import {
   toggleVariantStatusAction,
 } from "@/app/actions/variants";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { ToggleStatusActionItem } from "@/components/toggle-status-action-item";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,11 +150,11 @@ export function VariantsClient({
                   action={toggleVariantStatusAction}
                 />
 
-                <DeleteActionItem
+                <TrashActionItem
                   id={variant.id}
                   action={deleteVariantAction}
-                  title="¿Eliminar permanentemente?"
-                  description={`¿Seguro que deseas enviar la talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"} de forma permanente?`}
+                  title="¿Enviar a la papelera?"
+                  description={`¿Seguro que deseas enviar la talla ${variant.size_name || "Única"} - Color ${variant.color_name || "N/A"} a la papelera?`}
                   size="default"
                   showText={true}
                   buttonText="Eliminar"

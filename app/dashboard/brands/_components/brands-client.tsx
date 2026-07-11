@@ -1,9 +1,14 @@
 "use client";
 
-import { deleteBrandAction } from "@/app/actions/brands";
+import { deleteBrandAction } from "@/app/actions/brands/crud";
+// Asegúrate de tener estas acciones
+import {
+  permanentlyDeleteBrandAction,
+  restoreBrandAction,
+} from "@/app/actions/brands/trash";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,51 +21,99 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Brand } from "@/validations/brands";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  Image as ImageIcon,
+  MoreHorizontal,
+  RotateCcw,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+// Acción para el Catálogo Normal
 const ActionCell = ({ brand }: { brand: Brand }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Abrir menú</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-        <DropdownMenuItem
-          asChild
-          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
-        >
-          <Link
-            href={`/dashboard/brands/edit/${brand.id}`}
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/brands/edit/${brand.id}`}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4" /> Editar Marca
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={brand.id}
+            action={deleteBrandAction}
+            title="¿Enviar a papelera?"
+            description={`¿Seguro que deseas enviar la marca "${brand.name}" a la papelera?`}
+            size="default"
+            showText={true}
+            buttonText="Enviar a papelera"
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
+// 🔥 Nueva Acción para la Papelera
+const TrashActionCell = ({ brand }: { brand: Brand }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones Papelera</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link href={`/dashboard/brands/trash/${brand.id}`}>
+              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             className="cursor-pointer"
+            onClick={async () => {
+              await restoreBrandAction(brand.id);
+              setMenuOpen(false);
+            }}
           >
-            <Edit className="mr-2 h-4 w-4" /> Editar Marca
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
-        <DeleteActionItem
-          id={brand.id}
-          action={deleteBrandAction}
-          title="¿Enviar a papelera?"
-          description={`¿Seguro que deseas enviar la categoría "${brand.name}" a la papelera?`}
-          size="default"
-          showText={true}
-          buttonText="Enviar a papelera"
-          asMenuItem={true}
-          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <RotateCcw className="mr-2 h-4 w-4 text-green-600" /> Restaurar
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={brand.id}
+            action={permanentlyDeleteBrandAction}
+            title="¿Eliminar definitivamente?"
+            description={`¿Seguro? Esta acción borrará la marca "${brand.name}" y su logo de S3 permanentemente.`}
+            buttonText="Borrar permanentemente"
+            size="default"
+            showText={true}
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
 
@@ -115,18 +168,26 @@ export const columns: ColumnDef<Brand>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionCell brand={row.original} />, // 🔥 Usamos el nuevo componente
+    cell: ({ row }) => <ActionCell brand={row.original} />,
   },
 ];
 
 interface BrandsClientProps {
   data: Brand[];
+  isTrash?: boolean; // 🔥 Nueva propiedad
 }
 
-export function BrandsClient({ data }: BrandsClientProps) {
-  return (
-    <>
-      <DataTable columns={columns} data={data} searchKey="name" />
-    </>
-  );
+export function BrandsClient({ data, isTrash = false }: BrandsClientProps) {
+  // Reemplazamos la columna de acciones si estamos en modo papelera
+  const finalColumns = columns.map((col) => {
+    if (col.id === "actions" && isTrash) {
+      return {
+        ...col,
+        cell: ({ row }: any) => <TrashActionCell brand={row.original} />,
+      };
+    }
+    return col;
+  });
+
+  return <DataTable columns={finalColumns} data={data} searchKey="name" />;
 }

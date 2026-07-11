@@ -19,8 +19,8 @@ import { ActionState } from "@/validations/core";
 import { ProductInput, RegisterProductFormProps } from "@/validations/products";
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
-import { ImageGalleryUploader } from "./image-gallery-uploader";
 import { FormFeedback } from "@/components/form-feedback";
+import { MediaUploader, UploadItem } from "@/components/media-uploader";
 
 const INITIAL_STATE: ActionState<ProductInput> = {
   success: false,
@@ -32,28 +32,42 @@ const INITIAL_STATE: ActionState<ProductInput> = {
 export function RegisterProductForm({
   categories,
   brands,
+  genders,
 }: RegisterProductFormProps) {
   const [formState, formAction, isPending] = useActionState(
     actions.products.createProductAction,
     INITIAL_STATE,
   );
-
   const [name, setName] = useState(formState.data?.name ?? "");
   const [slug, setSlug] = useState(formState.data?.slug ?? "");
-  const [files, setFiles] = useState<File[]>([]);
   const [description, setDescription] = useState(
     formState.data?.description ?? "",
   );
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setName(newName);
-    setSlug(generateSlug(newName));
-  };
   const [trackStock, setTrackStock] = useState(
     formState.data?.track_stock !== false ? "true" : "false",
   );
+
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [coverItems, setCoverItems] = useState<UploadItem[]>([]);
+  const [galleryItems, setGalleryItems] = useState<UploadItem[]>([]);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    setSlug(generateSlug(e.target.value));
+  };
+
   const handleAction = (formData: FormData) => {
-    files.forEach((file) => formData.append("images", file));
+    // Portada
+    if (coverItems.length > 0 && coverItems[0].file) {
+      formData.append("image", coverItems[0].file);
+    }
+
+    // Galería: Solo enviamos archivos nuevos, no requerimos mapa de orden en creación porque todas son nuevas y su orden es su posición en el array
+    galleryItems.forEach((item) => {
+      if (item.file) formData.append("gallery_files", item.file);
+    });
+
     startTransition(() => formAction(formData));
   };
 
@@ -61,27 +75,25 @@ export function RegisterProductForm({
     <div className="max-w-3xl mx-auto">
       <Card>
         <CardContent>
-          <form action={handleAction} className="p-6 md:p-8">
+          <form action={handleAction} className="p-6 md:p-8" autoComplete="off">
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center mb-4">
                 <h1 className="text-2xl font-bold">Crear Producto</h1>
                 <p className="text-sm text-balance text-muted-foreground">
-                  Añade un nuevo producto a tu tienda y sube su galería de
-                  imágenes.
+                  Añade un nuevo producto a tu catálogo.
                 </p>
               </div>
 
               <div className="flex flex-col gap-6">
-                {/* Campo de Galería de Imágenes */}
                 <Field>
-                  <FieldLabel htmlFor="gallery-upload">
-                    Galería de Imágenes
-                  </FieldLabel>
-                  <ImageGalleryUploader
-                    onFilesChange={setFiles}
-                    htmlFor="gallery-upload"
+                  <MediaUploader
+                    id="cover-upload"
+                    label="Portada (Obligatorio)"
+                    description="Máx. 1MB. Formato recomendado .webp en dimensiones cuadradas (mínimo 800px x 800px)."
+                    maxFiles={1}
+                    onItemsChange={setCoverItems}
                   />
-                  <FormError error={formState.zodErrors?.images} />
+                  <FormError error={formState.zodErrors?.image} />
                 </Field>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -90,22 +102,18 @@ export function RegisterProductForm({
                     <Input
                       id="name"
                       name="name"
-                      placeholder="Ej. Zapatillas Nike Air Max"
                       value={name}
                       onChange={handleNameChange}
                       disabled={isPending}
-                      autoComplete="off"
                       required
                     />
                     <FormError error={formState.zodErrors?.name} />
                   </Field>
-
                   <Field>
-                    <FieldLabel htmlFor="slug">Slug (URL Amigable)</FieldLabel>
+                    <FieldLabel htmlFor="slug">Slug</FieldLabel>
                     <Input
                       id="slug"
                       name="slug"
-                      placeholder="Ej. zapatillas-nike-air-max"
                       value={slug}
                       onChange={(e) => setSlug(e.target.value)}
                       disabled={isPending}
@@ -119,15 +127,12 @@ export function RegisterProductForm({
                   <div className="text-sm font-medium leading-none mb-1">
                     Descripción del Producto
                   </div>
-
                   <input type="hidden" name="description" value={description} />
-
                   <RichTextEditor
                     value={description}
                     onChange={setDescription}
                     disabled={isPending}
                   />
-
                   <FormError error={formState.zodErrors?.description} />
                 </Field>
 
@@ -139,7 +144,6 @@ export function RegisterProductForm({
                       name="price"
                       type="number"
                       step="0.01"
-                      placeholder="Ej. 199.90"
                       defaultValue={formState.data?.price ?? ""}
                       disabled={isPending}
                       required
@@ -155,15 +159,13 @@ export function RegisterProductForm({
                       name="discount_price"
                       type="number"
                       step="0.01"
-                      placeholder="Ej. 149.90"
                       defaultValue={formState.data?.discount_price ?? ""}
                       disabled={isPending}
                     />
-                    <FormError error={formState.zodErrors?.discount_price} />
                   </Field>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field>
                     <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
                     <Select
@@ -175,7 +177,7 @@ export function RegisterProductForm({
                       required
                     >
                       <SelectTrigger id="category_id">
-                        <SelectValue placeholder="Seleccionar categoría..." />
+                        <SelectValue placeholder="Seleccionar..." />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((c) => (
@@ -185,7 +187,6 @@ export function RegisterProductForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormError error={formState.zodErrors?.category_id} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="brand_id">Marca</FieldLabel>
@@ -196,7 +197,7 @@ export function RegisterProductForm({
                       required
                     >
                       <SelectTrigger id="brand_id">
-                        <SelectValue placeholder="Seleccionar marca..." />
+                        <SelectValue placeholder="Seleccionar..." />
                       </SelectTrigger>
                       <SelectContent>
                         {brands.map((b) => (
@@ -206,9 +207,29 @@ export function RegisterProductForm({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormError error={formState.zodErrors?.brand_id} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="gender_id">Género</FieldLabel>
+                    <Select
+                      name="gender_id"
+                      defaultValue={formState.data?.gender_id?.toString() ?? ""}
+                      disabled={isPending}
+                      required
+                    >
+                      <SelectTrigger id="gender_id">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {genders.map((g) => (
+                          <SelectItem key={g.id} value={String(g.id)}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field>
                     <FieldLabel htmlFor="status">Estado Inicial</FieldLabel>
@@ -225,7 +246,6 @@ export function RegisterProductForm({
                         <SelectItem value="inactivo">Inactivo</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormError error={formState.zodErrors?.status} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="track_stock">
@@ -238,20 +258,16 @@ export function RegisterProductForm({
                       disabled={isPending}
                     >
                       <SelectTrigger id="track_stock">
-                        <SelectValue placeholder="¿Controlar stock?" />
+                        <SelectValue placeholder="¿Controlar?" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="true">
                           Sí, controlar unidades
                         </SelectItem>
-                        <SelectItem value="false">
-                          No, stock infinito / bajo demanda
-                        </SelectItem>
+                        <SelectItem value="false">No, infinito</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
-
-                  {/* 🔥 EL CAMPO STOCK SOLO APARECE SI trackStock ES "true" */}
                   {trackStock === "true" ? (
                     <Field>
                       <FieldLabel htmlFor="stock">Stock Inicial</FieldLabel>
@@ -259,18 +275,26 @@ export function RegisterProductForm({
                         id="stock"
                         name="stock"
                         type="number"
-                        placeholder="Ej. 50"
                         defaultValue={formState.data?.stock ?? ""}
                         disabled={isPending}
                         required
                       />
-                      <FormError error={formState.zodErrors?.stock} />
                     </Field>
                   ) : (
-                    /* Si es infinito, enviamos un input oculto con valor 0 para no romper la BD */
                     <input type="hidden" name="stock" value="0" />
                   )}
                 </div>
+
+                <Field>
+                  <MediaUploader
+                    id="gallery-upload"
+                    label="Galería del producto (Opcional)"
+                    description="Sube las imágenes o videos que necesites (hasta 20). El único límite es que juntos no deben superar los 10MB (máx. 1MB por archivo). Para una optimización ideal, se recomienda el formato .webp y dimensiones cuadradas (mínimo 800px x 800px)."
+                    maxFiles={20}
+                    accept="image/*,video/*"
+                    onItemsChange={setGalleryItems}
+                  />
+                </Field>
               </div>
 
               <Field className="pt-4 border-t mt-4">
@@ -291,7 +315,6 @@ export function RegisterProductForm({
                     {isPending ? "Guardando..." : "Crear Producto"}
                   </Button>
                 </div>
-
                 <FormFeedback formState={formState} />
               </Field>
             </FieldGroup>

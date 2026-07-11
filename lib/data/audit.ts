@@ -10,7 +10,9 @@ export async function logAudit(
     | "SOFT_DELETE"
     | "HARD_DELETE"
     | "BULK_SOFT_DELETE"
-    | "BULK_HARD_DELETE",
+    | "BULK_HARD_DELETE"
+    | "RESTORE"
+    | "BULK_RESTORE",
   tableName: string,
   recordId: string | number,
   oldData: any = null,

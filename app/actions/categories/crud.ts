@@ -14,7 +14,7 @@ import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action } from "./storage";
+import { deleteFileFromS3Action } from "../storage";
 const REVALIDATE_ROUTE = "/dashboard/categories";
 
 export async function createCategoryAction(
@@ -151,7 +151,7 @@ export async function updateCategoryAction(
     }
 
     const { id, name, slug, description, status } = validatedFields.data;
-
+    console.log("data ", validatedFields.data);
     const collisionCheck = await pool.query(
       "SELECT id, name, slug FROM categories WHERE (name ILIKE $1 OR slug = $2) AND id != $3",
       [name, slug, id],
@@ -298,135 +298,6 @@ export async function deleteCategoryAction(id: number) {
       message: error.message.includes("No autorizado")
         ? error.message
         : "No se pudo eliminar la categoría.",
-    };
-  }
-}
-
-// ============================================================================
-// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
-// ============================================================================
-export async function permanentlyDeleteCategoryAction(id: number) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    // 1. Recuperamos el image_key antes de destruir el registro físico
-    const getQuery = "SELECT image_key FROM categories WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const categoryRecord = result.rows[0];
-
-    if (!categoryRecord) {
-      return { success: false, message: "La categoría no existe." };
-    }
-
-    // 2. Borrado físico del archivo en AWS S3 usando tu lógica original
-    if (categoryRecord.image_key) {
-      await deleteFileFromS3Action(categoryRecord.image_key);
-    }
-
-    // 3. Borrado destructivo real de la base de datos
-    const deleteQuery = "DELETE FROM categories WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    await logAudit(adminId, "HARD_DELETE", "categories", id);
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Categoría eliminada definitivamente del sistema y de S3.",
-    };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en permanentlyDeleteCategoryAction:",
-      error.message,
-    );
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudo purgar la categoría (quizás tiene productos asociados activos).",
-    };
-  }
-}
-
-// ============================================================================
-// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADAS A LA PAPELERA (Bulk Soft Delete)
-// ============================================================================
-export async function bulkDeleteCategoriesAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay categorías seleccionadas." };
-    }
-
-    // Mandamos el lote a la papelera en una sola transacción rápida
-    const query = "UPDATE categories SET deleted_at = NOW() WHERE id = ANY($1)";
-    await pool.query(query, [ids]);
-
-    await logAudit(adminId, "BULK_SOFT_DELETE", "categories", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: `${ids.length} categorías movidas a la papelera.`,
-    };
-  } catch (error: any) {
-    console.error("❌ Error en bulkDeleteCategoriesAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "Error al eliminar las categorías seleccionadas.",
-    };
-  }
-}
-
-// ============================================================================
-// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADAS DEFINITIVAMENTE (Bulk Hard Delete)
-// ============================================================================
-export async function bulkPermanentlyDeleteCategoriesAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay categorías seleccionadas." };
-    }
-
-    // 1. Buscamos todas las imágenes del lote en paralelo
-    const getQuery = "SELECT image_key FROM categories WHERE id = ANY($1)";
-    const result = await pool.query(getQuery, [ids]);
-
-    // 2. Limpiamos AWS S3 iterando las claves devueltas
-    for (const row of result.rows) {
-      if (row.image_key) {
-        await deleteFileFromS3Action(row.image_key);
-      }
-    }
-
-    // 3. Remoción física de los registros correspondientes
-    const deleteQuery = "DELETE FROM categories WHERE id = ANY($1)";
-    await pool.query(deleteQuery, [ids]);
-
-    await logAudit(adminId, "BULK_HARD_DELETE", "categories", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Las categorías seleccionadas se eliminaron permanentemente.",
-    };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteCategoriesAction:",
-      error.message,
-    );
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudieron purgar las categorías seleccionadas (revisa dependencias de productos).",
     };
   }
 }

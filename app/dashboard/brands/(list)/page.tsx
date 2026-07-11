@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getBrands } from "@/lib/data/brands";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { BrandsClient } from "../_components/brands-client";
 
@@ -22,11 +22,18 @@ export default async function BrandsPage() {
     <div className="space-y-4 p-2 md:p-4">
       <div className="flex items-center justify-between space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Marcas</h1>
-        <Button asChild>
-          <Link href="/dashboard/brands/new">
-            <Plus className="mr-2 h-4 w-4" /> Nueva Marca
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="destructive" asChild>
+            <Link href="/dashboard/brands/trash">
+              <Trash2 className="mr-2 h-4 w-4" /> Papelera
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/brands/new">
+              <Plus className="mr-2 h-4 w-4" /> Nueva Marca
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

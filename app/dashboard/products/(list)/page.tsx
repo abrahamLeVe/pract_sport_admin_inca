@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getProducts } from "@/lib/data/products";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { ProductsClient } from "../_components/products-client";
 
@@ -24,13 +24,19 @@ export default async function ProductsPage() {
         <h1 className="text-2xl font-bold tracking-tight">
           Catálogo de Productos
         </h1>
-        <Button asChild>
-          <Link href="/dashboard/products/new">
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="destructive" asChild>
+            <Link href="/dashboard/products/trash">
+              <Trash2 className="mr-2 h-4 w-4" /> Papelera
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/products/new">
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
+            </Link>
+          </Button>
+        </div>
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Inventario Principal</CardTitle>

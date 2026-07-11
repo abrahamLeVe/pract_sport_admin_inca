@@ -6,8 +6,8 @@ import {
   updateMasterGenderAction,
 } from "@/app/actions/master-data";
 import { DataTable } from "@/components/data-table"; // 🔥 Nueva importación
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { FormError } from "@/components/form-error";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -90,7 +90,7 @@ export default function GendersTab({ data }: { data: EditGenderInput[] }) {
             >
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteActionItem
+            <TrashActionItem
               id={item.id}
               action={deleteMasterGenderAction}
               title="¿Eliminar Género?"

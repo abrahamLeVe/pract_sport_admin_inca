@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getBanners } from "@/lib/data/banners";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { BannersClient } from "../_components/banners-client";
 
@@ -24,11 +24,18 @@ export default async function BannersPage() {
         <h1 className="text-2xl font-bold tracking-tight">
           Banners Publicitarios
         </h1>
-        <Button asChild>
-          <Link href="/dashboard/banners/new">
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Banner
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="destructive" asChild>
+            <Link href="/dashboard/banners/trash">
+              <Trash2 className="mr-2 h-4 w-4" /> Papelera
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/banners/new">
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Banner
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

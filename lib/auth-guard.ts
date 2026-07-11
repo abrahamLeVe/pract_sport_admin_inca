@@ -1,17 +1,16 @@
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export async function requireAdminSession() {
   const session = await auth();
 
-  // 1. Validamos que exista una sesión activa
   if (!session || !session.user) {
-    throw new Error("No autorizado: Debes iniciar sesión.");
+    redirect("/?error=SessionExpired");
   }
 
-  // 2. Validamos que el rol tenga privilegios administrativos
   const userRole = session.user.role;
   if (userRole !== "SUPERADMIN" && userRole !== "ADMIN") {
-    throw new Error("No autorizado: Permisos administrativos insuficientes.");
+    redirect("/?error=Unauthorized");
   }
 
   return session;

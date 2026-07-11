@@ -1,10 +1,12 @@
 import { getBrands } from "@/lib/data/brands";
 import { getCategories } from "@/lib/data/categories";
 import { getProductByIdAction } from "@/lib/data/products";
+// 🔥 Importamos la función para traer los géneros (ajusta la ruta según tu proyecto)
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { EditProductForm } from "../../_components/edit-product-form";
 import { VariantsTable } from "../../_components/variants-table";
+import { getAllMasterGendersAction } from "@/lib/data/master-data";
+import { EditProductForm } from "../../_components/edit-product-form";
 
 interface PageProps {
   params: Promise<{
@@ -20,11 +22,14 @@ export default async function EditProductPage({ params }: PageProps) {
     redirect("/dashboard/products");
   }
 
-  const [product, categoriesResponse, brandsResponse] = await Promise.all([
-    getProductByIdAction(productId),
-    getCategories(),
-    getBrands(),
-  ]);
+  // 🔥 Agregamos getGenders al array de promesas concurrentes
+  const [product, categoriesResponse, brandsResponse, gendersResponse] =
+    await Promise.all([
+      getProductByIdAction(productId),
+      getCategories(),
+      getBrands(),
+      getAllMasterGendersAction(),
+    ]);
 
   if (!product) {
     redirect("/dashboard/products");
@@ -36,6 +41,7 @@ export default async function EditProductPage({ params }: PageProps) {
         initialData={product}
         categories={categoriesResponse}
         brands={brandsResponse}
+        genders={gendersResponse} // 🔥 Pasamos los géneros como prop
       />
 
       <Suspense

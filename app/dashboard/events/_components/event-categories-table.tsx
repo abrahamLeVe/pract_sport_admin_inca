@@ -6,7 +6,7 @@ import {
   updateEventCategoryAction,
 } from "@/app/actions/events/categories";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -159,7 +159,7 @@ export function EventCategoriesTable({
             <Button variant="ghost" size="icon" onClick={() => openDialog(cat)}>
               <Pencil className="w-4 h-4" />
             </Button>
-            <DeleteActionItem
+            <TrashActionItem
               id={cat.id}
               action={handleDeleteWrapper}
               disabled={cat.registered_count > 0}

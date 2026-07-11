@@ -1,9 +1,14 @@
 "use client";
 
 import { deleteEventAction } from "@/app/actions/events/crud";
+import {
+  permanentlyDeleteEventAction,
+  restoreEventAction,
+} from "@/app/actions/events/trash";
+
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,56 +24,128 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   Calendar,
   Edit,
+  Eye,
   Image as ImageIcon,
   MapPin,
   MoreHorizontal,
+  RotateCcw,
+  Users, // 🔥 Importamos el icono de usuarios
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+// ============================================================================
+// 1. MENÚ DE ACCIONES: CATÁLOGO ACTIVO
+// ============================================================================
 const ActionCell = ({ event }: { event: EventTableItem }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Abrir menú</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-        <DropdownMenuItem
-          asChild
-          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
-        >
-          <Link
-            href={`/dashboard/events/edit/${event.id}`}
-            className="cursor-pointer"
-          >
-            <Edit className="mr-2 h-4 w-4" /> Editar evento
-          </Link>
-        </DropdownMenuItem>
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Abrir menú</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
 
-        <DropdownMenuSeparator />
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/events/edit/${event.id}`}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4" /> Editar evento
+            </Link>
+          </DropdownMenuItem>
 
-        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
-        <DeleteActionItem
-          id={event.id}
-          action={deleteEventAction}
-          title="¿Enviar a papelera?"
-          description={`¿Seguro que deseas enviar la categoría "${event.title}" a la papelera?`}
-          size="default"
-          showText={true}
-          buttonText="Enviar a papelera"
-          asMenuItem={true}
-          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {/* 🔥 NUEVO BOTÓN: REDIRIGE A LA LISTA DE INSCRITOS */}
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/registrations?eventId=${event.id}`}
+              className="cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <Users className="mr-2 h-4 w-4" /> Ver participantes
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <TrashActionItem
+            id={event.id}
+            action={deleteEventAction}
+            title="¿Enviar a papelera?"
+            description={`¿Seguro que deseas enviar el evento "${event.title}" a la papelera?`}
+            size="default"
+            showText={true}
+            buttonText="Enviar a papelera"
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
+
+// ============================================================================
+// 2. MENÚ DE ACCIONES: PAPELERA (NUEVO)
+// ============================================================================
+const TrashActionCell = ({ event }: { event: EventTableItem }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Abrir menú</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones Papelera</DropdownMenuLabel>
+
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link href={`/dashboard/events/trash/${event.id}`}>
+              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onClick={async () => {
+              await restoreEventAction(event.id);
+              setMenuOpen(false);
+            }}
+          >
+            <RotateCcw className="mr-2 h-4 w-4 text-green-600" /> Restaurar
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <TrashActionItem
+            id={event.id}
+            action={permanentlyDeleteEventAction}
+            title="¿Eliminar definitivamente?"
+            description={`¿Seguro? Esta acción borrará el evento "${event.title}", su galería, categorías e inscripciones permanentemente.`}
+            buttonText="Borrar permanentemente"
+            size="default"
+            showText={true}
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
+// ============================================================================
+// 3. DEFINICIÓN DE COLUMNAS
+// ============================================================================
 export const columns: ColumnDef<EventTableItem>[] = [
   {
     accessorKey: "image_url",
@@ -134,7 +211,6 @@ export const columns: ColumnDef<EventTableItem>[] = [
     header: "Estado",
     cell: ({ row }) => {
       const isActive = row.original.is_active;
-      // Capitalizamos la primera letra del estado original (ej: "published" -> "Published")
       const statusText =
         row.original.status.charAt(0).toUpperCase() +
         row.original.status.slice(1);
@@ -154,18 +230,33 @@ export const columns: ColumnDef<EventTableItem>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionCell event={row.original} />, // 🔥 Usamos el nuevo componente
+    cell: ({ row }) => <ActionCell event={row.original} />,
   },
 ];
 
+// ============================================================================
+// 4. COMPONENTE PRINCIPAL (CLIENTE)
+// ============================================================================
 interface EventsClientProps {
   data: EventTableItem[];
+  isTrash?: boolean; // 🔥 Parámetro opcional para identificar la vista
 }
 
-export function EventsClient({ data }: EventsClientProps) {
+export function EventsClient({ data, isTrash = false }: EventsClientProps) {
+  // 🔥 Interceptamos las columnas para reemplazar la celda de acciones si es la papelera
+  const finalColumns = columns.map((col) => {
+    if (col.id === "actions" && isTrash) {
+      return {
+        ...col,
+        cell: ({ row }: any) => <TrashActionCell event={row.original} />,
+      };
+    }
+    return col;
+  });
+
   return (
     <>
-      <DataTable columns={columns} data={data} searchKey="title" />
+      <DataTable columns={finalColumns} data={data} searchKey="title" />
     </>
   );
 }

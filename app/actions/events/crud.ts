@@ -16,9 +16,7 @@ import { redirect } from "next/navigation";
 import z from "zod";
 import { deleteFileFromS3Action } from "../storage";
 const REVALIDATE_ROUTE = "/dashboard/events";
-// ============================================================================
-// 1. CREATE EVENT
-// ============================================================================
+
 export async function createEventAction(
   prevState: ActionState<EventInput>,
   formData: FormData,
@@ -401,7 +399,7 @@ export async function toggleEventStatusAction(
 }
 
 // ============================================================================
-// 1. ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete)
+// ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete)
 // ============================================================================
 export async function deleteEventAction(id: number) {
   try {
@@ -412,6 +410,21 @@ export async function deleteEventAction(id: number) {
     try {
       await client.query("BEGIN");
 
+      // 🔥 NUEVO CANDADO: Evitar mandar a la papelera si tiene inscritos
+      const registrationsCheck = await client.query(
+        "SELECT COUNT(*) FROM event_registrations WHERE event_id = $1",
+        [id],
+      );
+
+      if (parseInt(registrationsCheck.rows[0].count) > 0) {
+        await client.query("ROLLBACK");
+        return {
+          success: false,
+          message:
+            "No se puede enviar a la papelera. Este evento tiene atletas inscritos. Cambia su estado a 'Finalizado' en su lugar.",
+        };
+      }
+
       // 1. Soft delete del evento
       await client.query("UPDATE events SET deleted_at = NOW() WHERE id = $1", [
         id,
@@ -419,7 +432,9 @@ export async function deleteEventAction(id: number) {
 
       await client.query("COMMIT");
       await logAudit(adminId, "SOFT_DELETE", "events", id);
-      revalidatePath(REVALIDATE_ROUTE);
+
+      // Asegúrate de importar o tener definida REVALIDATE_ROUTE
+      revalidatePath("/dashboard/events");
 
       return { success: true, message: "Evento movido a la papelera." };
     } catch (e) {
@@ -431,190 +446,5 @@ export async function deleteEventAction(id: number) {
   } catch (error: any) {
     console.error("❌ Error en deleteEventAction:", error.message);
     return { success: false, message: "No se pudo eliminar el evento." };
-  }
-}
-
-// ============================================================================
-// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
-// ============================================================================
-export async function permanentlyDeleteEventAction(id: number) {
-  try {
-    const session = await requireAdminSession();
-    const client = await pool.connect();
-
-    try {
-      await client.query("BEGIN");
-
-      // 1. Identificar qué archivos están vinculados a este evento
-      const mediaList = await client.query(
-        "SELECT media_id FROM media_links WHERE model_type = 'event' AND model_id = $1",
-        [id],
-      );
-
-      // 2. Eliminar los vínculos
-      await client.query(
-        "DELETE FROM media_links WHERE model_type = 'event' AND model_id = $1",
-        [id],
-      );
-
-      // 3. Para cada archivo, verificar si todavía se usa en otro lado
-      for (const row of mediaList.rows) {
-        const checkLinks = await client.query(
-          "SELECT COUNT(*) FROM media_links WHERE media_id = $1",
-          [row.media_id],
-        );
-
-        // Si nadie más lo usa, borramos el registro y el archivo de S3
-        if (parseInt(checkLinks.rows[0].count) === 0) {
-          const mediaFile = await client.query(
-            "SELECT media_key FROM media WHERE id = $1",
-            [row.media_id],
-          );
-          if (mediaFile.rows[0]?.media_key) {
-            await deleteFileFromS3Action(mediaFile.rows[0].media_key);
-          }
-          await client.query("DELETE FROM media WHERE id = $1", [row.media_id]);
-        }
-      }
-
-      // 4. Borrar el evento
-      await client.query("DELETE FROM events WHERE id = $1", [id]);
-
-      await client.query("COMMIT");
-      await logAudit(session.user.id, "HARD_DELETE", "events", id);
-      revalidatePath(REVALIDATE_ROUTE);
-
-      return {
-        success: true,
-        message: "Evento y archivos no compartidos eliminados.",
-      };
-    } catch (e) {
-      await client.query("ROLLBACK");
-      throw e;
-    } finally {
-      client.release();
-    }
-  } catch (error: any) {
-    console.error("❌ Error en hardDelete:", error.message);
-    return { success: false, message: "No se pudo purgar el evento." };
-  }
-}
-
-// ============================================================================
-// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
-// ============================================================================
-export async function bulkDeleteEventsAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0)
-      return { success: false, message: "No hay eventos seleccionados." };
-
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      // 1. Actualizamos eventos
-      await client.query(
-        "UPDATE events SET deleted_at = NOW() WHERE id = ANY($1)",
-        [ids],
-      );
-
-      // 2. Actualizamos media_links (El nuevo estándar)
-      await client.query(
-        "UPDATE media_links SET deleted_at = NOW() WHERE model_type = 'event' AND model_id = ANY($1)",
-        [ids],
-      );
-
-      await client.query("COMMIT");
-      await logAudit(adminId, "BULK_SOFT_DELETE", "events", ids.join(","));
-      revalidatePath(REVALIDATE_ROUTE);
-
-      return {
-        success: true,
-        message: `${ids.length} eventos y sus archivos movidos a la papelera.`,
-      };
-    } catch (e) {
-      await client.query("ROLLBACK");
-      throw e;
-    } finally {
-      client.release();
-    }
-  } catch (error: any) {
-    console.error("❌ Error en bulkDeleteEventsAction:", error.message);
-    return { success: false, message: "Error al eliminar los eventos." };
-  }
-}
-
-// ============================================================================
-// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
-// ============================================================================
-export async function bulkPermanentlyDeleteEventsAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const client = await pool.connect();
-
-    try {
-      await client.query("BEGIN");
-
-      // 1. Obtener los media_ids de los archivos asociados a estos eventos
-      const mediaList = await client.query(
-        "SELECT DISTINCT media_id FROM media_links WHERE model_type = 'event' AND model_id = ANY($1)",
-        [ids],
-      );
-
-      // 2. Borrar primero los vínculos
-      await client.query(
-        "DELETE FROM media_links WHERE model_type = 'event' AND model_id = ANY($1)",
-        [ids],
-      );
-
-      // 3. Garbage Collector: Limpieza de archivos S3 y tabla 'media'
-      for (const row of mediaList.rows) {
-        // Verificar si el archivo tiene otros links activos
-        const check = await client.query(
-          "SELECT COUNT(*) FROM media_links WHERE media_id = $1",
-          [row.media_id],
-        );
-
-        if (parseInt(check.rows[0].count) === 0) {
-          // Nadie más lo usa, procedemos a borrar archivo físico y registro
-          const mediaFile = await client.query(
-            "SELECT media_key FROM media WHERE id = $1",
-            [row.media_id],
-          );
-          if (mediaFile.rows[0]?.media_key) {
-            await deleteFileFromS3Action(mediaFile.rows[0].media_key);
-          }
-          await client.query("DELETE FROM media WHERE id = $1", [row.media_id]);
-        }
-      }
-
-      // 4. Borrar los eventos
-      await client.query("DELETE FROM events WHERE id = ANY($1)", [ids]);
-
-      await client.query("COMMIT");
-      await logAudit(
-        session.user.id,
-        "BULK_HARD_DELETE",
-        "events",
-        ids.join(","),
-      );
-      revalidatePath(REVALIDATE_ROUTE);
-
-      return { success: true, message: "Eventos y archivos eliminados." };
-    } catch (e) {
-      await client.query("ROLLBACK");
-      throw e;
-    } finally {
-      client.release();
-    }
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteEventsAction:",
-      error.message,
-    );
-    return { success: false, message: "Error al purgar." };
   }
 }

@@ -1,9 +1,13 @@
 "use client";
 
-import { deleteBannerAction } from "@/app/actions/banners";
+import { deleteBannerAction } from "@/app/actions/banners/crud";
+import {
+  permanentlyDeleteBannerAction,
+  restoreBannerAction,
+} from "@/app/actions/banners/trash"; // Asegúrate de tener estas acciones
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item"; // Asumiendo que usarás tu componente de borrado
 import { ImageModal } from "@/components/image-modal";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,51 +20,99 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Banner } from "@/validations/banners";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  Image as ImageIcon,
+  MoreHorizontal,
+  RotateCcw,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+// Acción para Catálogo Normal
 const ActionCell = ({ banner }: { banner: Banner }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Abrir menú</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-        <DropdownMenuItem
-          asChild
-          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
-        >
-          <Link
-            href={`/dashboard/banners/edit/${banner.id}`}
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/banners/edit/${banner.id}`}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4" /> Editar Banner
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={banner.id}
+            action={deleteBannerAction}
+            title="¿Enviar a papelera?"
+            description={`¿Seguro que deseas enviar el banner "${banner.title}" a la papelera?`}
+            buttonText="Enviar a papelera"
+            size="default"
+            showText={true}
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
+// 🔥 Nueva Acción para la Papelera
+const TrashActionCell = ({ banner }: { banner: Banner }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones Papelera</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link href={`/dashboard/banners/trash/${banner.id}`}>
+              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             className="cursor-pointer"
+            onClick={async () => {
+              await restoreBannerAction(banner.id);
+              setMenuOpen(false);
+            }}
           >
-            <Edit className="mr-2 h-4 w-4" /> Editar Banner
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
-        <DeleteActionItem
-          id={banner.id}
-          action={deleteBannerAction}
-          title="¿Enviar a papelera?"
-          description={`¿Seguro que deseas enviar la categoría "${banner.title}" a la papelera?`}
-          size="default"
-          showText={true}
-          buttonText="Enviar a papelera"
-          asMenuItem={true}
-          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <RotateCcw className="mr-2 h-4 w-4 text-green-600" /> Restaurar
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={banner.id}
+            action={permanentlyDeleteBannerAction}
+            title="¿Eliminar definitivamente?"
+            description={`¿Seguro? Esta acción borrará el banner "${banner.title}" y su imagen de S3 permanentemente.`}
+            buttonText="Borrar permanentemente"
+            size="default"
+            showText={true}
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
 
@@ -98,9 +150,7 @@ export const columns: ColumnDef<Banner>[] = [
       return (
         <Badge
           variant={isActive ? "default" : "secondary"}
-          className={
-            isActive ? "bg-green-500 hover:bg-green-600 text-white" : ""
-          }
+          className={isActive ? "bg-green-500 text-white" : ""}
         >
           {isActive ? "Activo" : "Inactivo"}
         </Badge>
@@ -110,20 +160,28 @@ export const columns: ColumnDef<Banner>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionCell banner={row.original} />, // 🔥 Usamos el nuevo componente
+    cell: ({ row }) => <ActionCell banner={row.original} />,
   },
 ];
 
-// 2. El componente que junta todo
 interface BannersClientProps {
   data: Banner[];
+  isTrash?: boolean;
 }
 
-export function BannersClient({ data }: BannersClientProps) {
-  return (
-    <>
-      {/* Activamos el buscador apuntando a la columna "title" */}
-      <DataTable columns={columns} data={data} searchKey="title" />
-    </>
-  );
+export function BannersClient({ data, isTrash = false }: BannersClientProps) {
+  const columnsWithActions = [...columns];
+
+  // Si estamos en papelera, reemplazamos la celda de acciones
+  const finalColumns = columnsWithActions.map((col) => {
+    if (col.id === "actions" && isTrash) {
+      return {
+        ...col,
+        cell: ({ row }: any) => <TrashActionCell banner={row.original} />,
+      };
+    }
+    return col;
+  });
+
+  return <DataTable columns={finalColumns} data={data} searchKey="title" />;
 }

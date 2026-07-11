@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { handleMediaUpload } from "@/lib/upload";
 import {
@@ -13,8 +14,7 @@ import { ActionState } from "@/validations/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import z from "zod";
-import { deleteFileFromS3Action } from "./storage";
-import { logAudit } from "@/lib/data/audit";
+import { deleteFileFromS3Action } from "../storage";
 
 const REVALIDATE_ROUTE = "/dashboard/brands";
 
@@ -330,132 +330,6 @@ export async function deleteBrandAction(id: number) {
       message: error.message.includes("No autorizado")
         ? error.message
         : "No se pudo eliminar la marca.",
-    };
-  }
-}
-
-// ============================================================================
-// 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
-// ============================================================================
-export async function permanentlyDeleteBrandAction(id: number) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    // 1. Recuperamos el image_key del logo antes de destruir el registro
-    const getQuery = "SELECT image_key FROM brands WHERE id = $1";
-    const result = await pool.query(getQuery, [id]);
-    const brandRecord = result.rows[0];
-
-    if (!brandRecord) {
-      return { success: false, message: "La marca no existe." };
-    }
-
-    // 2. Borrado físico del logotipo en AWS S3 para liberar almacenamiento
-    if (brandRecord.image_key) {
-      await deleteFileFromS3Action(brandRecord.image_key);
-    }
-
-    // 3. Borrado destructivo real de la base de datos
-    const deleteQuery = "DELETE FROM brands WHERE id = $1";
-    await pool.query(deleteQuery, [id]);
-
-    await logAudit(adminId, "HARD_DELETE", "brands", id);
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Marca eliminada definitivamente del sistema y de S3.",
-    };
-  } catch (error: any) {
-    console.error("❌ Error en permanentlyDeleteBrandAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudo purgar la marca.",
-    };
-  }
-}
-
-// ============================================================================
-// 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
-// ============================================================================
-export async function bulkDeleteBrandsAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay marcas seleccionadas." };
-    }
-
-    // Mandamos el lote completo a la papelera con la directiva ANY
-    const query = "UPDATE brands SET deleted_at = NOW() WHERE id = ANY($1)";
-    await pool.query(query, [ids]);
-
-    await logAudit(adminId, "BULK_SOFT_DELETE", "brands", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: `${ids.length} marcas movidas a la papelera.`,
-    };
-  } catch (error: any) {
-    console.error("❌ Error en bulkDeleteBrandsAction:", error.message);
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "Error al eliminar las marcas seleccionadas.",
-    };
-  }
-}
-
-// ============================================================================
-// 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
-// ============================================================================
-export async function bulkPermanentlyDeleteBrandsAction(ids: number[]) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
-    if (!ids || ids.length === 0) {
-      return { success: false, message: "No hay marcas seleccionadas." };
-    }
-
-    // 1. Buscamos todas las imágenes del lote en un solo query
-    const getQuery = "SELECT image_key FROM brands WHERE id = ANY($1)";
-    const result = await pool.query(getQuery, [ids]);
-
-    // 2. Limpiamos AWS S3 iterando los keys devueltos
-    for (const row of result.rows) {
-      if (row.image_key) {
-        await deleteFileFromS3Action(row.image_key);
-      }
-    }
-
-    // 3. Remoción final de los registros físicos
-    const deleteQuery = "DELETE FROM brands WHERE id = ANY($1)";
-    await pool.query(deleteQuery, [ids]);
-
-    await logAudit(adminId, "BULK_HARD_DELETE", "brands", ids.join(","));
-
-    revalidatePath(REVALIDATE_ROUTE);
-    return {
-      success: true,
-      message: "Las marcas seleccionadas se eliminaron permanentemente.",
-    };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteBrandsAction:",
-      error.message,
-    );
-    return {
-      success: false,
-      message: error.message.includes("No autorizado")
-        ? error.message
-        : "No se pudieron purgar las marcas seleccionadas.",
     };
   }
 }

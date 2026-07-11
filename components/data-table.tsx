@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,7 +12,16 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import * as React from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,14 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Label } from "./ui/label";
 
 // 1. Interfaces genéricas (Aceptan cualquier tipo de dato, como Order, Product, etc.)
@@ -37,12 +37,17 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string; // Clave opcional para habilitar la barra de búsqueda
+  renderSelectionActions?: (
+    selectedIds: any[],
+    clearSelection: () => void,
+  ) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
+  renderSelectionActions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -72,6 +77,14 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  // 🔥 2. EXTRAER IDs SELECCIONADOS
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  // Asumimos que todos tus datos tienen una columna "id"
+  const selectedIds = selectedRows.map((row) => (row.original as any).id);
+
+  // Función para desmarcar todos los checkboxes
+  const clearSelection = () => table.toggleAllPageRowsSelected(false);
+
   return (
     <div className="space-y-4">
       {/* ================= BARRA SUPERIOR (Búsqueda y Filtros) ================= */}
@@ -92,6 +105,12 @@ export function DataTable<TData, TValue>({
           />
         ) : (
           <div /> // Espaciador si no hay búsqueda
+        )}
+
+        {selectedIds.length > 0 && renderSelectionActions && (
+          <div className="flex items-center gap-2 ml-4">
+            {renderSelectionActions(selectedIds, clearSelection)}
+          </div>
         )}
 
         <DropdownMenu>
@@ -128,8 +147,8 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* ================= TABLA DE DATOS ================= */}
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border w-full">
+        <Table className="w-full">
           <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

@@ -308,6 +308,7 @@ export async function permanentlyDeleteVariantAction(id: number) {
     await logAudit(session.user.id, "HARD_DELETE", "product_variants", id);
 
     revalidatePath(`/dashboard/products/edit/${productId}`);
+    revalidatePath(`/dashboard/products/trash/${productId}`);
     return { success: true, message: "Variante eliminada definitivamente." };
   } catch (error: any) {
     console.error("❌ Error en permanentlyDeleteVariantAction:", error.message);

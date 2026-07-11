@@ -26,11 +26,19 @@ export const productSchema = z
       .int()
       .nonnegative("El stock no puede ser negativo.")
       .default(0),
+
+    // 🔥 Nuevas Relaciones Actualizadas
     category_id: z.coerce.number().int().min(1, "Selecciona una categoría."),
     brand_id: z.coerce.number().int().min(1, "Selecciona una marca."),
+    gender_id: z.coerce.number().int().min(1, "Selecciona un género."),
+
     status: z.enum(["activo", "inactivo"]).default("activo"),
 
-    images: z.any().optional().nullable(),
+    // 🔥 Separación de Multimedia
+    image: z.any().optional().nullable(), // Portada principal (image_url)
+    images: z.any().optional().nullable(), // Galería secundaria (media_links)
+    image_url: z.string().optional().nullable(),
+    image_key: z.string().optional().nullable(),
   })
   .refine(
     (data) => {
@@ -61,6 +69,7 @@ export type EditProductInput = z.infer<typeof editProductSchema>;
 export interface RegisterProductFormProps {
   categories: { id: number; name: string }[];
   brands: { id: number; name: string }[];
+  genders: { id: number; name: string }[]; // 🔥 Agregado para el select de géneros
 }
 
 export interface EditProductFormProps extends RegisterProductFormProps {
@@ -78,16 +87,27 @@ export interface ProductTableItem {
   discount_price: number | null;
   stock: number;
   status: string;
-  images: { url: string; key: string }[] | null;
   track_stock: boolean;
+
+  // 🔥 Reemplazamos el JSON viejo por los nuevos campos de Portada
+  image_url: string | null;
+  image_key: string | null;
+
   // Campos cruzados (JOINs)
   category_name: string | null;
   brand_name: string | null;
+  gender_name: string | null; // 🔥 Para mostrar "Hombre/Mujer" en la tabla
 
   created_at: Date;
 
-  // 🔥 Campos virtuales para la DataTable
+  // Campos virtuales para la DataTable
   is_active?: boolean;
   main_image?: string | null;
-  has_variants?: string | null;
+  has_variants?: string | null | boolean;
+}
+
+export interface TrashedProductDetail extends ProductTableItem {
+  deleted_by_name: string | null;
+  deleted_at_audit: Date;
+  description: string | null;
 }

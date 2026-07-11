@@ -4,19 +4,20 @@ import {
   deleteBannerAction,
   toggleBannerStatusAction,
   updateBannerAction,
-} from "./banners";
+} from "./banners/crud";
 import {
   createBrandAction,
   deleteBrandAction,
   toggleBrandStatusAction,
   updateBrandAction,
-} from "./brands";
+} from "./brands/crud";
 import {
   createCategoryAction,
   deleteCategoryAction,
   toggleCategoryStatusAction,
   updateCategoryAction,
-} from "./categories";
+} from "./categories/crud";
+
 import {
   createEventAction,
   deleteEventAction,
@@ -29,7 +30,8 @@ import {
   deleteProductAction,
   toggleProductStatusAction,
   updateProductAction,
-} from "./products";
+} from "./products/crud";
+
 import { updateProfileAction } from "./profile";
 import { updateRegistrationStatusAction } from "./registrations";
 import { updateClubSettingsAction } from "./settings";

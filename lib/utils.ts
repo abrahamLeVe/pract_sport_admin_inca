@@ -71,3 +71,14 @@ export const formatDateDisplay = (
 
   return date.toLocaleDateString("es-PE", options);
 };
+
+export const getCleanFileNameFromUrl = (url: string) => {
+  try {
+    let fileName = url.split("/").pop()?.split("?")[0] || "Imagen";
+    // Elimina la serie de números al inicio (ej. "1783561870549-")
+    fileName = fileName.replace(/^\d+-/, "");
+    return fileName;
+  } catch {
+    return "Imagen";
+  }
+};

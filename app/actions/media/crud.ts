@@ -1,15 +1,14 @@
 "use server";
 
 import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { handleMediaUpload } from "@/lib/upload";
 import { ActionState } from "@/validations/core";
+import { MediaInput, mediaSchema } from "@/validations/media";
 import { revalidatePath } from "next/cache";
-import { logAudit } from "@/lib/data/audit";
-import z from "zod";
-import { mediaSchema, MediaInput } from "@/validations/media";
-import { deleteFileFromS3Action } from "../storage";
 import sharp from "sharp";
+import z from "zod";
 
 export async function addMediaAction(
   prevState: ActionState<MediaInput>,
@@ -171,122 +170,6 @@ export async function addMediaAction(
   }
 }
 
-// 1. MOVER A LA PAPELERA (Soft Delete de la Media)
-export async function deleteMediaAction(
-  id: number,
-  modelType: string,
-  modelId: number,
-): Promise<ActionState> {
-  const session = await requireAdminSession();
-  try {
-    await pool.query(
-      "UPDATE media SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
-      [id],
-    );
-
-    await logAudit(session.user.id, "SOFT_DELETE", "media", id);
-
-    revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
-    return { success: true, message: "Archivo movido a la papelera." };
-  } catch (error: any) {
-    console.error("❌ Error en deleteMediaAction:", error.message);
-    return { success: false, message: "Error al mover a la papelera." };
-  }
-}
-
-// 2. ELIMINAR DEFINITIVAMENTE (Hard Delete)
-export async function permanentlyDeleteMediaAction(
-  id: number,
-  modelType?: string,
-  modelId?: number,
-): Promise<ActionState> {
-  const session = await requireAdminSession();
-  try {
-    // Obtenemos el key para limpiar S3
-    const { rows } = await pool.query(
-      "SELECT media_key FROM media WHERE id = $1",
-      [id],
-    );
-
-    if (rows[0]?.media_key) {
-      await deleteFileFromS3Action(rows[0].media_key);
-    }
-
-    // Al borrar de 'media', el ON DELETE CASCADE borrará automáticamente el registro en 'media_links'
-    await pool.query("DELETE FROM media WHERE id = $1", [id]);
-
-    await logAudit(session.user.id, "HARD_DELETE", "media", id);
-
-    revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
-    return { success: true, message: "Archivo eliminado permanentemente." };
-  } catch (error: any) {
-    console.error("❌ Error en permanentlyDeleteMediaAction:", error.message);
-    return { success: false, message: "Error al eliminar permanentemente." };
-  }
-}
-
-// 3. BULK SOFT DELETE
-export async function bulkDeleteMediaAction(
-  ids: number[],
-  modelType: string,
-  modelId: number,
-): Promise<ActionState> {
-  const session = await requireAdminSession();
-  if (!ids?.length)
-    return { success: false, message: "No hay elementos seleccionados." };
-
-  try {
-    await pool.query("UPDATE media SET deleted_at = NOW() WHERE id = ANY($1)", [
-      ids,
-    ]);
-
-    await logAudit(session.user.id, "BULK_SOFT_DELETE", "media", ids.join(","));
-
-    revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
-    return {
-      success: true,
-      message: `${ids.length} archivos movidos a la papelera.`,
-    };
-  } catch (error: any) {
-    console.error("❌ Error en bulkDeleteMediaAction:", error.message);
-    return { success: false, message: "Error al procesar la solicitud." };
-  }
-}
-
-// 4. BULK HARD DELETE
-export async function bulkPermanentlyDeleteMediaAction(
-  ids: number[],
-  modelType: string,
-  modelId: number,
-): Promise<ActionState> {
-  const session = await requireAdminSession();
-  if (!ids?.length)
-    return { success: false, message: "No hay elementos seleccionados." };
-
-  try {
-    // Limpieza S3
-    const { rows } = await pool.query(
-      "SELECT media_key FROM media WHERE id = ANY($1) AND media_key IS NOT NULL",
-      [ids],
-    );
-    for (const row of rows) await deleteFileFromS3Action(row.media_key);
-
-    // Borrado SQL (El CASCADE hace el resto)
-    await pool.query("DELETE FROM media WHERE id = ANY($1)", [ids]);
-
-    await logAudit(session.user.id, "BULK_HARD_DELETE", "media", ids.join(","));
-
-    revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
-    return { success: true, message: "Elementos purgados correctamente." };
-  } catch (error: any) {
-    console.error(
-      "❌ Error en bulkPermanentlyDeleteMediaAction:",
-      error.message,
-    );
-    return { success: false, message: "Error al purgar los elementos." };
-  }
-}
-
 export async function updateMediaOrderAction(
   updates: { id: number; display_order: number }[], // Aquí 'id' es el link_id (PK de media_links)
   modelType: string,
@@ -318,5 +201,43 @@ export async function updateMediaOrderAction(
     return { success: false, message: "Error al guardar el nuevo orden." };
   } finally {
     if (client) client.release();
+  }
+}
+
+// 1. MOVER A LA PAPELERA (Soft Delete de la Media)
+export async function deleteMediaAction(
+  linkId: number, // Este es el ID de media_links que viene del frontend
+  modelType: string,
+  modelId: number,
+): Promise<ActionState> {
+  const session = await requireAdminSession();
+  try {
+    // 🔥 Buscamos el verdadero media_id usando la tabla pivote y lo actualizamos
+    const result = await pool.query(
+      `UPDATE media 
+       SET deleted_at = NOW() 
+       WHERE id = (SELECT media_id FROM media_links WHERE id = $1) 
+       AND deleted_at IS NULL
+       RETURNING id`,
+      [linkId],
+    );
+
+    if (result.rowCount === 0) {
+      return {
+        success: false,
+        message: "El archivo no se encontró o ya estaba en la papelera.",
+      };
+    }
+
+    const realMediaId = result.rows[0].id;
+
+    // 🔥 Guardamos en la auditoría el ID real del archivo
+    await logAudit(session.user.id, "SOFT_DELETE", "media", realMediaId);
+
+    revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
+    return { success: true, message: "Archivo movido a la papelera." };
+  } catch (error: any) {
+    console.error("❌ Error en deleteMediaAction:", error.message);
+    return { success: false, message: "Error al mover a la papelera." };
   }
 }

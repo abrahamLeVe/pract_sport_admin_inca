@@ -1,11 +1,18 @@
 "use client";
 
-import { deleteProductAction } from "@/app/actions/products";
+import { deleteProductAction } from "@/app/actions/products/crud";
+import {
+  bulkDeleteProductsAction,
+  bulkRestoreProductsAction,
+  permanentlyDeleteProductAction,
+  restoreProductAction,
+} from "@/app/actions/products/trash";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox"; // 🔥 IMPORTAMOS EL CHECKBOX
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +24,19 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { ProductTableItem } from "@/validations/products";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Image as ImageIcon, MoreHorizontal, Tags } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  Image as ImageIcon,
+  MoreHorizontal,
+  RotateCcw,
+  Tags,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
-import { useState } from "react"; // 🔥 Asegúrate de importar useState
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
-// 🔥 1. CREAMOS EL COMPONENTE ACTION CELL PARA CONTROLAR EL ESTADO
 const ActionCell = ({ product }: { product: ProductTableItem }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -56,8 +71,7 @@ const ActionCell = ({ product }: { product: ProductTableItem }) => {
 
           <DropdownMenuSeparator />
 
-          {/* 🔥 2. PASAMOS LA PROPIEDAD onSuccess AL DELETE */}
-          <DeleteActionItem
+          <TrashActionItem
             id={product.id}
             action={deleteProductAction}
             title="¿Enviar a papelera?"
@@ -66,7 +80,54 @@ const ActionCell = ({ product }: { product: ProductTableItem }) => {
             showText={true}
             buttonText="Enviar a papelera"
             asMenuItem={true}
-            onSuccess={() => setMenuOpen(false)} // ESTA ES LA MAGIA
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
+const TrashActionCell = ({ product }: { product: ProductTableItem }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones Papelera</DropdownMenuLabel>
+
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link href={`/dashboard/products/trash/${product.id}`}>
+              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={async () => {
+              await restoreProductAction(product.id);
+              setMenuOpen(false);
+            }}
+          >
+            <RotateCcw className="mr-2 h-4 w-4 text-green-600" /> Restaurar
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <TrashActionItem
+            id={product.id}
+            action={permanentlyDeleteProductAction}
+            title="¿Eliminar definitivamente?"
+            description={`¿Seguro? Esta acción borrará a "${product.name}" y sus imágenes de S3 para siempre.`}
+            buttonText="Borrar permanentemente"
+            asMenuItem={true}
+            showText={true}
+            onSuccess={() => setMenuOpen(false)}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -75,6 +136,31 @@ const ActionCell = ({ product }: { product: ProductTableItem }) => {
 };
 
 export const columns: ColumnDef<ProductTableItem>[] = [
+  // 🔥 1. NUEVA COLUMNA DE SELECCIÓN (CHECKBOXES)
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Seleccionar todos"
+        className="translate-y-[2px]"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Seleccionar fila"
+        className="translate-y-[2px]"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "main_image",
     header: "Producto",
@@ -101,9 +187,11 @@ export const columns: ColumnDef<ProductTableItem>[] = [
         <span className="font-medium truncate" title={row.original.name}>
           {row.original.name}
         </span>
+        {/* 🔥 2. AGREGAMOS EL GÉNERO AQUÍ */}
         <span className="text-xs text-muted-foreground">
           {row.original.category_name || "Sin categoría"} •{" "}
-          {row.original.brand_name || "Sin marca"}
+          {row.original.brand_name || "Sin marca"} •{" "}
+          {row.original.gender_name || "Unisex"}
         </span>
       </div>
     ),
@@ -183,19 +271,93 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionCell product={row.original} />, // 🔥 3. LLAMAMOS AL NUEVO COMPONENTE AQUÍ
+    cell: ({ row }) => <ActionCell product={row.original} />,
   },
 ];
 
 interface ProductsClientProps {
   data: ProductTableItem[];
+  isTrash?: boolean;
 }
 
-export function ProductsClient({ data }: ProductsClientProps) {
+export function ProductsClient({ data, isTrash = false }: ProductsClientProps) {
+  const [isPending, startTransition] = useTransition();
+  const columnsWithActions = [...columns];
+
+  const finalColumns = columnsWithActions.map((col) => {
+    if (col.id === "actions" && isTrash) {
+      return {
+        ...col,
+        cell: ({ row }: any) => <TrashActionCell product={row.original} />,
+      };
+    }
+    return col;
+  });
+
+  // 🔥 LÓGICA DE PAPELERA (Soft Delete Masivo)
+  const handleBulkTrash = (ids: number[], clearSelection: () => void) => {
+    startTransition(async () => {
+      const result = await bulkDeleteProductsAction(ids);
+      if (result.success) {
+        toast.success(result.message);
+        clearSelection(); // Limpia los checkboxes al terminar
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
+
+  // 🔥 LÓGICA DE RESTAURAR (Masivo)
+  const handleBulkRestore = (ids: number[], clearSelection: () => void) => {
+    startTransition(async () => {
+      const result = await bulkRestoreProductsAction(ids);
+      if (result.success) {
+        toast.success(result.message);
+        clearSelection();
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
+
   return (
-    <>
-      {/* Buscador inteligente apuntando al nombre del producto */}
-      <DataTable columns={columns} data={data} searchKey="name" />
-    </>
+    <DataTable
+      columns={finalColumns}
+      data={data}
+      searchKey="name"
+      // 🔥 LE INYECTAMOS LAS ACCIONES MASIVAS AL DATATABLE
+      renderSelectionActions={(selectedIds, clearSelection) => {
+        // Si estamos en la vista de papelera, mostramos "Restaurar"
+        if (isTrash) {
+          return (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={() => handleBulkRestore(selectedIds, clearSelection)}
+              className="text-green-600 border-green-600 hover:bg-green-50 dark:text-green-500 dark:border-green-500 dark:hover:bg-green-500/10 hover:text-green-600"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {isPending ? "Procesando..." : `Restaurar ${selectedIds.length}`}
+            </Button>
+          );
+        }
+
+        // Si estamos en la vista normal, mostramos "Enviar a papelera"
+        return (
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={isPending}
+            onClick={() => handleBulkTrash(selectedIds, clearSelection)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isPending
+              ? "Moviendo..."
+              : `Enviar ${selectedIds.length} a papelera`}
+          </Button>
+        );
+      }}
+    />
   );
 }

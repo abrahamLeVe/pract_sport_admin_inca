@@ -1,9 +1,13 @@
 "use client";
 
-import { deleteCategoryAction } from "@/app/actions/categories";
+import { deleteCategoryAction } from "@/app/actions/categories/crud";
+import {
+  permanentlyDeleteCategoryAction,
+  restoreCategoryAction,
+} from "@/app/actions/categories/trash";
 import { DataTable } from "@/components/data-table";
-import { DeleteActionItem } from "@/components/delete-action-item";
 import { ImageModal } from "@/components/image-modal";
+import { TrashActionItem } from "@/components/trash-action-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,51 +20,99 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Category } from "@/validations/categories";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Image as ImageIcon, MoreHorizontal } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  Image as ImageIcon,
+  MoreHorizontal,
+  RotateCcw,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+// Acción para el Catálogo Normal
 const ActionCell = ({ category }: { category: Category }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Abrir menú</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-        <DropdownMenuItem
-          asChild
-          onClick={() => setMenuOpen(false)} // Aquí sí funciona porque navegamos a otra vista
-        >
-          <Link
-            href={`/dashboard/categories/edit/${category.id}`}
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link
+              href={`/dashboard/categories/edit/${category.id}`}
+              className="cursor-pointer"
+            >
+              <Edit className="mr-2 h-4 w-4" /> Editar Categoría
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={category.id}
+            action={deleteCategoryAction}
+            title="¿Enviar a papelera?"
+            description={`¿Seguro que deseas enviar la categoría "${category.name}" a la papelera?`}
+            size="default"
+            showText={true}
+            buttonText="Enviar a papelera"
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
+
+// Acción para la Papelera
+const TrashActionCell = ({ category }: { category: Category }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Acciones Papelera</DropdownMenuLabel>
+          <DropdownMenuItem asChild onClick={() => setMenuOpen(false)}>
+            <Link href={`/dashboard/categories/trash/${category.id}`}>
+              <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
             className="cursor-pointer"
+            onClick={async () => {
+              await restoreCategoryAction(category.id);
+              setMenuOpen(false);
+            }}
           >
-            <Edit className="mr-2 h-4 w-4" /> Editar Categoría
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* 🔥 ELIMINAMOS EL DIV Y PASAMOS EL ON_SUCCESS */}
-        <DeleteActionItem
-          id={category.id}
-          action={deleteCategoryAction}
-          title="¿Enviar a papelera?"
-          description={`¿Seguro que deseas enviar la categoría "${category.name}" a la papelera?`}
-          size="default"
-          showText={true}
-          buttonText="Enviar a papelera"
-          asMenuItem={true}
-          onSuccess={() => setMenuOpen(false)} // 🔥 Se cierra mágicamente en el momento exacto
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <RotateCcw className="mr-2 h-4 w-4 text-green-600" /> Restaurar
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <TrashActionItem
+            id={category.id}
+            action={permanentlyDeleteCategoryAction}
+            title="¿Eliminar definitivamente?"
+            description={`¿Seguro? Esta acción borrará la categoría "${category.name}" y su imagen de S3 permanentemente.`}
+            buttonText="Borrar permanentemente"
+            size="default"
+            showText={true}
+            asMenuItem={true}
+            onSuccess={() => setMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
 
@@ -74,7 +126,7 @@ export const columns: ColumnDef<Category>[] = [
         <ImageModal
           imageUrl={imageUrl}
           altText={row.original.name}
-          thumbnailClassName="h-12 w-12"
+          thumbnailClassName="h-12 w-12 bg-white"
         />
       ) : (
         <div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted">
@@ -115,18 +167,29 @@ export const columns: ColumnDef<Category>[] = [
   {
     id: "actions",
     header: () => <div className="text-center">Acciones</div>,
-    cell: ({ row }) => <ActionCell category={row.original} />, // 🔥 Usamos el nuevo componente
+    cell: ({ row }) => <ActionCell category={row.original} />,
   },
 ];
 
 interface CategoriesClientProps {
   data: Category[];
+  isTrash?: boolean;
 }
 
-export function CategoriesClient({ data }: CategoriesClientProps) {
-  return (
-    <>
-      <DataTable columns={columns} data={data} searchKey="name" />
-    </>
-  );
+export function CategoriesClient({
+  data,
+  isTrash = false,
+}: CategoriesClientProps) {
+  // Reemplazamos la columna de acciones si estamos en modo papelera
+  const finalColumns = columns.map((col) => {
+    if (col.id === "actions" && isTrash) {
+      return {
+        ...col,
+        cell: ({ row }: any) => <TrashActionCell category={row.original} />,
+      };
+    }
+    return col;
+  });
+
+  return <DataTable columns={finalColumns} data={data} searchKey="name" />;
 }

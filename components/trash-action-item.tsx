@@ -17,48 +17,51 @@ import { Loader2, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-interface DeleteActionItemProps {
+interface TrashActionItemProps {
   id: number;
   action: (id: number, ...args: any[]) => Promise<ActionState<any>>;
   actionArgs?: any[];
   title?: string;
   description?: string;
-  variant?: "ghost" | "destructive" | "outline";
+  variant?: "ghost" | "destructive" | "outline" | "default" | "secondary";
+  confirmVariant?: "destructive" | "default"; // 🔥 Nuevo: Color del botón de confirmación
   size?: "default" | "sm" | "icon";
   showText?: boolean;
   disabled?: boolean;
   buttonText?: string;
   asMenuItem?: boolean;
-  onSuccess?: () => void; // 🔥 1. Agregamos esta propiedad
+  onSuccess?: () => void;
+  icon?: React.ReactNode; // 🔥 Nuevo: Icono opcional
 }
 
-export function DeleteActionItem({
+export function TrashActionItem({
   id,
   action,
   actionArgs = [],
   title = "¿Estás seguro?",
-  description = "Esta acción no se puede deshacer. Se eliminará permanentemente.",
+  description = "Esta acción no se puede deshacer.",
   variant = "destructive",
+  confirmVariant = "destructive", // Por defecto rojo
   size = "icon",
   showText = false,
   disabled = false,
   buttonText = "Eliminar",
   asMenuItem = false,
-  onSuccess, // 🔥 2. La recibimos aquí
-}: DeleteActionItemProps) {
+  onSuccess,
+  icon = <Trash2 className="h-4 w-4" />, // Por defecto basura
+}: TrashActionItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const handleDelete = () => {
+  const handleAction = () => {
     startTransition(async () => {
       const res = await action(id, ...actionArgs);
 
       if (res.success) {
         toast.success(res.message);
         setIsOpen(false);
-        if (onSuccess) onSuccess(); // 🔥 3. Le avisamos a la tabla que ya terminamos para que cierre el menú
+        if (onSuccess) onSuccess();
       } else {
-        toast.error(res.message || "Error al eliminar");
+        toast.error(res.message || "Error al realizar la acción");
       }
     });
   };
@@ -69,13 +72,15 @@ export function DeleteActionItem({
         {asMenuItem ? (
           <DropdownMenuItem
             onSelect={(e) => {
-              e.preventDefault(); // Mantiene el menú abierto temporalmente para que el Modal pueda existir
+              e.preventDefault();
               setIsOpen(true);
             }}
             disabled={disabled || isPending}
-            className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer w-full"
+            // Cambia el color del texto si es destructivo o no
+            className={`cursor-pointer w-full ${variant === "destructive" ? "text-destructive focus:bg-destructive/10 focus:text-destructive" : ""}`}
           >
-            <Trash2 className={`h-4 w-4 ${showText ? "mr-2" : ""}`} />
+            {/* Si el icono es un componente, pasamos el className. Si es un elemento, lo clonamos */}
+            {icon && <span className={showText ? "mr-2" : ""}>{icon}</span>}
             {showText && buttonText}
           </DropdownMenuItem>
         ) : (
@@ -83,13 +88,9 @@ export function DeleteActionItem({
             variant={variant}
             size={size}
             disabled={disabled || isPending}
-            className={
-              variant === "ghost"
-                ? "text-destructive hover:bg-destructive/10"
-                : ""
-            }
+            title={buttonText}
           >
-            <Trash2 className={`h-4 w-4 ${showText ? "mr-2" : ""}`} />
+            {icon && <span className={showText ? "mr-2" : ""}>{icon}</span>}
             {showText && buttonText}
           </Button>
         )}
@@ -102,8 +103,8 @@ export function DeleteActionItem({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
           <Button
-            variant="destructive"
-            onClick={handleDelete}
+            variant={confirmVariant} // 🔥 Usamos la variante flexible
+            onClick={handleAction}
             disabled={isPending}
           >
             {isPending ? (
