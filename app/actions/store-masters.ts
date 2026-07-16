@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit"; // 🔥 Importamos logAudit
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
 import {
@@ -12,11 +13,11 @@ import {
   editSizeSchema,
   SizeInput,
   sizeSchema,
-} from "@/validations/variants"; // Ajusta la ruta a tu archivo
+} from "@/validations/variants";
 import { revalidatePath } from "next/cache";
 import z from "zod";
 
-const REVALIDATE_ROUTE = "/dashboard/store-settings"; // Ajusta a la ruta donde muestres estas tablas
+const REVALIDATE_ROUTE = "/dashboard/store-settings";
 
 // ============================================================================
 // 1. ACCIONES PARA COLORES (Master Colors)
@@ -26,7 +27,7 @@ export async function createMasterColorAction(
   prevState: ActionState<ColorInput>,
   formData: FormData,
 ): Promise<ActionState<ColorInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     name: formData.get("name")?.toString().trim() || "",
@@ -63,10 +64,22 @@ export async function createMasterColorAction(
 
     const finalHex = hex_code ? hex_code : null;
 
-    await pool.query(
-      "INSERT INTO master_colors (name, hex_code) VALUES ($1, $2)",
+    // 🔥 Añadimos RETURNING id
+    const result = await pool.query(
+      "INSERT INTO master_colors (name, hex_code) VALUES ($1, $2) RETURNING id",
       [name, finalHex],
     );
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_colors",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
 
     return { success: true, message: "Color creado correctamente." };
@@ -84,7 +97,7 @@ export async function updateMasterColorAction(
   prevState: ActionState<EditColorInput>,
   formData: FormData,
 ): Promise<ActionState<EditColorInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     id: Number(formData.get("id") || ""),
@@ -120,12 +133,33 @@ export async function updateMasterColorAction(
       };
     }
 
+    // 🔥 PASO 1: Captura de Foto
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_colors WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "El color no existe.", data: fields };
+    }
+    const oldData = oldRecord.rows[0];
+
     const finalHex = hex_code ? hex_code : null;
 
     await pool.query(
       "UPDATE master_colors SET name = $1, hex_code = $2 WHERE id = $3",
       [name, finalHex, id],
     );
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_colors",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
 
     return { success: true, message: "Color actualizado." };
@@ -136,9 +170,30 @@ export async function updateMasterColorAction(
 }
 
 export async function deleteMasterColorAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Captura de Foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_colors WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "El color no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_colors WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_colors",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Color eliminado." };
   } catch (error: any) {
@@ -159,7 +214,7 @@ export async function createMasterSizeAction(
   prevState: ActionState<SizeInput>,
   formData: FormData,
 ): Promise<ActionState<SizeInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     name: formData.get("name")?.toString().trim() || "",
@@ -196,10 +251,22 @@ export async function createMasterSizeAction(
 
     const finalCategory = category ? category : null;
 
-    await pool.query(
-      "INSERT INTO master_sizes (name, category) VALUES ($1, $2)",
+    // 🔥 Añadimos RETURNING id
+    const result = await pool.query(
+      "INSERT INTO master_sizes (name, category) VALUES ($1, $2) RETURNING id",
       [name, finalCategory],
     );
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_sizes",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
 
     return { success: true, message: "Talla creada correctamente." };
@@ -217,7 +284,7 @@ export async function updateMasterSizeAction(
   prevState: ActionState<EditSizeInput>,
   formData: FormData,
 ): Promise<ActionState<EditSizeInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     id: Number(formData.get("id") || ""),
@@ -253,12 +320,33 @@ export async function updateMasterSizeAction(
       };
     }
 
+    // 🔥 PASO 1: Captura de Foto
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_sizes WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "La talla no existe.", data: fields };
+    }
+    const oldData = oldRecord.rows[0];
+
     const finalCategory = category ? category : null;
 
     await pool.query(
       "UPDATE master_sizes SET name = $1, category = $2 WHERE id = $3",
       [name, finalCategory, id],
     );
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_sizes",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
 
     return { success: true, message: "Talla actualizada." };
@@ -269,9 +357,30 @@ export async function updateMasterSizeAction(
 }
 
 export async function deleteMasterSizeAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Captura de Foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_sizes WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "La talla no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_sizes WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_sizes",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Talla eliminada." };
   } catch (error: any) {

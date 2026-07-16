@@ -193,6 +193,15 @@ export async function updateMediaOrderAction(
     }
 
     await client.query("COMMIT");
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "media_links",
+      modelId,
+      null,
+      { model_type: modelType, new_order: updates }, // 🔥 new_data: cómo quedó el orden
+    );
     revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
     return { success: true, message: "Orden actualizado." };
   } catch (error: any) {
@@ -231,8 +240,15 @@ export async function deleteMediaAction(
 
     const realMediaId = result.rows[0].id;
 
-    // 🔥 Guardamos en la auditoría el ID real del archivo
-    await logAudit(session.user.id, "SOFT_DELETE", "media", realMediaId);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "SOFT_DELETE",
+      "media",
+      realMediaId,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
     return { success: true, message: "Archivo movido a la papelera." };

@@ -21,7 +21,16 @@ export async function restoreCategoryAction(
     await pool.query("UPDATE categories SET deleted_at = NULL WHERE id = $1", [
       id,
     ]);
-    await logAudit(session.user.id, "RESTORE", "categories", id);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "RESTORE",
+      "categories",
+      id,
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/categories");
     revalidatePath(TRASH_ROUTE);
@@ -43,11 +52,15 @@ export async function bulkRestoreCategoriesAction(
       "UPDATE categories SET deleted_at = NULL WHERE id = ANY($1)",
       [ids],
     );
+
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_RESTORE",
       "categories",
       ids.join(","),
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
     );
 
     revalidatePath("/dashboard/categories");
@@ -67,14 +80,16 @@ export async function permanentlyDeleteCategoryAction(
   const session = await requireAdminSession();
   const client = await pool.connect();
   try {
+    // 🔥 PASO 1: SELECT * para capturar toda la evidencia antes de borrar
     const { rows } = await client.query(
-      "SELECT image_key FROM categories WHERE id = $1",
+      "SELECT * FROM categories WHERE id = $1",
       [id],
     );
     if (rows.length === 0)
       return { success: false, message: "La categoría no existe." };
 
-    const { image_key } = rows[0];
+    const oldData = rows[0]; // 📸 Foto de cómo era la categoría
+    const { image_key } = oldData;
 
     await client.query("BEGIN"); // Inicio de transacción
 
@@ -89,7 +104,16 @@ export async function permanentlyDeleteCategoryAction(
 
     // 3. Borramos el registro
     await client.query("DELETE FROM categories WHERE id = $1", [id]);
-    await logAudit(session.user.id, "HARD_DELETE", "categories", id);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "categories",
+      id,
+      oldData, // 🔥 old_data: Toda la información de la categoría destruida
+      null, // 🔥 new_data: null (ya no existe)
+    );
 
     await client.query("COMMIT"); // Confirmar
     revalidatePath(TRASH_ROUTE);
@@ -121,11 +145,15 @@ export async function bulkDeleteCategoriesAction(
       "UPDATE categories SET deleted_at = NOW() WHERE id = ANY($1)",
       [ids],
     );
+
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_SOFT_DELETE",
       "categories",
       ids.join(","),
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
     );
 
     revalidatePath("/dashboard/categories");
@@ -151,10 +179,12 @@ export async function bulkPermanentlyDeleteCategoriesAction(
 
   const client = await pool.connect();
   try {
+    // 🔥 PASO 1: SELECT * para capturar todas las categorías completas
     const { rows } = await client.query(
-      "SELECT image_key FROM categories WHERE id = ANY($1)",
+      "SELECT * FROM categories WHERE id = ANY($1)",
       [ids],
     );
+    const oldDataArray = rows; // 📸 Foto grupal de las categorías a borrar
 
     await client.query("BEGIN"); // Inicio de transacción
 
@@ -171,11 +201,15 @@ export async function bulkPermanentlyDeleteCategoriesAction(
 
     // 3. Borrado masivo
     await client.query("DELETE FROM categories WHERE id = ANY($1)", [ids]);
+
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "categories",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todas las categorías
+      null, // 🔥 new_data: null
     );
 
     await client.query("COMMIT"); // Confirmar

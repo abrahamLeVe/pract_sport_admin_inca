@@ -107,8 +107,8 @@ export async function createBrandAction(
       "CREATE",
       "brands",
       result.rows[0].id,
-      null,
-      validatedFields.data,
+      null, // 🔥 old_data: null
+      validatedFields.data, // 🔥 new_data: los datos creados
     );
 
     revalidatePath(REVALIDATE_ROUTE);
@@ -192,7 +192,8 @@ export async function updateBrandAction(
       };
     }
 
-    const oldImageKey = checkResult.rows[0].image_key;
+    const oldData = checkResult.rows[0]; // 📸 Foto de cómo estaba la marca
+    const oldImageKey = oldData.image_key;
 
     // ========================================================================
     // PASO 2: PROCESAR LA IMAGEN EN S3
@@ -248,8 +249,8 @@ export async function updateBrandAction(
       "UPDATE",
       "brands",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data: La foto completa de antes
+      validatedFields.data, // 🔥 new_data: Los datos nuevos
     );
 
     revalidatePath(REVALIDATE_ROUTE);
@@ -288,9 +289,14 @@ export async function toggleBrandStatusAction(
     }
 
     // 📋 AUDITORÍA
-    await logAudit(session.user.id, "UPDATE", "brands", id, null, {
-      status: nextStatus,
-    });
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "brands",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -316,7 +322,15 @@ export async function deleteBrandAction(id: number) {
       "UPDATE brands SET deleted_at = NOW() WHERE id = $1";
     await pool.query(softDeleteQuery, [id]);
 
-    await logAudit(adminId, "SOFT_DELETE", "brands", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "SOFT_DELETE",
+      "brands",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {

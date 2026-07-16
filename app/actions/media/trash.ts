@@ -14,9 +14,9 @@ export async function permanentlyDeleteMediaAction(
 ): Promise<ActionState> {
   const session = await requireAdminSession();
   try {
-    // 🔥 1. Buscamos el archivo en 'media' a través de su 'media_links'
+    // 🔥 1. Buscamos el archivo y capturamos toda su data
     const { rows } = await pool.query(
-      `SELECT m.id AS media_id, m.media_key 
+      `SELECT m.*, m.id AS media_id 
        FROM media m
        JOIN media_links ml ON m.id = ml.media_id
        WHERE ml.id = $1`,
@@ -41,7 +41,15 @@ export async function permanentlyDeleteMediaAction(
     // (Gracias a tu ON DELETE CASCADE, esto borrará también el 'media_links' automáticamente)
     await pool.query("DELETE FROM media WHERE id = $1", [media_id]);
 
-    await logAudit(session.user.id, "HARD_DELETE", "media", media_id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "media",
+      media_id,
+      rows[0], // 🔥 old_data: Toda la evidencia del archivo
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
     return { success: true, message: "Archivo eliminado permanentemente." };
@@ -72,7 +80,15 @@ export async function bulkDeleteMediaAction(
       [ids],
     );
 
-    await logAudit(session.user.id, "BULK_SOFT_DELETE", "media", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_SOFT_DELETE",
+      "media",
+      ids.join(","),
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
     return {
@@ -97,8 +113,9 @@ export async function bulkPermanentlyDeleteMediaAction(
 
   try {
     // 🔥 1. Obtenemos los verdaderos media_id y media_key a través de un JOIN masivo
+    // 🔥 1. Obtenemos toda la data de los archivos a borrar
     const { rows } = await pool.query(
-      `SELECT m.id AS media_id, m.media_key 
+      `SELECT m.*, m.id AS media_id 
        FROM media m
        JOIN media_links ml ON m.id = ml.media_id
        WHERE ml.id = ANY($1)`,
@@ -122,7 +139,15 @@ export async function bulkPermanentlyDeleteMediaAction(
     // 🔥 3. Borrado SQL usando los IDs reales (El ON DELETE CASCADE limpiará los links)
     await pool.query("DELETE FROM media WHERE id = ANY($1)", [trueMediaIds]);
 
-    await logAudit(session.user.id, "BULK_HARD_DELETE", "media", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_HARD_DELETE",
+      "media",
+      ids.join(","),
+      rows, // 🔥 old_data: Array con toda la info de los archivos borrados
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath(`/dashboard/${modelType}s/edit/${modelId}`);
     return { success: true, message: "Elementos purgados correctamente." };

@@ -30,7 +30,15 @@ export async function restoreProductAction(
       [id],
     );
 
-    await logAudit(session.user.id, "RESTORE", "products", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "RESTORE",
+      "products",
+      id,
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     await client.query("COMMIT");
 
@@ -72,7 +80,15 @@ export async function bulkRestoreProductsAction(
       [ids],
     );
 
-    await logAudit(session.user.id, "BULK_RESTORE", "products", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_RESTORE",
+      "products",
+      ids.join(","),
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     await client.query("COMMIT");
 
@@ -114,11 +130,14 @@ export async function bulkDeleteProductsAction(
       [ids],
     );
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_SOFT_DELETE",
       "products",
       ids.join(","),
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
     );
 
     await client.query("COMMIT");
@@ -160,7 +179,7 @@ export async function permanentlyDeleteProductAction(
     }
 
     const { rows } = await client.query(
-      "SELECT image_key FROM products WHERE id = $1",
+      "SELECT * FROM products WHERE id = $1",
       [id],
     );
     if (rows.length === 0) {
@@ -168,7 +187,8 @@ export async function permanentlyDeleteProductAction(
       return { success: false, message: "El producto no existe." };
     }
 
-    const mainImageKey = rows[0]?.image_key;
+    const oldData = rows[0]; // 📸 Foto de cómo era el producto
+    const mainImageKey = oldData?.image_key;
 
     // Obtener e iterar la galería vinculada
     const mediaList = await client.query(
@@ -205,7 +225,15 @@ export async function permanentlyDeleteProductAction(
     ]);
     await client.query("DELETE FROM products WHERE id = $1", [id]);
 
-    await logAudit(session.user.id, "HARD_DELETE", "products", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "products",
+      id,
+      oldData, // 🔥 old_data: Toda la información del producto destruido
+      null, // 🔥 new_data: null (ya no existe)
+    );
     await client.query("COMMIT");
 
     revalidatePath(TRASH_ROUTE);
@@ -245,11 +273,12 @@ export async function bulkPermanentlyDeleteProductsAction(
       };
     }
 
-    // 1. Obtener Portadas
+    // 🔥 1. Obtener todos los datos de los productos a borrar
     const productsList = await client.query(
-      "SELECT image_key FROM products WHERE id = ANY($1)",
+      "SELECT * FROM products WHERE id = ANY($1)",
       [ids],
     );
+    const oldDataArray = productsList.rows; // 📸 Foto grupal
 
     // 2. Galería Polimórfica
     const mediaList = await client.query(
@@ -289,11 +318,14 @@ export async function bulkPermanentlyDeleteProductsAction(
     );
     await client.query("DELETE FROM products WHERE id = ANY($1)", [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "products",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todos los productos
+      null, // 🔥 new_data: null
     );
     await client.query("COMMIT");
 

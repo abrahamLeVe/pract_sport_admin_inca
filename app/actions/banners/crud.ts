@@ -103,8 +103,8 @@ export async function createBannerAction(
       "CREATE",
       "banners",
       result.rows[0].id,
-      null,
-      validatedFields.data,
+      null, // 🔥 old_data
+      validatedFields.data, // 🔥 new_data
     );
 
     revalidatePath(REVALIDATE_ROUTE);
@@ -177,7 +177,8 @@ export async function updateBannerAction(
         message: "Banner no encontrado o eliminado.",
         data: fields,
       };
-    const oldImageKey = checkResult.rows[0].image_key;
+    const oldData = checkResult.rows[0]; // 📸 Capturamos cómo estaba antes
+    const oldImageKey = oldData.image_key; // Sacamos la llave de la imagen
 
     // ========================================================================
     // PASO 2: PROCESAR LA IMAGEN EN S3 (Solo llega aquí si el banner es válido)
@@ -261,8 +262,8 @@ export async function updateBannerAction(
       "UPDATE",
       "banners",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data
+      validatedFields.data, // 🔥 new_data
     );
     revalidatePath(REVALIDATE_ROUTE);
     revalidatePath(`${REVALIDATE_ROUTE}/${id}`);
@@ -299,9 +300,14 @@ export async function toggleBannerStatusAction(
     }
 
     // 📋 AUDITORÍA
-    await logAudit(session.user.id, "UPDATE", "banners", id, null, {
-      status: nextStatus,
-    });
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "banners",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -327,7 +333,15 @@ export async function deleteBannerAction(id: number) {
       "UPDATE banners SET deleted_at = NOW() WHERE id = $1";
     await pool.query(softDeleteQuery, [id]);
 
-    await logAudit(adminId, "SOFT_DELETE", "banners", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "SOFT_DELETE",
+      "banners",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {

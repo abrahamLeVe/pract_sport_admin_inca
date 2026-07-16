@@ -1,6 +1,8 @@
 "use server";
 
 import { auth, signIn } from "@/auth";
+import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import {
   LoginInput,
@@ -18,7 +20,7 @@ export async function registerUserAction(
   prevState: ActionState<SignupInput>,
   formData: FormData,
 ): Promise<ActionState<SignupInput>> {
-  const session = await auth();
+  const session = await requireAdminSession();
 
   if (!session || !session.user?.id) {
     return {
@@ -63,15 +65,27 @@ export async function registerUserAction(
     const query = `
       INSERT INTO users (name, email, password, role, status, created_by)
       VALUES ($1, $2, $3, $4, 'activo', $5)
+      RETURNING id
     `;
 
-    await pool.query(query, [
+    const result = await pool.query(query, [
       name,
       email,
       hashedPassword,
       role,
       adminLogueadoId,
     ]);
+
+    // 📋 AUDITORÍA (Ocultando el password por seguridad)
+    const auditData = { name, email, role, status: "activo" };
+    await logAudit(
+      adminLogueadoId,
+      "CREATE",
+      "users",
+      result.rows[0].id,
+      null, // 🔥 old_data: null
+      auditData, // 🔥 new_data: datos sin la contraseña
+    );
   } catch (error: any) {
     const errorMessage =
       error.code === "23505"

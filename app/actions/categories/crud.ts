@@ -106,8 +106,8 @@ export async function createCategoryAction(
       "CREATE",
       "categories",
       result.rows[0].id,
-      null,
-      validatedFields.data,
+      null, // 🔥 old_data: null
+      validatedFields.data, // 🔥 new_data: los datos creados
     );
 
     revalidatePath(REVALIDATE_ROUTE);
@@ -137,6 +137,7 @@ export async function updateCategoryAction(
       | "inactivo"
       | undefined,
   };
+
   try {
     const validatedFields = editCategorySchema.safeParse(fields);
 
@@ -151,7 +152,8 @@ export async function updateCategoryAction(
     }
 
     const { id, name, slug, description, status } = validatedFields.data;
-    console.log("data ", validatedFields.data);
+
+    // 1. REVISIÓN DE COLISIONES
     const collisionCheck = await pool.query(
       "SELECT id, name, slug FROM categories WHERE (name ILIKE $1 OR slug = $2) AND id != $3",
       [name, slug, id],
@@ -159,7 +161,6 @@ export async function updateCategoryAction(
 
     if ((collisionCheck.rowCount ?? 0) > 0) {
       const zodErrors: Record<string, string[]> = {};
-
       for (const row of collisionCheck.rows) {
         if (row.name.toLowerCase() === name.toLowerCase()) {
           zodErrors.name = ["Ya existe otra categoría con este nombre."];
@@ -168,7 +169,6 @@ export async function updateCategoryAction(
           zodErrors.slug = ["Ya existe otra categoría con este slug."];
         }
       }
-
       return {
         success: false,
         message: "No se puede guardar: hay conflictos con otras categorías.",
@@ -177,6 +177,28 @@ export async function updateCategoryAction(
       };
     }
 
+    // ========================================================================
+    // 🔥 PASO 1: LA BARRERA DE SEGURIDAD Y FOTO ANTERIOR (AHORA ESTÁ AFUERA DEL IF)
+    // ========================================================================
+    const checkQuery =
+      "SELECT * FROM categories WHERE id = $1 AND deleted_at IS NULL";
+    const checkResult = await pool.query(checkQuery, [id]);
+
+    if (checkResult.rowCount === 0) {
+      return {
+        success: false,
+        message:
+          "❌ La categoría no se pudo actualizar porque no existe o está en la papelera.",
+        data: fields,
+      };
+    }
+
+    const oldData = checkResult.rows[0]; // 📸 Foto de cómo estaba la categoría
+    const oldImageKey = oldData.image_key;
+
+    // ========================================================================
+    // PASO 2: GESTIÓN DE LA IMAGEN EN S3
+    // ========================================================================
     let newImageUrl = null;
     let newImageKey = null;
     const imageResult = await handleMediaUpload(
@@ -184,7 +206,9 @@ export async function updateCategoryAction(
       "image",
       "categories",
       "image",
+      false, // Si requiere el boolean false
     );
+
     if (!imageResult.success) {
       return {
         success: false,
@@ -192,17 +216,21 @@ export async function updateCategoryAction(
         data: fields,
       };
     }
+
+    // 🔥 CÓDIGO REDUCIDO OPTIMIZADO: Ya no hacemos otra consulta SQL inútil
     if (imageResult.url && imageResult.key) {
       newImageUrl = imageResult.url;
       newImageKey = imageResult.key;
-      const oldBannerQuery = "SELECT image_key FROM categories WHERE id = $1";
-      const oldBannerResult = await pool.query(oldBannerQuery, [fields.id]);
-      const oldImageKey = oldBannerResult.rows[0]?.image_key;
+
+      // Borramos la imagen antigua usando la llave de la barrera de seguridad
       if (oldImageKey) {
         await deleteFileFromS3Action(oldImageKey);
       }
     }
 
+    // ========================================================================
+    // PASO 3: ACTUALIZAR LA BASE DE DATOS
+    // ========================================================================
     if (newImageUrl && newImageKey) {
       const query = `
         UPDATE categories SET 
@@ -233,12 +261,13 @@ export async function updateCategoryAction(
       "UPDATE",
       "categories",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data: La foto completa de antes
+      validatedFields.data, // 🔥 new_data: Los datos nuevos
     );
 
     revalidatePath(REVALIDATE_ROUTE);
     revalidatePath(`${REVALIDATE_ROUTE}/${id}`);
+
     return {
       success: true,
       message: "Categoría actualizada correctamente.",
@@ -253,12 +282,30 @@ export async function toggleCategoryStatusAction(
   id: number,
   currentStatus: string,
 ) {
-  await requireAdminSession();
+  const session = await requireAdminSession(); // 🔥 Guardamos la sesión
   try {
     const nextStatus = currentStatus === "activo" ? "inactivo" : "activo";
 
-    const query = `UPDATE categories SET status = $1, updated_at = NOW() WHERE id = $2`;
-    await pool.query(query, [nextStatus, id]);
+    const query = `UPDATE categories SET status = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`;
+    const result = await pool.query(query, [nextStatus, id]);
+
+    if (result.rowCount === 0) {
+      return {
+        success: false,
+        message:
+          "No se pudo cambiar el estado porque no existe o está eliminada.",
+      };
+    }
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "categories",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -284,7 +331,15 @@ export async function deleteCategoryAction(id: number) {
       "UPDATE categories SET deleted_at = NOW() WHERE id = $1";
     await pool.query(softDeleteQuery, [id]);
 
-    await logAudit(adminId, "SOFT_DELETE", "categories", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "SOFT_DELETE",
+      "categories",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {

@@ -18,7 +18,15 @@ export async function restoreBannerAction(
     await pool.query("UPDATE banners SET deleted_at = NULL WHERE id = $1", [
       id,
     ]);
-    await logAudit(session.user.id, "RESTORE", "banners", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "RESTORE",
+      "banners",
+      id,
+      { deleted_at: "timestamp" }, // 🔥 old_data: simulamos que tenía fecha
+      { deleted_at: null }, // 🔥 new_data: volvió a estar activo (null)
+    );
 
     revalidatePath("/dashboard/banners");
     revalidatePath(TRASH_ROUTE);
@@ -45,7 +53,8 @@ export async function permanentlyDeleteBannerAction(
       return { success: false, message: "El banner no existe." };
     }
 
-    const imageKey = rows[0].image_key;
+    const oldData = rows[0]; // 📸 Foto de cómo era el banner
+    const imageKey = oldData.image_key; // Extraemos la llave para AWS S3
 
     await client.query("BEGIN");
 
@@ -55,7 +64,15 @@ export async function permanentlyDeleteBannerAction(
 
     await client.query("DELETE FROM banners WHERE id = $1", [id]);
 
-    await logAudit(session.user.id, "HARD_DELETE", "banners", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "banners",
+      id,
+      oldData, // 🔥 old_data: Toda la información del banner destruido
+      null, // 🔥 new_data: null (ya no existe)
+    );
 
     await client.query("COMMIT");
 
@@ -81,7 +98,15 @@ export async function bulkRestoreBannersAction(
       "UPDATE banners SET deleted_at = NULL WHERE id = ANY($1)",
       [ids],
     );
-    await logAudit(session.user.id, "BULK_RESTORE", "banners", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_RESTORE",
+      "banners",
+      ids.join(","),
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/banners");
     revalidatePath(TRASH_ROUTE);
@@ -105,7 +130,7 @@ export async function bulkPermanentlyDeleteBannersAction(
       "SELECT image_key FROM banners WHERE id = ANY($1)",
       [ids],
     );
-
+    const oldDataArray = rows;
     await client.query("BEGIN");
 
     for (const row of rows) {
@@ -115,11 +140,14 @@ export async function bulkPermanentlyDeleteBannersAction(
     // 3. Borrado físico masivo
     await client.query("DELETE FROM banners WHERE id = ANY($1)", [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "banners",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todos los objetos completos
+      null, // 🔥 new_data: null
     );
 
     await client.query("COMMIT");

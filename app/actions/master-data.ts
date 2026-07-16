@@ -3,6 +3,7 @@
 import { requireAdminSession } from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
+import { logAudit } from "@/lib/data/audit";
 import {
   AgeCategoryInput,
   ageCategorySchema,
@@ -26,11 +27,15 @@ import z from "zod";
 
 const REVALIDATE_ROUTE = "/dashboard/race-settings";
 
+// ============================================================================
+// 1. DISTANCIAS
+// ============================================================================
+
 export async function createMasterDistanceAction(
   prevState: ActionState<DistanceInput>,
   formData: FormData,
 ): Promise<ActionState<DistanceInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = distanceSchema.safeParse(fields);
@@ -60,9 +65,22 @@ export async function createMasterDistanceAction(
       };
     }
 
-    await pool.query("INSERT INTO master_distances (name) VALUES ($1)", [name]);
-    revalidatePath(REVALIDATE_ROUTE);
+    const result = await pool.query(
+      "INSERT INTO master_distances (name) VALUES ($1) RETURNING id",
+      [name],
+    );
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_distances",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Distancia creada correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterDistanceAction:", error.message);
@@ -78,7 +96,7 @@ export async function updateMasterDistanceAction(
   prevState: ActionState<EditDistanceInput>,
   formData: FormData,
 ): Promise<ActionState<EditDistanceInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = {
     id: Number(formData.get("id") || ""),
     name: formData.get("name")?.toString().trim() || "",
@@ -92,7 +110,7 @@ export async function updateMasterDistanceAction(
         success: false,
         message: "Por favor, corrige los errores del formulario.",
         zodErrors: flattenedErrors.fieldErrors,
-        data: fields, // o fields, para que no se borren los inputs
+        data: fields,
       };
     }
 
@@ -111,12 +129,36 @@ export async function updateMasterDistanceAction(
       };
     }
 
+    // 🔥 Capturamos la foto de cómo estaba
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_distances WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return {
+        success: false,
+        message: "La distancia no existe.",
+        data: fields,
+      };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("UPDATE master_distances SET name = $1 WHERE id = $2", [
       name,
       id,
     ]);
-    revalidatePath(REVALIDATE_ROUTE);
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_distances",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Distancia actualizada." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterDistanceAction:", error.message);
@@ -125,9 +167,30 @@ export async function updateMasterDistanceAction(
 }
 
 export async function deleteMasterDistanceAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Capturamos la foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_distances WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "La distancia no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_distances WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_distances",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Distancia eliminada." };
   } catch (error: any) {
@@ -139,11 +202,15 @@ export async function deleteMasterDistanceAction(id: number) {
   }
 }
 
+// ============================================================================
+// 2. GÉNEROS
+// ============================================================================
+
 export async function createMasterGenderAction(
   prevState: ActionState<GenderInput>,
   formData: FormData,
 ): Promise<ActionState<GenderInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = genderSchema.safeParse(fields);
@@ -172,9 +239,22 @@ export async function createMasterGenderAction(
       };
     }
 
-    await pool.query("INSERT INTO master_genders (name) VALUES ($1)", [name]);
-    revalidatePath(REVALIDATE_ROUTE);
+    const result = await pool.query(
+      "INSERT INTO master_genders (name) VALUES ($1) RETURNING id",
+      [name],
+    );
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_genders",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Género creado correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterGenderAction:", error.message);
@@ -190,7 +270,7 @@ export async function updateMasterGenderAction(
   prevState: ActionState<EditGenderInput>,
   formData: FormData,
 ): Promise<ActionState<EditGenderInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     id: Number(formData.get("id") || ""),
@@ -223,12 +303,32 @@ export async function updateMasterGenderAction(
       };
     }
 
+    // 🔥 Capturamos la foto de cómo estaba
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_genders WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "El género no existe.", data: fields };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("UPDATE master_genders SET name = $1 WHERE id = $2", [
       name,
       id,
     ]);
-    revalidatePath(REVALIDATE_ROUTE);
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_genders",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Género actualizado." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterGenderAction:", error.message);
@@ -237,9 +337,30 @@ export async function updateMasterGenderAction(
 }
 
 export async function deleteMasterGenderAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Capturamos la foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_genders WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "El género no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_genders WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_genders",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Género eliminado." };
   } catch (error: any) {
@@ -259,7 +380,7 @@ export async function createMasterAgeCategoryAction(
   prevState: ActionState<AgeCategoryInput>,
   formData: FormData,
 ): Promise<ActionState<AgeCategoryInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = {
     name: formData.get("name")?.toString().trim() || "",
     default_min_age: Number(formData.get("default_min_age") || 0),
@@ -311,12 +432,22 @@ export async function createMasterAgeCategoryAction(
       };
     }
 
-    await pool.query(
-      "INSERT INTO master_age_categories (name, default_min_age, default_max_age) VALUES ($1, $2, $3)",
+    const result = await pool.query(
+      "INSERT INTO master_age_categories (name, default_min_age, default_max_age) VALUES ($1, $2, $3) RETURNING id",
       [name, default_min_age, default_max_age],
     );
-    revalidatePath(REVALIDATE_ROUTE);
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_age_categories",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Categoría creada correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterAgeCategoryAction:", error.message);
@@ -332,7 +463,7 @@ export async function updateMasterAgeCategoryAction(
   prevState: ActionState<EditAgeCategoryInput>,
   formData: FormData,
 ): Promise<ActionState<EditAgeCategoryInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     id: Number(formData.get("id") || ""),
@@ -386,12 +517,36 @@ export async function updateMasterAgeCategoryAction(
       };
     }
 
+    // 🔥 Capturamos la foto de cómo estaba
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_age_categories WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return {
+        success: false,
+        message: "La categoría no existe.",
+        data: fields,
+      };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query(
       "UPDATE master_age_categories SET name = $1, default_min_age = $2, default_max_age = $3 WHERE id = $4",
       [name, default_min_age, default_max_age, id],
     );
-    revalidatePath(REVALIDATE_ROUTE);
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_age_categories",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Categoría actualizada." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterAgeCategoryAction:", error.message);
@@ -400,9 +555,30 @@ export async function updateMasterAgeCategoryAction(
 }
 
 export async function deleteMasterAgeCategoryAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Capturamos la foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_age_categories WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "La categoría no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_age_categories WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_age_categories",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Categoría eliminada." };
   } catch (error: any) {
@@ -422,7 +598,7 @@ export async function createMasterEventTypeAction(
   prevState: ActionState<EventTypeInput>,
   formData: FormData,
 ): Promise<ActionState<EventTypeInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const fields = { name: formData.get("name")?.toString().trim() || "" };
   try {
     const validatedFields = eventTypeSchema.safeParse(fields);
@@ -451,11 +627,22 @@ export async function createMasterEventTypeAction(
       };
     }
 
-    await pool.query("INSERT INTO master_event_types (name) VALUES ($1)", [
-      name,
-    ]);
-    revalidatePath(REVALIDATE_ROUTE);
+    const result = await pool.query(
+      "INSERT INTO master_event_types (name) VALUES ($1) RETURNING id",
+      [name],
+    );
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "master_event_types",
+      result.rows[0].id,
+      null,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Tipo de evento creado correctamente." };
   } catch (error: any) {
     console.error("❌ Error en createMasterEventTypeAction:", error.message);
@@ -471,7 +658,7 @@ export async function updateMasterEventTypeAction(
   prevState: ActionState<EditEventTypeInput>,
   formData: FormData,
 ): Promise<ActionState<EditEventTypeInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const fields = {
     id: Number(formData.get("id") || ""),
@@ -504,12 +691,36 @@ export async function updateMasterEventTypeAction(
       };
     }
 
+    // 🔥 Capturamos la foto de cómo estaba
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_event_types WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return {
+        success: false,
+        message: "El tipo de evento no existe.",
+        data: fields,
+      };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("UPDATE master_event_types SET name = $1 WHERE id = $2", [
       name,
       id,
     ]);
-    revalidatePath(REVALIDATE_ROUTE);
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "master_event_types",
+      id,
+      oldData,
+      validatedFields.data,
+    );
+
+    revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Tipo de evento actualizado." };
   } catch (error: any) {
     console.error("❌ Error en updateMasterEventTypeAction:", error.message);
@@ -518,9 +729,30 @@ export async function updateMasterEventTypeAction(
 }
 
 export async function deleteMasterEventTypeAction(id: number) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
   try {
+    // 🔥 Capturamos la foto antes de borrar
+    const oldRecord = await pool.query(
+      "SELECT * FROM master_event_types WHERE id = $1",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return { success: false, message: "El tipo de evento no existe." };
+    }
+    const oldData = oldRecord.rows[0];
+
     await pool.query("DELETE FROM master_event_types WHERE id = $1", [id]);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "master_event_types",
+      id,
+      oldData,
+      null,
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
     return { success: true, message: "Tipo de evento eliminado." };
   } catch (error: any) {

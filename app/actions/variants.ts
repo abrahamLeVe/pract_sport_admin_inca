@@ -182,6 +182,20 @@ export async function updateVariantAction(
       };
     }
 
+    // 🔥 PASO 1: CAPTURA DE FOTO ANTERIOR
+    const oldRecord = await pool.query(
+      "SELECT * FROM product_variants WHERE id = $1 AND deleted_at IS NULL",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return {
+        success: false,
+        message: "No se pudo actualizar (no existe o fue eliminada).",
+        data: fields,
+      };
+    }
+    const oldData = oldRecord.rows[0];
+
     const query = `
       UPDATE product_variants SET 
         size_id = $1, color_id = $2, sku = $3, stock = $4, status = $5, track_stock = $6, updated_at = NOW()
@@ -212,7 +226,7 @@ export async function updateVariantAction(
       "UPDATE",
       "product_variants",
       id,
-      null,
+      oldData, // 🔥 old_data: Toda la evidencia anterior
       validatedFields.data,
     );
 
@@ -247,9 +261,14 @@ export async function toggleVariantStatusAction(
     await pool.query(query, [nextStatus, id]);
 
     // 📋 AUDITORÍA UNIFORME
-    await logAudit(session.user.id, "UPDATE", "product_variants", id, null, {
-      status: nextStatus,
-    });
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "product_variants",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(`/dashboard/products/edit/${variant.product_id}`);
     return {
@@ -279,7 +298,15 @@ export async function deleteVariantAction(id: number) {
       [id],
     );
 
-    await logAudit(session.user.id, "SOFT_DELETE", "product_variants", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "SOFT_DELETE",
+      "product_variants",
+      id,
+      { deleted_at: null },
+      { deleted_at: new Date().toISOString() },
+    );
 
     revalidatePath(`/dashboard/products/edit/${productId}`);
     return { success: true, message: "Variante movida a la papelera." };
@@ -296,16 +323,28 @@ export async function deleteVariantAction(id: number) {
 export async function permanentlyDeleteVariantAction(id: number) {
   const session = await requireAdminSession();
   try {
+    // 🔥 Capturamos la foto antes de borrar
     const { rows } = await pool.query(
-      "SELECT product_id FROM product_variants WHERE id = $1",
+      "SELECT * FROM product_variants WHERE id = $1",
       [id],
     );
     if (rows.length === 0)
       return { success: false, message: "La variante no existe." };
-    const productId = rows[0].product_id;
+
+    const oldData = rows[0];
+    const productId = oldData.product_id;
 
     await pool.query("DELETE FROM product_variants WHERE id = $1", [id]);
-    await logAudit(session.user.id, "HARD_DELETE", "product_variants", id);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "product_variants",
+      id,
+      oldData, // 🔥 old_data: Evidencia borrada
+      null,
+    );
 
     revalidatePath(`/dashboard/products/edit/${productId}`);
     revalidatePath(`/dashboard/products/trash/${productId}`);
@@ -337,11 +376,14 @@ export async function bulkDeleteVariantsAction(
       "UPDATE product_variants SET deleted_at = NOW() WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_SOFT_DELETE",
       "product_variants",
       ids.join(","),
+      { deleted_at: null },
+      { deleted_at: new Date().toISOString() },
     );
 
     revalidatePath(`/dashboard/products/edit/${productId}`);
@@ -365,14 +407,24 @@ export async function bulkPermanentlyDeleteVariantsAction(
     return { success: false, message: "No hay elementos seleccionados." };
 
   try {
+    // 🔥 Capturamos la foto grupal antes de borrar
+    const { rows } = await pool.query(
+      "SELECT * FROM product_variants WHERE id = ANY($1)",
+      [ids],
+    );
+    const oldDataArray = rows;
+
     const query = "DELETE FROM product_variants WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "product_variants",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array de todas las eliminadas
+      null,
     );
 
     revalidatePath(`/dashboard/products/edit/${productId}`);

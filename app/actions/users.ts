@@ -55,6 +55,21 @@ export async function updateUserAction(
       };
     }
 
+    const oldRecord = await pool.query(
+      "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
+      return {
+        success: false,
+        message:
+          "No se pudo actualizar porque el usuario no existe o está eliminado.",
+        data: fields,
+      };
+    }
+    const oldData = oldRecord.rows[0];
+    delete oldData.password; // 🛡️ NUNCA guardar la contraseña en los logs de oldData
+
     let result;
 
     // 🔥 3. Actualizamos añadiendo la regla "AND deleted_at IS NULL"
@@ -93,12 +108,15 @@ export async function updateUserAction(
     }
 
     // 🔥 5. Auditoría uniforme (¡Sin guardar el password en los logs por seguridad!)
-    await logAudit(session.user.id, "UPDATE", "users", id, null, {
-      name,
-      email,
-      role,
-      status,
-    });
+    // 🔥 5. Auditoría uniforme (¡Sin guardar el password en los logs por seguridad!)
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "users",
+      id,
+      oldData, // 🔥 old_data: Estado anterior sin contraseña
+      { name, email, role, status }, // 🔥 new_data: Nuevo estado
+    );
 
     revalidatePath("/dashboard/users");
     return { success: true, message: "Usuario actualizado correctamente." };
@@ -135,9 +153,14 @@ export async function toggleUserStatusAction(
     }
 
     // 🔥 4. Auditoría uniforme
-    await logAudit(session.user.id, "UPDATE", "users", id, null, {
-      status: nextStatus,
-    });
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "users",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/users");
     return {
@@ -163,7 +186,14 @@ export async function deleteUserAction(id: number) {
     await pool.query(query, [id]);
 
     // Guardamos qué administrador mandó al usuario a la papelera
-    await logAudit(session.user.id, "SOFT_DELETE", "users", id);
+    await logAudit(
+      session.user.id,
+      "SOFT_DELETE",
+      "users",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/users");
     return {
@@ -185,11 +215,28 @@ export async function deleteUserAction(id: number) {
 export async function permanentlyDeleteUserAction(id: number) {
   const session = await requireAdminSession();
   try {
+    // 🔥 1. Capturamos la foto antes de borrar
+    const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [
+      id,
+    ]);
+    if (rows.length === 0) {
+      return { success: false, message: "El usuario no existe." };
+    }
+    const oldData = rows[0];
+    delete oldData.password; // 🛡️ Seguridad
+
     const deleteQuery = "DELETE FROM users WHERE id = $1";
     await pool.query(deleteQuery, [id]);
 
     // Auditoría del borrado permanente
-    await logAudit(session.user.id, "HARD_DELETE", "users", id);
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "users",
+      id,
+      oldData, // 🔥 old_data: Evidencia del usuario borrado
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath("/dashboard/users");
     return {
@@ -227,8 +274,15 @@ export async function bulkDeleteUsersAction(ids: number[]) {
     const query = "UPDATE users SET deleted_at = NOW() WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
-    // Guardamos los IDs de los usuarios afectados en la auditoría
-    await logAudit(session.user.id, "BULK_SOFT_DELETE", "users", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_SOFT_DELETE",
+      "users",
+      ids.join(","),
+      { deleted_at: null }, // 🔥 old_data: Estaban activos
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data: Se les puso fecha de eliminación
+    );
 
     revalidatePath("/dashboard/users");
     return {
@@ -254,11 +308,28 @@ export async function bulkPermanentlyDeleteUsersAction(ids: number[]) {
       return { success: false, message: "No hay usuarios seleccionados." };
     }
 
+    // 🔥 1. Capturamos la foto grupal antes de borrar
+    const { rows } = await pool.query(
+      "SELECT * FROM users WHERE id = ANY($1)",
+      [ids],
+    );
+    const oldDataArray = rows.map((row) => {
+      delete row.password; // 🛡️ Seguridad para cada usuario
+      return row;
+    });
+
     const query = "DELETE FROM users WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
     // Auditoría del borrado destructivo masivo
-    await logAudit(session.user.id, "BULK_HARD_DELETE", "users", ids.join(","));
+    await logAudit(
+      session.user.id,
+      "BULK_HARD_DELETE",
+      "users",
+      ids.join(","),
+      oldDataArray, // 🔥 old_data: Array de los usuarios destruidos
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath("/dashboard/users");
     return {

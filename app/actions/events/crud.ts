@@ -21,7 +21,7 @@ export async function createEventAction(
   prevState: ActionState<EventInput>,
   formData: FormData,
 ): Promise<ActionState<EventInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession(); // 🔥 Asignamos la sesión
   let client;
 
   const categoriesRaw = formData.get("categories")?.toString() || "[]";
@@ -173,6 +173,16 @@ export async function createEventAction(
       ]);
     }
 
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "CREATE",
+      "events",
+      newEventId,
+      null, // 🔥 old_data: null
+      validatedFields.data, // 🔥 new_data: los datos creados
+    );
+
     await client.query("COMMIT");
   } catch (error: any) {
     if (client) await client.query("ROLLBACK");
@@ -194,7 +204,7 @@ export async function updateEventAction(
   prevState: ActionState<EditEventInput>,
   formData: FormData,
 ): Promise<ActionState<EditEventInput>> {
-  await requireAdminSession();
+  const session = await requireAdminSession(); // 🔥 Asignamos la sesión
 
   const rawId = formData.get("id")?.toString();
   const numericId = rawId ? parseInt(rawId, 10) : 0;
@@ -204,7 +214,7 @@ export async function updateEventAction(
   const fields = {
     id: numericId,
     title: formData.get("title")?.toString() || "",
-    slug: formData.get("slug")?.toString() || "", // ✅ Slug agregado
+    slug: formData.get("slug")?.toString() || "",
     description: formData.get("description")?.toString() || "",
     event_date: formData.get("event_date")?.toString() || "",
     location_name: formData.get("location_name")?.toString() || "",
@@ -214,9 +224,7 @@ export async function updateEventAction(
     longitude: formData.get("longitude")
       ? Number(formData.get("longitude"))
       : null,
-
     route_geojson: routeGeojsonRaw,
-
     event_type_id: formData.get("event_type_id")
       ? Number(formData.get("event_type_id"))
       : 0,
@@ -242,7 +250,7 @@ export async function updateEventAction(
     }
   }
 
-  // 2. Validación Zod (Antes de consultar BD)
+  // 2. Validación Zod
   const validatedFields = editEventSchema.safeParse(fields);
   if (!validatedFields.success) {
     const flattenedErrors = z.flattenError(validatedFields.error);
@@ -254,7 +262,7 @@ export async function updateEventAction(
     };
   }
 
-  // 3. Verificación de Slug duplicado (Excluyendo el ID actual)
+  // 3. Verificación de Slug duplicado
   const slugCheck = await pool.query(
     "SELECT id FROM events WHERE slug = $1 AND id != $2 AND deleted_at IS NULL",
     [validatedFields.data.slug, validatedFields.data.id],
@@ -268,6 +276,23 @@ export async function updateEventAction(
       data: fields,
     };
   }
+
+  // 🔥 PASO 3.5: LA BARRERA DE SEGURIDAD Y FOTO ANTERIOR
+  const checkQuery =
+    "SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL";
+  const checkResult = await pool.query(checkQuery, [validatedFields.data.id]);
+
+  if (checkResult.rowCount === 0) {
+    return {
+      success: false,
+      message:
+        "❌ El evento no se pudo actualizar porque no existe o está en la papelera.",
+      data: fields,
+    };
+  }
+
+  const oldData = checkResult.rows[0]; // 📸 Foto de cómo estaba
+  const oldImageKey = oldData.image_key;
 
   // 4. Lógica de Imagen
   let newImageUrl = null;
@@ -288,16 +313,12 @@ export async function updateEventAction(
     };
   }
 
+  // 🔥 Eliminación optimizada sin consultas dobles a BD
   if (imageResult.url && imageResult.key) {
     newImageUrl = imageResult.url;
     newImageKey = imageResult.key;
-    try {
-      const oldEventQuery = "SELECT image_key FROM events WHERE id = $1";
-      const oldEventResult = await pool.query(oldEventQuery, [fields.id]);
-      const oldImageKey = oldEventResult.rows[0]?.image_key;
-      if (oldImageKey) await deleteFileFromS3Action(oldImageKey);
-    } catch (err) {
-      console.error("⚠️ Error borrando imagen vieja:", err);
+    if (oldImageKey) {
+      await deleteFileFromS3Action(oldImageKey);
     }
   }
 
@@ -358,6 +379,17 @@ export async function updateEventAction(
         id,
       ]);
     }
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "events",
+      id,
+      oldData, // 🔥 old_data: La foto completa de antes
+      validatedFields.data, // 🔥 new_data: Los datos nuevos
+    );
+
     revalidatePath(REVALIDATE_ROUTE);
   } catch (error: any) {
     console.error("❌ Error en updateEventAction:", error.message);
@@ -382,10 +414,15 @@ export async function toggleEventStatusAction(
     const query = `UPDATE events SET status = $1, updated_at = NOW() WHERE id = $2`;
     await pool.query(query, [nextStatus, id]);
 
-    // Auditoría estándar (tu estándar en otras funciones)
-    await logAudit(session.user.id, "UPDATE", "events", id, {
-      status: nextStatus,
-    });
+    // 📋 AUDITORÍA CORREGIDA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "events",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -431,9 +468,17 @@ export async function deleteEventAction(id: number) {
       ]);
 
       await client.query("COMMIT");
-      await logAudit(adminId, "SOFT_DELETE", "events", id);
 
-      // Asegúrate de importar o tener definida REVALIDATE_ROUTE
+      // 📋 AUDITORÍA
+      await logAudit(
+        adminId,
+        "SOFT_DELETE",
+        "events",
+        id,
+        { deleted_at: null }, // 🔥 old_data
+        { deleted_at: new Date().toISOString() }, // 🔥 new_data
+      );
+
       revalidatePath("/dashboard/events");
 
       return { success: true, message: "Evento movido a la papelera." };

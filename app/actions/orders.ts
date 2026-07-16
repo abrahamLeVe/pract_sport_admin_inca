@@ -40,24 +40,15 @@ export async function updateOrderStatusAction(
 
     const { id, order_status, payment_status, notes } = validatedFields.data;
 
-    const query = `
-      UPDATE orders 
-      SET order_status = $1, 
-          payment_status = $2, 
-          notes = $3, 
-          updated_at = NOW() 
-      WHERE id = $4 AND deleted_at IS NULL
-    `;
+    // ========================================================================
+    // 🔥 PASO 1: LA BARRERA DE SEGURIDAD Y FOTO ANTERIOR
+    // ========================================================================
+    const oldOrder = await pool.query(
+      "SELECT * FROM orders WHERE id = $1 AND deleted_at IS NULL",
+      [id],
+    );
 
-    const result = await pool.query(query, [
-      order_status,
-      payment_status || "pendiente",
-      notes || null,
-      id,
-    ]);
-
-    // 🔥 Validación uniforme: Rechaza si no existe o si está en la papelera
-    if (result.rowCount === 0) {
+    if (oldOrder.rowCount === 0) {
       return {
         success: false,
         message:
@@ -66,14 +57,37 @@ export async function updateOrderStatusAction(
       };
     }
 
-    // 📋 AUDITORÍA UNIFORME
+    const oldData = oldOrder.rows[0];
+
+    // ========================================================================
+    // 🔥 PASO 2: ACTUALIZAR EL PEDIDO
+    // ========================================================================
+    const query = `
+      UPDATE orders 
+      SET order_status = $1, 
+          payment_status = $2, 
+          notes = $3, 
+          updated_at = NOW() 
+      WHERE id = $4
+    `;
+
+    await pool.query(query, [
+      order_status,
+      payment_status || "pendiente",
+      notes || null,
+      id,
+    ]);
+
+    // ========================================================================
+    // 📋 PASO 3: AUDITORÍA
+    // ========================================================================
     await logAudit(
       session.user.id,
       "UPDATE",
       "orders",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data: Estado de la orden anterior
+      validatedFields.data, // 🔥 new_data: Nuevo estado
     );
 
     revalidatePath(REVALIDATE_ROUTE);
@@ -106,7 +120,15 @@ export async function deleteOrderAction(id: number) {
       "UPDATE orders SET deleted_at = NOW() WHERE id = $1";
     await pool.query(softDeleteQuery, [id]);
 
-    await logAudit(adminId, "SOFT_DELETE", "orders", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "SOFT_DELETE",
+      "orders",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -128,15 +150,32 @@ export async function deleteOrderAction(id: number) {
 // 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
 // ============================================================================
 export async function permanentlyDeleteOrderAction(id: number) {
-  try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
+  const session = await requireAdminSession();
+  const adminId = session.user.id;
 
-    // Borrado destructivo de la base de datos (PostgreSQL borrará en cascada los order_items si lo configuraste así)
+  try {
+    // 🔥 1. Capturamos la foto de la orden antes de destruirla
+    const { rows } = await pool.query("SELECT * FROM orders WHERE id = $1", [
+      id,
+    ]);
+    if (rows.length === 0) {
+      return { success: false, message: "El pedido no existe." };
+    }
+    const oldData = rows[0];
+
+    // Borrado destructivo
     const deleteQuery = "DELETE FROM orders WHERE id = $1";
     await pool.query(deleteQuery, [id]);
 
-    await logAudit(adminId, "HARD_DELETE", "orders", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "HARD_DELETE",
+      "orders",
+      id,
+      oldData, // 🔥 old_data: Toda la evidencia de la orden destruida
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -158,10 +197,9 @@ export async function permanentlyDeleteOrderAction(id: number) {
 // 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
 // ============================================================================
 export async function bulkDeleteOrdersAction(ids: number[]) {
+  const session = await requireAdminSession();
+  const adminId = session.user.id;
   try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
     if (!ids || ids.length === 0) {
       return { success: false, message: "No hay pedidos seleccionados." };
     }
@@ -170,7 +208,15 @@ export async function bulkDeleteOrdersAction(ids: number[]) {
     const query = "UPDATE orders SET deleted_at = NOW() WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
-    await logAudit(adminId, "BULK_SOFT_DELETE", "orders", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "BULK_SOFT_DELETE",
+      "orders",
+      ids.join(","),
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -192,19 +238,33 @@ export async function bulkDeleteOrdersAction(ids: number[]) {
 // 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
 // ============================================================================
 export async function bulkPermanentlyDeleteOrdersAction(ids: number[]) {
+  const session = await requireAdminSession();
+  const adminId = session.user.id;
   try {
-    const session = await requireAdminSession();
-    const adminId = session.user.id;
-
     if (!ids || ids.length === 0) {
       return { success: false, message: "No hay pedidos seleccionados." };
     }
+
+    // 🔥 1. Capturamos la foto grupal de las órdenes a borrar
+    const { rows } = await pool.query(
+      "SELECT * FROM orders WHERE id = ANY($1)",
+      [ids],
+    );
+    const oldDataArray = rows;
 
     // Eliminación física masiva en la base de datos
     const deleteQuery = "DELETE FROM orders WHERE id = ANY($1)";
     await pool.query(deleteQuery, [ids]);
 
-    await logAudit(adminId, "BULK_HARD_DELETE", "orders", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      adminId,
+      "BULK_HARD_DELETE",
+      "orders",
+      ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todas las órdenes borradas
+      null, // 🔥 new_data: null
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {

@@ -270,7 +270,7 @@ export async function updateProductAction(
       };
 
     const oldProduct = await pool.query(
-      "SELECT image_url, image_key FROM products WHERE id = $1 AND deleted_at IS NULL",
+      "SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL",
       [id],
     );
     if (oldProduct.rowCount === 0)
@@ -280,8 +280,9 @@ export async function updateProductAction(
         data: fields,
       };
 
-    let finalImageUrl = oldProduct.rows[0].image_url;
-    let finalImageKey = oldProduct.rows[0].image_key;
+    const oldData = oldProduct.rows[0]; // 📸 Foto completa del producto
+    let finalImageUrl = oldData.image_url;
+    let finalImageKey = oldData.image_key;
     let coverKeyToDelete: string | null = null;
     let keysToDeleteFromS3: string[] = [];
 
@@ -446,13 +447,14 @@ export async function updateProductAction(
     if (coverKeyToDelete) await deleteFileFromS3Action(coverKeyToDelete);
     for (const key of keysToDeleteFromS3) await deleteFileFromS3Action(key);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "UPDATE",
       "products",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data: La foto completa de antes
+      validatedFields.data, // 🔥 new_data: Los datos nuevos
     );
     revalidatePath("/dashboard/products");
     return {
@@ -490,10 +492,15 @@ export async function toggleProductStatusAction(
       };
     }
 
-    // 📋 AUDITORÍA UNIFORME
-    await logAudit(session.user.id, "UPDATE", "products", id, null, {
-      status: nextStatus,
-    });
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "products",
+      id,
+      { status: currentStatus }, // 🔥 old_data
+      { status: nextStatus }, // 🔥 new_data
+    );
 
     revalidatePath(REVALIDATE_ROUTE);
     return {
@@ -523,7 +530,15 @@ export async function deleteProductAction(id: number) {
       [id],
     );
 
-    await logAudit(session.user.id, "SOFT_DELETE", "products", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "SOFT_DELETE",
+      "products",
+      id,
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
+    );
 
     await client.query("COMMIT");
     revalidatePath("/dashboard/products");

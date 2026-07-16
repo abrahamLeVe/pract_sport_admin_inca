@@ -19,7 +19,16 @@ export async function restoreEventAction(
   try {
     const session = await requireAdminSession();
     await pool.query("UPDATE events SET deleted_at = NULL WHERE id = $1", [id]);
-    await logAudit(session.user.id, "RESTORE", "events", id);
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "RESTORE",
+      "events",
+      id,
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath(EVENTS_ROUTE);
     revalidatePath(TRASH_ROUTE);
@@ -41,7 +50,16 @@ export async function bulkRestoreEventsAction(
     await pool.query("UPDATE events SET deleted_at = NULL WHERE id = ANY($1)", [
       ids,
     ]);
-    await logAudit(session.user.id, "BULK_RESTORE", "events", ids.join(","));
+
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_RESTORE",
+      "events",
+      ids.join(","),
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath(EVENTS_ROUTE);
     revalidatePath(TRASH_ROUTE);
@@ -80,12 +98,13 @@ export async function permanentlyDeleteEventAction(
         };
       }
 
-      // 1. Obtener el Thumbnail/Portada principal del evento
+      // 1. Obtener el evento completo para la auditoría y su imagen principal
       const eventRecord = await client.query(
-        "SELECT image_key FROM events WHERE id = $1",
+        "SELECT * FROM events WHERE id = $1",
         [id],
       );
-      const mainImageKey = eventRecord.rows[0]?.image_key;
+      const oldData = eventRecord.rows[0]; // 📸 Foto completa de la evidencia
+      const mainImageKey = oldData?.image_key;
 
       // 2. Identificar qué archivos de la galería están vinculados a este evento
       const mediaList = await client.query(
@@ -126,8 +145,17 @@ export async function permanentlyDeleteEventAction(
       // 6. Borrar el evento (Ahora seguro, porque sabemos que tiene 0 inscritos)
       await client.query("DELETE FROM events WHERE id = $1", [id]);
 
+      // 📋 AUDITORÍA
+      await logAudit(
+        session.user.id,
+        "HARD_DELETE",
+        "events",
+        id,
+        oldData, // 🔥 old_data: Toda la información del evento destruido
+        null, // 🔥 new_data: null (ya no existe)
+      );
+
       await client.query("COMMIT");
-      await logAudit(session.user.id, "HARD_DELETE", "events", id);
       revalidatePath(TRASH_ROUTE);
 
       return {
@@ -177,11 +205,12 @@ export async function bulkPermanentlyDeleteEventsAction(
         };
       }
 
-      // 1. Obtener las portadas principales de los eventos a borrar
+      // 1. Obtener todos los datos de los eventos a borrar
       const eventsList = await client.query(
-        "SELECT image_key FROM events WHERE id = ANY($1)",
+        "SELECT * FROM events WHERE id = ANY($1)",
         [ids],
       );
+      const oldDataArray = eventsList.rows; // 📸 Foto grupal
 
       // 2. Obtener los media_ids de la galería asociados a estos eventos
       const mediaList = await client.query(
@@ -224,13 +253,17 @@ export async function bulkPermanentlyDeleteEventsAction(
       // 6. Borrar los eventos
       await client.query("DELETE FROM events WHERE id = ANY($1)", [ids]);
 
-      await client.query("COMMIT");
+      // 📋 AUDITORÍA
       await logAudit(
         session.user.id,
         "BULK_HARD_DELETE",
         "events",
         ids.join(","),
+        oldDataArray, // 🔥 old_data: Array con todos los eventos
+        null, // 🔥 new_data: null
       );
+
+      await client.query("COMMIT");
       revalidatePath(TRASH_ROUTE);
 
       return {
@@ -290,11 +323,15 @@ export async function bulkDeleteEventsAction(
       );
 
       await client.query("COMMIT");
+
+      // 📋 AUDITORÍA
       await logAudit(
         session.user.id,
         "BULK_SOFT_DELETE",
         "events",
         ids.join(","),
+        { deleted_at: null }, // 🔥 old_data
+        { deleted_at: new Date().toISOString() }, // 🔥 new_data
       );
 
       revalidatePath("/dashboard/events");

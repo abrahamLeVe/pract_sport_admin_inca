@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdminSession } from "@/lib/auth-guard";
+import { logAudit } from "@/lib/data/audit"; // 🔥 Importación agregada
 import pool from "@/lib/db";
 import {
   clubSettingsSchema,
@@ -14,7 +15,7 @@ export async function updateClubSettingsAction(
   prevState: FormClubSettingsState,
   formData: FormData,
 ): Promise<FormClubSettingsState> {
-  await requireAdminSession();
+  const session = await requireAdminSession(); // 🔥 1. Capturamos la sesión
 
   const fields = {
     name: formData.get("name")?.toString() || "",
@@ -52,6 +53,16 @@ export async function updateClubSettingsAction(
       parsedSocialLinks = {};
     }
 
+    // 🔥 PASO 2: CAPTURA DE LA FOTO ANTERIOR (Optimizada)
+    const oldSettingsResult = await pool.query(
+      "SELECT * FROM club_settings WHERE id = 1",
+    );
+    const oldData =
+      oldSettingsResult.rowCount !== null && oldSettingsResult.rowCount > 0
+        ? oldSettingsResult.rows[0]
+        : null;
+    const oldLogoUrl = oldData?.logo_url; // Aprovechamos para sacar el logo antiguo
+
     const logoFile = formData.get("logo") as File;
     let newLogoUrl = null;
 
@@ -72,15 +83,11 @@ export async function updateClubSettingsAction(
         };
       }
 
-      const oldSettingsResult = await pool.query(
-        "SELECT logo_url FROM club_settings WHERE id = 1",
-      );
-      const oldLogoUrl = oldSettingsResult.rows[0]?.logo_url;
-
       const s3Result = await uploadFileToS3Action(logoFile, "settings");
       if (s3Result.success && s3Result.url) {
         newLogoUrl = s3Result.url;
 
+        // Borrar imagen antigua de S3 usando la variable que sacamos de oldData
         if (oldLogoUrl) {
           try {
             const oldKey = decodeURIComponent(
@@ -120,6 +127,23 @@ export async function updateClubSettingsAction(
       JSON.stringify(parsedSocialLinks),
       newLogoUrl,
     ]);
+
+    // 📋 PASO 3: AUDITORÍA UNIFORME
+    await logAudit(
+      session.user.id,
+      "UPDATE",
+      "club_settings",
+      1,
+      oldData, // 🔥 old_data: Toda la configuración anterior
+      {
+        name,
+        primary_color,
+        secondary_color,
+        description,
+        social_links: parsedSocialLinks,
+        logo_url: newLogoUrl || oldLogoUrl,
+      }, // 🔥 new_data: La nueva configuración guardada
+    );
 
     revalidatePath("/dashboard/settings");
 

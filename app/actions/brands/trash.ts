@@ -19,7 +19,15 @@ export async function restoreBrandAction(
   const session = await requireAdminSession();
   try {
     await pool.query("UPDATE brands SET deleted_at = NULL WHERE id = $1", [id]);
-    await logAudit(session.user.id, "RESTORE", "brands", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "RESTORE",
+      "brands",
+      id,
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/brands");
     revalidatePath(TRASH_ROUTE);
@@ -40,7 +48,15 @@ export async function bulkRestoreBrandsAction(
     await pool.query("UPDATE brands SET deleted_at = NULL WHERE id = ANY($1)", [
       ids,
     ]);
-    await logAudit(session.user.id, "BULK_RESTORE", "brands", ids.join(","));
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "BULK_RESTORE",
+      "brands",
+      ids.join(","),
+      { deleted_at: "timestamp" }, // 🔥 old_data
+      { deleted_at: null }, // 🔥 new_data
+    );
 
     revalidatePath("/dashboard/brands");
     revalidatePath(TRASH_ROUTE);
@@ -68,6 +84,8 @@ export async function permanentlyDeleteBrandAction(
     if (brandRows.length === 0)
       return { success: false, message: "La marca no existe." };
 
+    const oldData = brandRows[0]; // 📸 Foto completa de la marca
+
     await client.query("BEGIN"); // Iniciamos transacción
 
     // 2. Desasociamos todos los productos (IMPORTANTE: Evita el error de RESTRICT)
@@ -83,7 +101,15 @@ export async function permanentlyDeleteBrandAction(
     // 4. Borramos la marca
     await client.query("DELETE FROM brands WHERE id = $1", [id]);
 
-    await logAudit(session.user.id, "HARD_DELETE", "brands", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "brands",
+      id,
+      oldData, // 🔥 old_data: Toda la información de la marca destruida
+      null, // 🔥 new_data: null (ya no existe)
+    );
 
     await client.query("COMMIT"); // Todo salió bien
     revalidatePath("/dashboard/brands/trash");
@@ -118,11 +144,15 @@ export async function bulkDeleteBrandsAction(
       "UPDATE brands SET deleted_at = NOW() WHERE id = ANY($1)",
       [ids],
     );
+
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_SOFT_DELETE",
       "brands",
       ids.join(","),
+      { deleted_at: null }, // 🔥 old_data
+      { deleted_at: new Date().toISOString() }, // 🔥 new_data
     );
 
     revalidatePath("/dashboard/brands");
@@ -163,6 +193,8 @@ export async function bulkPermanentlyDeleteBrandsAction(
       [ids],
     );
 
+    const oldDataArray = rows; // 📸 Foto grupal de las marcas a borrar
+
     // 3. Limpieza S3 masiva
     for (const row of rows) {
       if (row.image_key) await deleteFileFromS3Action(row.image_key);
@@ -171,11 +203,14 @@ export async function bulkPermanentlyDeleteBrandsAction(
     // 4. Remoción final de los registros de marcas
     await client.query("DELETE FROM brands WHERE id = ANY($1)", [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "brands",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todas las marcas
+      null, // 🔥 new_data: null
     );
 
     await client.query("COMMIT"); // Transacción confirmada

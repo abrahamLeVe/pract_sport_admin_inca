@@ -15,7 +15,7 @@ export async function updateRegistrationStatusAction(
   prevState: ActionState<UpdateRegistrationStatusInput>,
   formData: FormData,
 ): Promise<ActionState<UpdateRegistrationStatusInput>> {
-  const session = await requireAdminSession(); // 🔥 Capturamos la sesión para la auditoría
+  const session = await requireAdminSession();
 
   const fields = {
     id: formData.get("id"),
@@ -52,6 +52,12 @@ export async function updateRegistrationStatusAction(
 
       const checkEventQuery = `SELECT event_id FROM event_registrations WHERE id = $1`;
       const { rows: eventRows } = await pool.query(checkEventQuery, [id]);
+      if (eventRows.length === 0)
+        return {
+          success: false,
+          message: "Registro no encontrado.",
+          data: fields as any,
+        };
       const event_id = eventRows[0].event_id;
 
       // 🔥 BARRERA 1: Ignoramos los dorsales de atletas que estén en la papelera
@@ -74,25 +80,12 @@ export async function updateRegistrationStatusAction(
       }
     }
 
-    // 🔥 BARRERA 2: Solo actualizamos si el registro no está en la papelera
-    const query = `
-      UPDATE event_registrations 
-      SET bib_number = $1, 
-          registration_status = $2, 
-          payment_status = $3, 
-          payment_verified_at = CASE WHEN $3::varchar = 'paid' AND payment_verified_at IS NULL THEN NOW() ELSE payment_verified_at END
-      WHERE id = $4 AND deleted_at IS NULL
-    `;
-
-    const result = await pool.query(query, [
-      bib_number,
-      registration_status,
-      payment_status,
-      id,
-    ]);
-
-    // Validación uniforme
-    if (result.rowCount === 0) {
+    // 🔥 PASO 1: CAPTURA DE FOTO ANTERIOR
+    const oldRecord = await pool.query(
+      "SELECT * FROM event_registrations WHERE id = $1 AND deleted_at IS NULL",
+      [id],
+    );
+    if (oldRecord.rowCount === 0) {
       return {
         success: false,
         message:
@@ -100,6 +93,24 @@ export async function updateRegistrationStatusAction(
         data: fields as any,
       };
     }
+    const oldData = oldRecord.rows[0];
+
+    // 🔥 BARRERA 2: Solo actualizamos si el registro no está en la papelera
+    const query = `
+      UPDATE event_registrations 
+      SET bib_number = $1, 
+          registration_status = $2, 
+          payment_status = $3, 
+          payment_verified_at = CASE WHEN $3::varchar = 'paid' AND payment_verified_at IS NULL THEN NOW() ELSE payment_verified_at END
+      WHERE id = $4
+    `;
+
+    await pool.query(query, [
+      bib_number,
+      registration_status,
+      payment_status,
+      id,
+    ]);
 
     // 📋 AUDITORÍA UNIFORME
     await logAudit(
@@ -107,8 +118,8 @@ export async function updateRegistrationStatusAction(
       "UPDATE",
       "event_registrations",
       id,
-      null,
-      validatedFields.data,
+      oldData, // 🔥 old_data: Estado anterior
+      validatedFields.data, // 🔥 new_data: Nuevo estado
     );
 
     revalidatePath("/dashboard/registrations");
@@ -128,7 +139,9 @@ export async function updateRegistrationStatusAction(
     };
   }
 }
+
 export async function bulkAssignBibsAction(eventId: number, startBib: number) {
+  const session = await requireAdminSession();
   try {
     // 🔥 BARRERA 3: La magia SQL ahora excluye a los registros eliminados para no desperdiciar números
     const query = `
@@ -139,6 +152,7 @@ export async function bulkAssignBibsAction(eventId: number, startBib: number) {
           AND payment_status = 'paid' 
           AND registration_status = 'approved'
           AND deleted_at IS NULL
+          AND bib_number IS NULL -- Solo asigna a los que no tienen
       )
       UPDATE event_registrations er
       SET bib_number = ($2::int + numbered.rn)::int
@@ -148,6 +162,18 @@ export async function bulkAssignBibsAction(eventId: number, startBib: number) {
     `;
 
     const res = await pool.query(query, [eventId, startBib]);
+
+    // 📋 AUDITORÍA
+    if (res.rowCount && res.rowCount > 0) {
+      await logAudit(
+        session.user.id,
+        "UPDATE",
+        "event_registrations",
+        eventId,
+        null,
+        { action: "mass_bib_assignment", count: res.rowCount, startBib },
+      );
+    }
 
     revalidatePath(`/dashboard/events/edit/${eventId}`);
     revalidatePath("/dashboard/registrations");
@@ -170,15 +196,22 @@ export async function bulkAssignBibsAction(eventId: number, startBib: number) {
 // 1. ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete de basura/tests)
 // ============================================================================
 export async function deleteRegistrationAction(id: number) {
+  const session = await requireAdminSession();
   try {
-    const session = await requireAdminSession();
-
     // Lo ocultamos (liberando su dorsal indirectamente gracias al filtro del GET)
     const softDeleteQuery =
       "UPDATE event_registrations SET deleted_at = NOW() WHERE id = $1";
     await pool.query(softDeleteQuery, [id]);
 
-    await logAudit(session.user.id, "SOFT_DELETE", "event_registrations", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "SOFT_DELETE",
+      "event_registrations",
+      id,
+      { deleted_at: null },
+      { deleted_at: new Date().toISOString() },
+    );
 
     revalidatePath("/dashboard/registrations");
     return {
@@ -195,14 +228,39 @@ export async function deleteRegistrationAction(id: number) {
 // 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
 // ============================================================================
 export async function permanentlyDeleteRegistrationAction(id: number) {
+  const session = await requireAdminSession();
   try {
-    const session = await requireAdminSession();
+    // 🔥 1. Capturamos la foto de la inscripción antes de destruirla
+    const { rows } = await pool.query(
+      "SELECT * FROM event_registrations WHERE id = $1",
+      [id],
+    );
+    if (rows.length === 0) {
+      return { success: false, message: "La inscripción no existe." };
+    }
+    const oldData = rows[0];
 
-    // Como aquí no hay imagen en S3, solo borramos físicamente de la BD
+    // 🔥 CANDADO DE SEGURIDAD: Evitar borrar inscripciones pagadas
+    if (oldData.payment_status === "paid") {
+      return {
+        success: false,
+        message:
+          "No se puede purgar. La inscripción ya fue pagada. Envíala a la papelera o cancélela.",
+      };
+    }
+
     const deleteQuery = "DELETE FROM event_registrations WHERE id = $1";
     await pool.query(deleteQuery, [id]);
 
-    await logAudit(session.user.id, "HARD_DELETE", "event_registrations", id);
+    // 📋 AUDITORÍA
+    await logAudit(
+      session.user.id,
+      "HARD_DELETE",
+      "event_registrations",
+      id,
+      oldData, // 🔥 old_data: Toda la evidencia
+      null,
+    );
 
     revalidatePath("/dashboard/registrations");
     return {
@@ -222,8 +280,8 @@ export async function permanentlyDeleteRegistrationAction(id: number) {
 // 3. ELIMINACIÓN MASIVA: ENVIAR SELECCIONADOS A LA PAPELERA (Bulk Soft Delete)
 // ============================================================================
 export async function bulkDeleteRegistrationsAction(ids: number[]) {
+  const session = await requireAdminSession();
   try {
-    const session = await requireAdminSession();
     if (!ids || ids.length === 0)
       return { success: false, message: "No hay registros seleccionados." };
 
@@ -231,11 +289,14 @@ export async function bulkDeleteRegistrationsAction(ids: number[]) {
       "UPDATE event_registrations SET deleted_at = NOW() WHERE id = ANY($1)";
     await pool.query(query, [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_SOFT_DELETE",
       "event_registrations",
       ids.join(","),
+      { deleted_at: null },
+      { deleted_at: new Date().toISOString() },
     );
 
     revalidatePath("/dashboard/registrations");
@@ -256,19 +317,39 @@ export async function bulkDeleteRegistrationsAction(ids: number[]) {
 // 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
 // ============================================================================
 export async function bulkPermanentlyDeleteRegistrationsAction(ids: number[]) {
+  const session = await requireAdminSession();
   try {
-    const session = await requireAdminSession();
     if (!ids || ids.length === 0)
       return { success: false, message: "No hay registros seleccionados." };
+
+    // 🔥 1. Capturamos la foto grupal
+    const { rows } = await pool.query(
+      "SELECT * FROM event_registrations WHERE id = ANY($1)",
+      [ids],
+    );
+    const oldDataArray = rows;
+
+    // 🔥 CANDADO DE SEGURIDAD MASIVO: Bloquear si hay pagos
+    const hasPaid = oldDataArray.some((row) => row.payment_status === "paid");
+    if (hasPaid) {
+      return {
+        success: false,
+        message:
+          "No se puede purgar. Uno o más atletas seleccionados ya han pagado.",
+      };
+    }
 
     const deleteQuery = "DELETE FROM event_registrations WHERE id = ANY($1)";
     await pool.query(deleteQuery, [ids]);
 
+    // 📋 AUDITORÍA
     await logAudit(
       session.user.id,
       "BULK_HARD_DELETE",
       "event_registrations",
       ids.join(","),
+      oldDataArray, // 🔥 old_data: Array con todas las inscripciones borradas
+      null,
     );
 
     revalidatePath("/dashboard/registrations");
