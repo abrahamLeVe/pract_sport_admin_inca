@@ -1,5 +1,8 @@
 "use server";
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
 import { deleteFileFromS3Action } from "../storage";
@@ -107,7 +110,7 @@ export async function bulkPermanentlyDeleteMediaAction(
   modelType: string,
   modelId: number,
 ): Promise<ActionState> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   if (!ids?.length)
     return { success: false, message: "No hay elementos seleccionados." };
 

@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -77,7 +80,7 @@ export async function permanentlyDeleteEventAction(
   id: number,
 ): Promise<ActionState<any>> {
   try {
-    const session = await requireAdminSession();
+    const session = await requireSuperAdminSession();
     const client = await pool.connect();
 
     try {
@@ -181,7 +184,7 @@ export async function bulkPermanentlyDeleteEventsAction(
   ids: number[],
 ): Promise<ActionState<any>> {
   try {
-    const session = await requireAdminSession();
+    const session = await requireSuperAdminSession();
     if (!ids || ids.length === 0)
       return { success: false, message: "No hay eventos seleccionados." };
 

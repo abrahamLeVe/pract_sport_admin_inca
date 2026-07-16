@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import pool from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/data/audit";
@@ -160,7 +163,7 @@ export async function bulkDeleteProductsAction(
 export async function permanentlyDeleteProductAction(
   id: number,
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -251,7 +254,7 @@ export async function permanentlyDeleteProductAction(
 export async function bulkPermanentlyDeleteProductsAction(
   ids: number[],
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   if (!ids?.length)
     return { success: false, message: "No hay elementos seleccionados." };
 

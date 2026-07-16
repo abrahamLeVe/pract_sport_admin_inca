@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { EditUserInput, EditUserSchema } from "@/validations/auth";
@@ -213,7 +216,7 @@ export async function deleteUserAction(id: number) {
 // 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
 // ============================================================================
 export async function permanentlyDeleteUserAction(id: number) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   try {
     // 🔥 1. Capturamos la foto antes de borrar
     const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [
@@ -302,7 +305,7 @@ export async function bulkDeleteUsersAction(ids: number[]) {
 // 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
 // ============================================================================
 export async function bulkPermanentlyDeleteUsersAction(ids: number[]) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   try {
     if (!ids || ids.length === 0) {
       return { success: false, message: "No hay usuarios seleccionados." };

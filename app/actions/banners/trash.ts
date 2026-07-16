@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -40,7 +43,7 @@ export async function restoreBannerAction(
 export async function permanentlyDeleteBannerAction(
   id: number,
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const client = await pool.connect();
 
   try {
@@ -120,7 +123,7 @@ export async function bulkRestoreBannersAction(
 export async function bulkPermanentlyDeleteBannersAction(
   ids: number[],
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   if (!ids?.length)
     return { success: false, message: "No hay elementos seleccionados." };
 

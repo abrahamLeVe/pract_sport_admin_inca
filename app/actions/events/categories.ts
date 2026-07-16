@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -306,7 +309,7 @@ export async function permanentlyDeleteEventCategoryAction(
   id: number,
   event_id: number,
 ) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const client = await pool.connect(); // 🔥 Usamos un cliente para la transacción
 
   try {
@@ -357,7 +360,7 @@ export async function bulkPermanentlyDeleteEventCategoriesAction(
   ids: number[],
   event_id: number,
 ) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
 
   if (!ids || ids.length === 0) {
     return { success: false, message: "No hay categorías seleccionadas." };

@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -77,7 +80,7 @@ export async function bulkRestoreCategoriesAction(
 export async function permanentlyDeleteCategoryAction(
   id: number,
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const client = await pool.connect();
   try {
     // 🔥 PASO 1: SELECT * para capturar toda la evidencia antes de borrar
@@ -173,7 +176,7 @@ export async function bulkDeleteCategoriesAction(
 export async function bulkPermanentlyDeleteCategoriesAction(
   ids: number[],
 ): Promise<ActionState<any>> {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   if (!ids?.length)
     return { success: false, message: "No hay categorías seleccionadas." };
 

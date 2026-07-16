@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -150,7 +153,7 @@ export async function deleteOrderAction(id: number) {
 // 2. ELIMINACIÓN INDIVIDUAL: PURGAR DEFINITIVAMENTE (Hard Delete)
 // ============================================================================
 export async function permanentlyDeleteOrderAction(id: number) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const adminId = session.user.id;
 
   try {
@@ -238,7 +241,7 @@ export async function bulkDeleteOrdersAction(ids: number[]) {
 // 4. ELIMINACIÓN MASIVA: PURGAR SELECCIONADOS DEFINITIVAMENTE (Bulk Hard Delete)
 // ============================================================================
 export async function bulkPermanentlyDeleteOrdersAction(ids: number[]) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   const adminId = session.user.id;
   try {
     if (!ids || ids.length === 0) {

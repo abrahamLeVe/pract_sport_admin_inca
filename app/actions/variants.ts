@@ -1,6 +1,9 @@
 "use server";
 
-import { requireAdminSession } from "@/lib/auth-guard";
+import {
+  requireAdminSession,
+  requireSuperAdminSession,
+} from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
@@ -321,7 +324,7 @@ export async function deleteVariantAction(id: number) {
 
 // 2. ELIMINAR DEFINITIVAMENTE (Hard Delete)
 export async function permanentlyDeleteVariantAction(id: number) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   try {
     // 🔥 Capturamos la foto antes de borrar
     const { rows } = await pool.query(
@@ -402,7 +405,7 @@ export async function bulkPermanentlyDeleteVariantsAction(
   ids: number[],
   productId: number,
 ) {
-  const session = await requireAdminSession();
+  const session = await requireSuperAdminSession();
   if (!ids || ids.length === 0)
     return { success: false, message: "No hay elementos seleccionados." };
 
