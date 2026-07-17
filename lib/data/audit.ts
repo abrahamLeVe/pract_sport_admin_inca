@@ -44,3 +44,29 @@ export async function logAudit(
     console.error("❌ Error guardando registro de auditoría:", error);
   }
 }
+
+export async function getAuditLogs(page = 1, limit = 50) {
+  const offset = (page - 1) * limit;
+  const query = `
+    SELECT 
+      a.*, 
+      u.name as admin_name, 
+      u.email as admin_email
+    FROM audit_logs a
+    LEFT JOIN users u ON a.user_id = u.id
+    ORDER BY a.created_at DESC
+    LIMIT $1 OFFSET $2
+  `;
+
+  const countQuery = "SELECT COUNT(*) FROM audit_logs";
+
+  const [logsResult, countResult] = await Promise.all([
+    pool.query(query, [limit, offset]),
+    pool.query(countQuery),
+  ]);
+
+  return {
+    logs: logsResult.rows,
+    total: parseInt(countResult.rows[0].count),
+  };
+}

@@ -99,6 +99,11 @@ const data = {
       url: "/dashboard/store-settings",
       icon: <HugeiconsIcon icon={Settings05Icon} />,
     },
+    {
+      name: "Registro de Auditoría",
+      url: "/dashboard/audit-logs",
+      icon: <HugeiconsIcon icon={Settings05Icon} />,
+    },
   ],
 };
 

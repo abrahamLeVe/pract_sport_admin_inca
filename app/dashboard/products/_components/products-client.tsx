@@ -325,6 +325,7 @@ export function ProductsClient({ data, isTrash = false }: ProductsClientProps) {
       columns={finalColumns}
       data={data}
       searchKey="name"
+      exportFilename="productos.csv"
       // 🔥 LE INYECTAMOS LAS ACCIONES MASIVAS AL DATATABLE
       renderSelectionActions={(selectedIds, clearSelection) => {
         // Si estamos en la vista de papelera, mostramos "Restaurar"

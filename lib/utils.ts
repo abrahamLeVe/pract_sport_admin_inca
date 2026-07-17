@@ -82,3 +82,77 @@ export const getCleanFileNameFromUrl = (url: string) => {
     return "Imagen";
   }
 };
+
+export const formatAuditDate = (
+  dateInput: string | Date | null | undefined,
+): string => {
+  if (!dateInput) return "";
+
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+};
+
+export function exportToCsv(filename: string, rows: Record<string, any>[]) {
+  if (!rows || !rows.length) return;
+
+  const separator = ",";
+  const keys = Object.keys(rows[0]);
+
+  const csvContent =
+    keys.join(separator) +
+    "\n" +
+    rows
+      .map((row) => {
+        return keys
+          .map((k) => {
+            // 1. Obtenemos el valor crudo sin mutarlo
+            const rawValue = row[k];
+            let cellString = "";
+
+            // 2. Verificamos que no sea nulo ni indefinido
+            if (rawValue !== null && rawValue !== undefined) {
+              // 3. Ahora sí podemos usar instanceof de forma segura
+              if (rawValue instanceof Date) {
+                cellString = rawValue.toLocaleString();
+              } else {
+                // Convertimos a string de forma segura y escapamos comillas
+                cellString = String(rawValue).replace(/"/g, '""');
+              }
+            }
+
+            // 4. Escapar celdas que contienen comas, comillas o saltos de línea
+            if (cellString.search(/("|,|\n)/g) >= 0) {
+              cellString = `"${cellString}"`;
+            }
+
+            return cellString;
+          })
+          .join(separator);
+      })
+      .join("\n");
+
+  // El prefijo \ufeff fuerza a Excel a leer el archivo en UTF-8 (para tildes y ñ)
+  const blob = new Blob([`\ufeff${csvContent}`], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const link = document.createElement("a");
+
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
