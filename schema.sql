@@ -432,3 +432,50 @@ AFTER INSERT OR UPDATE OF stock, status, track_stock, deleted_at OR DELETE
 ON product_variants
 FOR EACH ROW
 EXECUTE FUNCTION update_product_total_stock();
+
+-- ====================================================================
+-- ÍNDICES PARCIALES DE OPTIMIZACIÓN (BASADOS EN TU ESQUEMA EXACTO)
+-- ====================================================================
+
+-- 1. MÓDULO E-COMMERCE (Productos y Variantes)
+CREATE UNIQUE INDEX idx_active_products_slug 
+ON products (slug) 
+WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_active_variants_product 
+ON product_variants (product_id) 
+WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_active_variants_sku 
+ON product_variants (sku) 
+WHERE deleted_at IS NULL AND sku IS NOT NULL;
+
+-- 2. MÓDULO EVENTOS E INSCRIPCIONES
+CREATE UNIQUE INDEX idx_active_events_slug 
+ON events (slug) 
+WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_active_registrations_event 
+ON event_registrations (event_id) 
+WHERE deleted_at IS NULL;
+
+-- 3. MÓDULO USUARIOS (Búsqueda por DNI/Documento)
+-- Como user_profiles no tiene deleted_at, creamos un índice indexando 
+-- solo los perfiles que tienen un documento registrado para ahorrar caché.
+CREATE INDEX idx_profiles_document 
+ON user_profiles (document_number) 
+WHERE document_number IS NOT NULL;
+
+-- 4. MÓDULO CMS (Categorías, Marcas y Banners)
+CREATE INDEX idx_active_categories 
+ON categories (id) 
+WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_active_brands 
+ON brands (id) 
+WHERE deleted_at IS NULL;
+
+-- Usando tu columna 'status' en lugar de un booleano
+CREATE INDEX idx_active_banners 
+ON banners (id) 
+WHERE deleted_at IS NULL AND status = 'activo';
