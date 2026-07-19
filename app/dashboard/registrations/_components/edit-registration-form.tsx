@@ -30,6 +30,7 @@ import {
 } from "@/validations/registrations";
 import { CheckCircle, CreditCard, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 
 interface EditRegistrationFormProps {
@@ -41,6 +42,7 @@ export function EditRegistrationForm({
   initialData,
   nextAvailableBib,
 }: EditRegistrationFormProps) {
+  const router = useRouter();
   const initialState: ActionState<UpdateRegistrationStatusInput> = {
     success: false,
     message: "",
@@ -60,6 +62,7 @@ export function EditRegistrationForm({
 
   // Extraemos los detalles del JSONB para mayor comodidad
   const details = initialData.participant_details;
+  const isCheckedIn = initialData.registration_status === "checked_in";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -190,7 +193,7 @@ export function EditRegistrationForm({
                 <Select
                   name="payment_status"
                   defaultValue={initialData.payment_status}
-                  disabled={isPending}
+                  disabled={isPending || isCheckedIn}
                 >
                   <SelectTrigger
                     id="payment_status"
@@ -217,7 +220,7 @@ export function EditRegistrationForm({
                 <Select
                   name="registration_status"
                   defaultValue={initialData.registration_status}
-                  disabled={isPending}
+                  disabled={isPending || isCheckedIn}
                 >
                   <SelectTrigger
                     id="registration_status"
@@ -231,6 +234,10 @@ export function EditRegistrationForm({
                     </SelectItem>
                     <SelectItem value="approved">
                       🟢 Aprobado (Corredor Oficial)
+                    </SelectItem>
+                    {/* 🔥 Aquí agregamos el nuevo estado que maneja tu escáner */}
+                    <SelectItem value="checked_in">
+                      ✅ Kit Entregado (Check-in)
                     </SelectItem>
                     <SelectItem value="cancelled">🔴 Cancelado</SelectItem>
                   </SelectContent>
@@ -248,7 +255,7 @@ export function EditRegistrationForm({
                     placeholder="Ej: 101"
                     value={bib}
                     onChange={(e) => setBib(e.target.value)}
-                    disabled={isPending}
+                    disabled={isPending || isCheckedIn}
                     className="bg-background"
                   />
 
@@ -258,7 +265,7 @@ export function EditRegistrationForm({
                       type="button"
                       variant="secondary"
                       onClick={() => setBib(nextAvailableBib)}
-                      disabled={isPending}
+                      disabled={isPending || isCheckedIn}
                     >
                       Asignar #{nextAvailableBib}
                     </Button>
@@ -271,7 +278,7 @@ export function EditRegistrationForm({
                       variant="outline"
                       className="border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-500/10"
                       onClick={() => setBib(initialData.bib_number!)}
-                      disabled={isPending}
+                      disabled={isPending || isCheckedIn}
                     >
                       Restaurar #{initialData.bib_number}
                     </Button>
@@ -286,14 +293,26 @@ export function EditRegistrationForm({
               <Separator />
 
               <div className="flex flex-col gap-2">
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? "Guardando..." : "Guardar Inscripción"}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isPending || isCheckedIn}
+                >
+                  {isCheckedIn
+                    ? "🔒 Bloqueado (Kit Entregado)"
+                    : isPending
+                      ? "Guardando..."
+                      : "Guardar Inscripción"}
                 </Button>
 
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/registrations">
-                    Volver a inscripciones
-                  </Link>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.back()}
+                  disabled={isPending}
+                >
+                  Volver a inscripciones
                 </Button>
                 <FormFeedback formState={formState} />
               </div>

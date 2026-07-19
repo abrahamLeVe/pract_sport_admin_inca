@@ -97,3 +97,26 @@ export async function getNextAvailableBib(eventId: number): Promise<number> {
     return 1;
   }
 }
+
+export async function getRegistrationsForExport(eventId: number) {
+  const query = `
+    SELECT 
+      r.bib_number AS "Dorsal",
+      r.participant_details->>'firstName' AS "Nombres",
+      r.participant_details->>'lastName' AS "Apellidos",
+      r.participant_details->>'documentNumber' AS "DNI",
+      r.participant_details->>'phone' AS "Teléfono",
+      r.participant_details->>'tshirtSize' AS "Talla de Polo",
+      COALESCE(md.name, 'General') AS "Distancia",
+      r.registration_status AS "Estado de Inscripción",
+      r.payment_status AS "Estado de Pago"
+    FROM event_registrations r
+    LEFT JOIN event_categories ec ON r.category_id = ec.id
+    LEFT JOIN master_distances md ON ec.distance_id = md.id
+    WHERE r.event_id = $1 AND r.deleted_at IS NULL
+    ORDER BY r.bib_number ASC NULLS LAST;
+  `;
+
+  const { rows } = await pool.query(query, [eventId]);
+  return rows;
+}

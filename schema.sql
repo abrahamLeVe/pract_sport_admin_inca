@@ -285,7 +285,8 @@ CREATE TABLE event_registrations (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     deleted_at TIMESTAMPTZ DEFAULT NULL, -- Integrado
     UNIQUE(event_id, user_id),             
-    UNIQUE(event_id, operation_number)     
+    UNIQUE(event_id, operation_number)   
+    UNIQUE(event_id, bib_number)  
 );
 
 CREATE INDEX idx_registrations_event_id ON event_registrations(event_id);

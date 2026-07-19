@@ -5,6 +5,7 @@ import {
   requireSuperAdminSession,
 } from "@/lib/auth-guard";
 import { logAudit } from "@/lib/data/audit";
+import { getRegistrationsForExport } from "@/lib/data/registrations";
 import pool from "@/lib/db";
 import { ActionState } from "@/validations/core";
 import {
@@ -98,6 +99,19 @@ export async function updateRegistrationStatusAction(
     }
     const oldData = oldRecord.rows[0];
 
+    // =========================================================================
+    // 🔥 NUEVA BARRERA DE SEGURIDAD: Bloquear si ya tiene el kit entregado
+    // =========================================================================
+    if (oldData.registration_status === "checked_in") {
+      return {
+        success: false,
+        message:
+          "❌ Seguridad: Este atleta ya recogió su kit. Debes deshacer el check-in en el módulo de escáner para poder editarlo.",
+        data: fields as any,
+      };
+    }
+    // =========================================================================
+
     // 🔥 BARRERA 2: Solo actualizamos si el registro no está en la papelera
     const query = `
       UPDATE event_registrations 
@@ -143,58 +157,143 @@ export async function updateRegistrationStatusAction(
   }
 }
 
-export async function bulkAssignBibsAction(eventId: number, startBib: number) {
-  const session = await requireAdminSession();
+export async function bulkAssignBibsAction(
+  eventId: number,
+  startingBib: number,
+) {
   try {
-    // 🔥 BARRERA 3: La magia SQL ahora excluye a los registros eliminados para no desperdiciar números
-    const query = `
-      WITH numbered AS (
-        SELECT id, row_number() OVER (ORDER BY created_at ASC) - 1 as rn
-        FROM event_registrations
-        WHERE event_id = $1 
-          AND payment_status = 'paid' 
-          AND registration_status = 'approved'
-          AND deleted_at IS NULL
-          AND bib_number IS NULL -- Solo asigna a los que no tienen
-      )
-      UPDATE event_registrations er
-      SET bib_number = ($2::int + numbered.rn)::int
-      FROM numbered
-      WHERE er.id = numbered.id
-      RETURNING er.id;
+    // 1. OBTENER LOS IDS DE LOS ATLETAS QUE CUMPLEN LOS REQUISITOS
+    const fetchAthletesQuery = `
+      SELECT id 
+      FROM event_registrations 
+      WHERE event_id = $1 
+        AND payment_status = 'paid' 
+        AND registration_status = 'approved' 
+        AND bib_number IS NULL 
+        AND deleted_at IS NULL
+      ORDER BY created_at ASC;
     `;
+    const athletesRes = await pool.query(fetchAthletesQuery, [eventId]);
+    const registrationIdsToAssign = athletesRes.rows.map((r) => r.id);
 
-    const res = await pool.query(query, [eventId, startBib]);
-
-    // 📋 AUDITORÍA
-    if (res.rowCount && res.rowCount > 0) {
-      await logAudit(
-        session.user.id,
-        "UPDATE",
-        "event_registrations",
-        eventId,
-        null,
-        { action: "mass_bib_assignment", count: res.rowCount, startBib },
-      );
+    if (registrationIdsToAssign.length === 0) {
+      return {
+        success: false,
+        message:
+          "No hay atletas con estado 'Pagado' y 'Aprobado' para asignar dorsales.",
+      };
     }
 
-    revalidatePath(`/dashboard/events/edit/${eventId}`);
+    // 2. OBTENER DORSALES YA OCUPADOS
+    const existingBibsQuery = `
+      SELECT bib_number 
+      FROM event_registrations 
+      WHERE event_id = $1 AND bib_number IS NOT NULL AND deleted_at IS NULL;
+    `;
+    const res = await pool.query(existingBibsQuery, [eventId]);
+    const occupiedBibs = new Set(res.rows.map((row) => row.bib_number));
+
+    let currentBib = startingBib;
+
+    // 3. TRANSACCIÓN PARA SEGURIDAD
+    await pool.query("BEGIN");
+
+    for (const regId of registrationIdsToAssign) {
+      // Magia: saltar los números que ya están ocupados
+      while (occupiedBibs.has(currentBib)) {
+        currentBib++;
+      }
+
+      // 🔥 CORRECCIÓN: Eliminamos "updated_at = NOW()" porque esa columna no existe
+      await pool.query(
+        `
+        UPDATE event_registrations 
+        SET bib_number = $1
+        WHERE id = $2;
+        `,
+        [currentBib, regId],
+      );
+
+      // Marcar como ocupado para esta sesión
+      occupiedBibs.add(currentBib);
+    }
+
+    await pool.query("COMMIT");
     revalidatePath("/dashboard/registrations");
+    return {
+      success: true,
+      message: `Se asignaron dorsales a ${registrationIdsToAssign.length} atletas correctamente.`,
+    };
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error en asignación masiva:", error);
+    return { success: false, message: "Error interno al asignar dorsales." };
+  }
+}
+
+// 🔥 NUEVA FUNCIÓN: Busca el número máximo actual y le suma 1
+export async function getNextAvailableBibAction(eventId: number) {
+  try {
+    // 1. Buscamos el número máximo
+    const query = `
+      SELECT MAX(bib_number) as max_bib 
+      FROM event_registrations 
+      WHERE event_id = $1 AND deleted_at IS NULL;
+    `;
+    const res = await pool.query(query, [eventId]);
+    const maxBib = res.rows[0]?.max_bib;
+
+    // 2. 🔥 NUEVO: Contamos cuántos faltan por asignar
+    const pendingQuery = `
+      SELECT COUNT(*) as pending_count
+      FROM event_registrations
+      WHERE event_id = $1 
+        AND payment_status = 'paid' 
+        AND registration_status = 'approved' 
+        AND bib_number IS NULL 
+        AND deleted_at IS NULL;
+    `;
+    const pendingRes = await pool.query(pendingQuery, [eventId]);
+    const pendingCount = parseInt(pendingRes.rows[0]?.pending_count || "0", 10);
 
     return {
       success: true,
-      count: res.rowCount,
-      message: `¡Éxito! Se asignaron ${res.rowCount} dorsales secuenciales a los atletas activos.`,
+      nextBib: maxBib ? maxBib + 1 : 100,
+      hasPrevious: !!maxBib,
+      pendingCount, // Enviamos este número al frontend
     };
   } catch (error) {
-    console.error("Error en asignación masiva de dorsales:", error);
+    console.error("Error buscando el siguiente dorsal:", error);
     return {
       success: false,
-      message: "Ocurrió un error al asignar los dorsales.",
+      nextBib: 100,
+      hasPrevious: false,
+      pendingCount: 0,
     };
   }
 }
 
+export async function exportEventCsvAction(eventId: number) {
+  // 🔒 SEGURIDAD: Solo admins
+  await requireAdminSession();
+
+  try {
+    const rawData = await getRegistrationsForExport(eventId);
+
+    if (rawData.length === 0) {
+      return {
+        success: false,
+        message: "No hay atletas inscritos para exportar.",
+      };
+    }
+
+    // Devolvemos la data tal cual
+    return { success: true, data: rawData };
+  } catch (error) {
+    console.error("Error al exportar registros:", error);
+    return { success: false, message: "Error interno al obtener los datos." };
+  }
+}
 // ============================================================================
 // 1. ELIMINACIÓN INDIVIDUAL: ENVIAR A LA PAPELERA (Soft Delete de basura/tests)
 // ============================================================================

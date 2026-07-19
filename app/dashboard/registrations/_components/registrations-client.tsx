@@ -18,6 +18,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Eye, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { check } from "zod";
 
 export const columns: ColumnDef<EventRegistration>[] = [
   {
@@ -142,6 +143,7 @@ export const columns: ColumnDef<EventRegistration>[] = [
           pending: "Pendiente",
           approved: "Aprobado",
           cancelled: "Cancelado",
+          checked_in: "Kit Entregado",
         }[status] || status;
 
       return (

@@ -8,7 +8,13 @@ import { z } from "zod";
 export const updateRegistrationStatusSchema = z.object({
   id: z.coerce.number(),
   bib_number: z.coerce.number().nullable().optional(), // El número de dorsal (BIB)
-  registration_status: z.enum(["pending", "approved", "cancelled"]),
+  // 🔥 SOLUCIÓN: Agregamos "checked_in" al enum de Zod
+  registration_status: z.enum([
+    "pending",
+    "approved",
+    "checked_in",
+    "cancelled",
+  ]),
   payment_status: z.enum(["unpaid", "paid", "failed", "refunded"]),
 });
 
@@ -43,7 +49,8 @@ export interface EventRegistration {
   };
 
   bib_number: number | null;
-  registration_status: "pending" | "approved" | "cancelled";
+  // 🔥 SOLUCIÓN: Agregamos "checked_in" al tipo de TypeScript
+  registration_status: "pending" | "approved" | "checked_in" | "cancelled";
   payment_status: "unpaid" | "paid" | "failed" | "refunded";
   payment_method: string | null;
   payment_receipt_url: string | null;
@@ -53,7 +60,7 @@ export interface EventRegistration {
   payment_verified_at: Date | null;
   created_at: Date;
 
-  // 🔥 CAMPOS VIRTUALES (Los traeremos con JOINs desde SQL para la tabla)
+  // CAMPOS VIRTUALES (Los traeremos con JOINs desde SQL para la tabla)
   event_title?: string;
   category_name?: string;
 }
@@ -62,6 +69,8 @@ export interface EventRegistration {
 export const registrationColors: Record<string, string> = {
   pending: "bg-yellow-500 hover:bg-yellow-600 text-white",
   approved: "bg-green-500 hover:bg-green-600 text-white",
+  // 🔥 Agregamos un color bonito (ej. azul o teal) para cuando veamos este estado en tablas
+  checked_in: "bg-teal-600 hover:bg-teal-700 text-white",
   cancelled: "bg-red-500 hover:bg-red-600 text-white",
 };
 

@@ -14,13 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { QrScannerClient } from "../_components/qr-scanner-client";
+
+// 🔥 Importamos tu nuevo componente de escáner
 
 export default function CheckInPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // 🔥 2. Desenvolvemos la promesa usando use()
   const resolvedParams = use(params);
   const eventId = Number(resolvedParams.id);
   const [query, setQuery] = useState("");
@@ -41,7 +43,7 @@ export default function CheckInPage({
   const toggleKitStatus = async (athleteId: number, currentStatus: boolean) => {
     const newStatus = !currentStatus;
 
-    // Actualización Optimista (cambia la UI al instante sin esperar a la BD)
+    // Actualización Optimista
     setAthletes((prev) =>
       prev.map((a) =>
         a.id === athleteId ? { ...a, kit_delivered: newStatus } : a,
@@ -52,7 +54,7 @@ export default function CheckInPage({
     if (res.success) {
       toast.success(newStatus ? "¡Kit Entregado!" : "Entrega revertida");
     } else {
-      // Si falla, revertimos la UI
+      // Revertir UI si falla
       setAthletes((prev) =>
         prev.map((a) =>
           a.id === athleteId ? { ...a, kit_delivered: currentStatus } : a,
@@ -63,21 +65,42 @@ export default function CheckInPage({
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
-      <div className="text-center mb-8">
+    <div className="max-w-5xl mx-auto py-8 px-4">
+      <div className="text-center mb-10">
         <h1 className="text-4xl font-extrabold tracking-tight mb-2">
-          Modo Check-In Rápido
+          Control de Ingreso y Kits
         </h1>
         <p className="text-muted-foreground text-lg">
-          Escanea o digita el DNI del corredor
+          Escanea el código QR del corredor o búscalo manualmente en caso de
+          emergencia.
         </p>
       </div>
 
-      <div className="relative mb-8 ">
+      {/* ======================================================== */}
+      {/* 1. MÓDULO DE ESCÁNER AUTOMÁTICO                          */}
+      {/* ======================================================== */}
+      <div className="mb-12">
+        <QrScannerClient eventId={eventId} />
+      </div>
+
+      <div className="relative py-4">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-muted"></div>
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-4 text-sm text-muted-foreground font-medium uppercase tracking-widest">
+            Búsqueda Manual (Backup)
+          </span>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. MÓDULO DE BÚSQUEDA MANUAL                             */}
+      {/* ======================================================== */}
+      <div className="relative mb-8 mt-4">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
         <Input
           id="checkin-id"
-          autoFocus
           className="h-16 pl-14 text-2xl rounded-2xl"
           placeholder="Ej: 71234567 o Mendoza..."
           value={query}
