@@ -7,6 +7,7 @@ import {
 import { logAudit } from "@/lib/data/audit";
 import { getRegistrationsForExport } from "@/lib/data/registrations";
 import pool from "@/lib/db";
+import { sendBibAssignmentEmail } from "@/lib/email";
 import { ActionState } from "@/validations/core";
 import {
   UpdateRegistrationStatusInput,
@@ -162,9 +163,10 @@ export async function bulkAssignBibsAction(
   startingBib: number,
 ) {
   try {
-    // 1. OBTENER LOS IDS DE LOS ATLETAS QUE CUMPLEN LOS REQUISITOS
+    // 1. OBTENER LOS IDS Y DATOS DE LOS ATLETAS QUE CUMPLEN LOS REQUISITOS
+    // 🔥 Modificado para traer participant_details (necesitamos el correo y nombre)
     const fetchAthletesQuery = `
-      SELECT id 
+      SELECT id, participant_details 
       FROM event_registrations 
       WHERE event_id = $1 
         AND payment_status = 'paid' 
@@ -174,9 +176,9 @@ export async function bulkAssignBibsAction(
       ORDER BY created_at ASC;
     `;
     const athletesRes = await pool.query(fetchAthletesQuery, [eventId]);
-    const registrationIdsToAssign = athletesRes.rows.map((r) => r.id);
+    const athletesToProcess = athletesRes.rows;
 
-    if (registrationIdsToAssign.length === 0) {
+    if (athletesToProcess.length === 0) {
       return {
         success: false,
         message:
@@ -195,16 +197,25 @@ export async function bulkAssignBibsAction(
 
     let currentBib = startingBib;
 
+    // 🔥 Array temporal para guardar a quiénes enviar el correo después de guardar en BD
+    const athletesToEmail: {
+      id: number;
+      email: string;
+      name: string;
+      bib: number;
+    }[] = [];
+
     // 3. TRANSACCIÓN PARA SEGURIDAD
     await pool.query("BEGIN");
 
-    for (const regId of registrationIdsToAssign) {
+    for (const athlete of athletesToProcess) {
+      const regId = athlete.id;
+
       // Magia: saltar los números que ya están ocupados
       while (occupiedBibs.has(currentBib)) {
         currentBib++;
       }
 
-      // 🔥 CORRECCIÓN: Eliminamos "updated_at = NOW()" porque esa columna no existe
       await pool.query(
         `
         UPDATE event_registrations 
@@ -214,15 +225,42 @@ export async function bulkAssignBibsAction(
         [currentBib, regId],
       );
 
+      // 🔥 Extraer información del JSON para el correo electrónico
+      const details = athlete.participant_details || {};
+      if (details.email) {
+        athletesToEmail.push({
+          id: regId,
+          email: details.email,
+          name: details.firstName || "Corredor",
+          bib: currentBib,
+        });
+      }
+
       // Marcar como ocupado para esta sesión
       occupiedBibs.add(currentBib);
     }
 
     await pool.query("COMMIT");
     revalidatePath("/dashboard/registrations");
+
+    // 4. 🔥 ENVÍO DE CORREOS EN SEGUNDO PLANO
+    // Se ejecuta sin 'await' directo para no bloquear la respuesta rápida al frontend
+    Promise.allSettled(
+      athletesToEmail.map((athlete) =>
+        sendBibAssignmentEmail({
+          email: athlete.email,
+          firstName: athlete.name,
+          bibNumber: athlete.bib,
+          athleteId: athlete.id,
+        }),
+      ),
+    ).catch((err) =>
+      console.error("Error en el bloque de envío de correos:", err),
+    );
+
     return {
       success: true,
-      message: `Se asignaron dorsales a ${registrationIdsToAssign.length} atletas correctamente.`,
+      message: `Se asignaron dorsales a ${athletesToProcess.length} atletas y los correos se están enviando.`,
     };
   } catch (error) {
     await pool.query("ROLLBACK");
