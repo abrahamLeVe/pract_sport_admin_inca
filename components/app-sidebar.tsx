@@ -104,6 +104,11 @@ const data = {
       url: "/dashboard/audit-logs",
       icon: <HugeiconsIcon icon={Settings05Icon} />,
     },
+    {
+      name: "Asistencia",
+      url: "/dashboard/attendance",
+      icon: <HugeiconsIcon icon={Settings05Icon} />,
+    },
   ],
 };
 

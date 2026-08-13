@@ -274,18 +274,30 @@ CREATE TABLE event_registrations (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     participant_details JSONB NOT NULL, 
     bib_number INTEGER, 
+    
+    -- Flujo de Estados
     registration_status VARCHAR(50) DEFAULT 'pending',
     payment_status VARCHAR(50) DEFAULT 'unpaid',
+    
+    -- Pagos
     payment_method VARCHAR(50),
     payment_receipt_url TEXT,
     operation_number VARCHAR(100),
     payment_amount DECIMAL(10, 2),
     voucher_date TIMESTAMPTZ,
     payment_verified_at TIMESTAMPTZ,
+    
+    -- 🔥 NUEVO: Control de Asistencia (Día de la carrera)
+    attended BOOLEAN DEFAULT FALSE,
+    attended_at TIMESTAMPTZ,
+    
+    -- Auditoría
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ DEFAULT NULL, -- Integrado
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+    
+    -- 🔥 CORRECCIÓN: Faltaban las comas aquí
     UNIQUE(event_id, user_id),             
-    UNIQUE(event_id, operation_number)   
+    UNIQUE(event_id, operation_number),   
     UNIQUE(event_id, bib_number)  
 );
 

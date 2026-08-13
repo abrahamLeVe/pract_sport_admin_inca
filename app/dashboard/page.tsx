@@ -1,5 +1,5 @@
-import { SectionCards } from "@/app/dashboard/_components/section-cards";
 import { ChartAreaInteractive } from "@/app/dashboard/_components/chart-area-interactive";
+import { SectionCards } from "@/app/dashboard/_components/section-cards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getDashboardData,
@@ -7,11 +7,10 @@ import {
 } from "@/lib/data/dashboard";
 import { Suspense } from "react";
 import { DashboardFilter } from "./_components/dashboard-filter";
-import { EventsTab } from "./_components/events-tab";
 import { DashboardTabSkeleton } from "./_components/dashboard-tab-skeleton";
+import { EventsTab } from "./_components/events-tab";
 import { ExportInventoryButton } from "./_components/export-inventory-button";
 import { ExportReportButton } from "./_components/export-report-button";
-
 export const metadata = {
   title: "Dashboard | Admin Inca",
 };
@@ -25,7 +24,7 @@ interface PageProps {
 // ============================================================================
 
 async function StoreWrapper({ currentDays }: { currentDays: number }) {
-  const data = await getDashboardData();
+  const data = await getDashboardData(currentDays);
 
   return (
     <>

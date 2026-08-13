@@ -10,15 +10,15 @@ export function DashboardTabSkeleton() {
           <Card key={i} className="animate-pulse">
             {/* Fila superior: Título y espacio para el Icono */}
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-32" />{" "}
+              <Skeleton className="h-4 w-32" />
               {/* Simula el CardDescription */}
-              <Skeleton className="h-4 w-4 rounded-md" />{" "}
+              <Skeleton className="h-4 w-4 rounded-md" />
               {/* Simula el Icono */}
             </CardHeader>
 
             {/* Fila inferior: Número grande y subtítulo */}
             <CardHeader className="pt-0">
-              <Skeleton className="h-7 w-20 mb-2 mt-1" />{" "}
+              <Skeleton className="h-7 w-20 mb-2 mt-1" />
               {/* Simula el CardTitle (text-2xl) */}
               <Skeleton className="h-3 w-40" /> {/* Simula el p (text-xs) */}
             </CardHeader>
@@ -33,7 +33,7 @@ export function DashboardTabSkeleton() {
           <Skeleton className="h-4 w-64" /> {/* Subtítulo del gráfico/tabla */}
         </CardHeader>
         <div className="p-6 pt-0">
-          <Skeleton className="h-[250px] w-full rounded-xl" />{" "}
+          <Skeleton className="h-[250px] w-full rounded-xl" />
           {/* Contenido principal */}
         </div>
       </Card>

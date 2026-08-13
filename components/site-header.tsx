@@ -34,6 +34,7 @@ const routeTranslations: Record<string, string> = {
   "store-settings": "Configuración de variantes de producto",
   account: "Configuración de mi cuenta",
   "audit-logs": "Registro de Auditoría",
+  attendance: "Asistencia",
 };
 
 // 2. Creamos un diccionario específico para la palabra "new" basado en la sección madre

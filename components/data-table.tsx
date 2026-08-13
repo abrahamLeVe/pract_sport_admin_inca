@@ -14,8 +14,8 @@ import {
   Table as TanstackTable,
 } from "@tanstack/react-table";
 import * as React from "react";
-import { Download } from "lucide-react"; // 🔥 Icono añadido
-import { exportToCsv } from "@/lib/utils"; // 🔥 Utilidad añadida
+import { Download } from "lucide-react";
+import { exportToCsv } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   searchKey?: string;
   searchPlaceholder?: string;
-  exportFilename?: string; // 🔥 NUEVO: Si se envía, aparece el botón de exportar
+  exportFilename?: string;
   renderSelectionActions?: (
     selectedIds: any[],
     clearSelection: () => void,
